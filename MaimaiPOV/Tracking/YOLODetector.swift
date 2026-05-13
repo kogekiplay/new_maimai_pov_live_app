@@ -51,6 +51,7 @@ class YOLODetector {
         bufferLock.lock()
         latestBuffer = pixelBuffer
         bufferLock.unlock()
+        while semaphore.try() == .success {}
         semaphore.signal()
     }
 

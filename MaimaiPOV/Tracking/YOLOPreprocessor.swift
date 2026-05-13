@@ -11,6 +11,7 @@ class YOLOPreprocessor {
 
     private(set) var outputTexture: MTLTexture
     private var readbackBuffer: MTLBuffer
+    private var reusablePixelBuffer: CVPixelBuffer?
 
     let yoloSize: Int
 
@@ -58,6 +59,24 @@ class YOLOPreprocessor {
             bytesPerRow: rowBytes
         ) else { return nil }
         self.outputTexture = tex
+
+        createReusablePixelBuffer()
+    }
+
+    private func createReusablePixelBuffer() {
+        let size = yoloSize
+        var pb: CVPixelBuffer?
+        let attrs: [String: Any] = [
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any]
+        ]
+        CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            size, size,
+            kCVPixelFormatType_32BGRA,
+            attrs as CFDictionary,
+            &pb
+        )
+        self.reusablePixelBuffer = pb
     }
 
     func updatePadding(_ padding: Int) {
@@ -83,33 +102,19 @@ class YOLOPreprocessor {
         cmdBuf.commit()
         cmdBuf.waitUntilCompleted()
 
-        return makeCVPixelBuffer()
+        return copyToReusablePixelBuffer()
     }
 
-    private func makeCVPixelBuffer() -> CVPixelBuffer? {
+    private func copyToReusablePixelBuffer() -> CVPixelBuffer? {
+        guard let pb = reusablePixelBuffer else { return nil }
         let size = yoloSize
         let srcRowBytes = size * 4
-
-        var pixelBuffer: CVPixelBuffer?
-        let attrs: [String: Any] = [
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any]
-        ]
-        CVPixelBufferCreate(
-            kCFAllocatorDefault,
-            size, size,
-            kCVPixelFormatType_32BGRA,
-            attrs as CFDictionary,
-            &pixelBuffer
-        )
-
-        guard let pb = pixelBuffer else { return nil }
 
         CVPixelBufferLockBaseAddress(pb, [])
         defer { CVPixelBufferUnlockBaseAddress(pb, []) }
 
         guard let dstBase = CVPixelBufferGetBaseAddress(pb) else { return nil }
         let dstRowBytes = CVPixelBufferGetBytesPerRow(pb)
-
         let srcBase = readbackBuffer.contents()
 
         if dstRowBytes == srcRowBytes {

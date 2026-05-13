@@ -91,6 +91,7 @@ struct DebugOverlayView: View {
             infoRow("Pad", "\(debug.yoloPadding)px")
             infoRow("Raw", debug.yoloRawCoord)
             infoRow("Stab", debug.yoloStabCoord)
+            infoRow("U", debug.yoloUniforms)
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 

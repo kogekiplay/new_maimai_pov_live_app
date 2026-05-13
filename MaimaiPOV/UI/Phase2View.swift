@@ -38,6 +38,7 @@ struct Phase2View: View {
     @StateObject private var debug = DebugInfoManager.shared
 
     private let device = MTLCreateSystemDefaultDevice()!
+    private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     @State private var stabilizer: MetalStabilizer?
     @State private var yoloPreprocessor: YOLOPreprocessor?
     @State private var yoloDetector: YOLODetector?
@@ -405,6 +406,10 @@ struct Phase2View: View {
             debug.log("YOLO detector initialized and started")
         }
 
+        let u = YOLOPreprocessUniforms(padding: Config.yoloPadding)
+        debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
+            u.scale, u.padH, u.padV, u.padLeft, u.padTop)
+
         camera.checkPermissionAndStart()
         camera.setFocus(Float(focusValue))
         MotionManager.shared.startUpdates()
@@ -470,8 +475,7 @@ struct Phase2View: View {
 
     private func imageFromCVPixelBuffer(_ buffer: CVPixelBuffer) -> UIImage? {
         let ciImage = CIImage(cvPixelBuffer: buffer)
-        let context = CIContext()
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return nil }
         return UIImage(cgImage: cgImage)
     }
 }
