@@ -103,7 +103,7 @@ class YOLODetector {
         let confStride = numClasses
         for i in 0..<numBoxes {
             let idx = i * confStride + innerClass
-            guard idx < confidence.count.intValue else { continue }
+            guard idx < confidence.count else { continue }
             let c = confPtr[idx]
             if c >= confThresh && c > bestConf {
                 bestConf = c
