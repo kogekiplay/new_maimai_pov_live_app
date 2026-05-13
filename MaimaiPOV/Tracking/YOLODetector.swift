@@ -16,8 +16,14 @@ class YOLODetector {
         var rawYoloCy: Float
         var rawYoloW: Float
         var rawYoloH: Float
+        var rawNx: Float
+        var rawNy: Float
+        var rawNw: Float
+        var rawNh: Float
         var inferenceMs: Double
         var preprocessMs: Double
+        var allBoxesCount: Int
+        var innerScreenBoxesCount: Int
     }
 
     private let model: best
@@ -151,6 +157,7 @@ class YOLODetector {
 
         var bestConf: Float = 0
         var bestIdx = -1
+        var innerScreenCount = 0
 
         let confPtr = UnsafeMutablePointer<Float>(OpaquePointer(confidence.dataPointer))
         let confStride = numClasses
@@ -158,9 +165,12 @@ class YOLODetector {
             let idx = i * confStride + innerClass
             guard idx < confidence.count else { continue }
             let c = confPtr[idx]
-            if c >= confThresh && c > bestConf {
-                bestConf = c
-                bestIdx = i
+            if c >= confThresh {
+                innerScreenCount += 1
+                if c > bestConf {
+                    bestConf = c
+                    bestIdx = i
+                }
             }
         }
 
@@ -169,7 +179,9 @@ class YOLODetector {
                 detected: false, confidence: 0,
                 stabCx: 0, stabCy: 0, stabW: 0, stabH: 0,
                 rawYoloCx: 0, rawYoloCy: 0, rawYoloW: 0, rawYoloH: 0,
-                inferenceMs: elapsed * 1000.0, preprocessMs: preprocessMs
+                rawNx: 0, rawNy: 0, rawNw: 0, rawNh: 0,
+                inferenceMs: elapsed * 1000.0, preprocessMs: preprocessMs,
+                allBoxesCount: numBoxes, innerScreenBoxesCount: 0
             )
         }
 
@@ -189,7 +201,9 @@ class YOLODetector {
                 detected: false, confidence: bestConf,
                 stabCx: 0, stabCy: 0, stabW: 0, stabH: 0,
                 rawYoloCx: rawCx, rawYoloCy: rawCy, rawYoloW: rawW, rawYoloH: rawH,
-                inferenceMs: elapsed * 1000.0, preprocessMs: preprocessMs
+                rawNx: nx, rawNy: ny, rawNw: nw, rawNh: nh,
+                inferenceMs: elapsed * 1000.0, preprocessMs: preprocessMs,
+                allBoxesCount: numBoxes, innerScreenBoxesCount: innerScreenCount
             )
         }
 
@@ -202,7 +216,9 @@ class YOLODetector {
             detected: true, confidence: bestConf,
             stabCx: stabCx, stabCy: stabCy, stabW: stabW, stabH: stabH,
             rawYoloCx: rawCx, rawYoloCy: rawCy, rawYoloW: rawW, rawYoloH: rawH,
-            inferenceMs: elapsed * 1000.0, preprocessMs: preprocessMs
+            rawNx: nx, rawNy: ny, rawNw: nw, rawNh: nh,
+            inferenceMs: elapsed * 1000.0, preprocessMs: preprocessMs,
+            allBoxesCount: numBoxes, innerScreenBoxesCount: innerScreenCount
         )
     }
 }

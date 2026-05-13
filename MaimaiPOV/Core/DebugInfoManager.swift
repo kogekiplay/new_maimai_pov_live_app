@@ -23,6 +23,8 @@ class DebugInfoManager: ObservableObject {
     @Published var yoloRawCoord: String = "--"
     @Published var yoloStabCoord: String = "--"
     @Published var yoloUniforms: String = "--"
+    @Published var yoloRawNorm: String = "--"
+    @Published var yoloBoxesInfo: String = "--"
 
     @Published var trackCx: Float = 0
     @Published var trackCy: Float = 0

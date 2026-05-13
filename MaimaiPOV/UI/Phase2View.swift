@@ -201,6 +201,7 @@ struct Phase2View: View {
                         yawPitchRollRow
                         syncRow
                         audioDelayRow
+                        yoloToggleRow
                         yoloPaddingRow
                     }
                     .padding(.horizontal, 12)
@@ -346,6 +347,17 @@ struct Phase2View: View {
         }
     }
 
+    private var yoloToggleRow: some View {
+        HStack {
+            Text("YOLO").font(.caption).frame(width: 55, alignment: .leading)
+            Toggle("", isOn: $yoloEnabled).labelsHidden()
+            Spacer()
+            Text(yoloEnabled ? "ON" : "OFF")
+                .font(.caption2)
+                .foregroundColor(yoloEnabled ? .green : .red)
+        }
+    }
+
     private var yoloPaddingRow: some View {
         labeledRow("YOLOPad") {
             Slider(value: $yoloPadding, in: 0...100, step: 1)
@@ -396,6 +408,9 @@ struct Phase2View: View {
                     debug?.yoloConfidence = result.confidence
                     debug?.yoloInferenceMs = result.inferenceMs
                     debug?.yoloPreprocessMs = result.preprocessMs
+                    debug?.yoloRawNorm = String(format: "%.3f,%.3f,%.3f,%.3f",
+                        result.rawNx, result.rawNy, result.rawNw, result.rawNh)
+                    debug?.yoloBoxesInfo = "\(result.innerScreenBoxesCount)/\(result.allBoxesCount)"
                     if result.detected {
                         debug?.yoloRawCoord = String(format: "%.0f,%.0f,%.0f,%.0f",
                             result.rawYoloCx, result.rawYoloCy, result.rawYoloW, result.rawYoloH)
