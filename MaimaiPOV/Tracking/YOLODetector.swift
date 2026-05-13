@@ -35,8 +35,9 @@ class YOLODetector {
 
     private let device: MTLDevice
     private let stagingCommandQueue: MTLCommandQueue
-    private let stagingTexture: MTLTexture
-    private var stagingReady = false
+    private let stagingTextures: [MTLTexture]
+    private var stagingWriteIndex: Int = 0
+    private var stagingReadIndex: Int = 0
     private let stagingLock = NSLock()
 
     var onDetection: ((DetectionResult) -> Void)?
@@ -53,17 +54,20 @@ class YOLODetector {
         guard let queue = device.makeCommandQueue() else { return nil }
         self.stagingCommandQueue = queue
 
-        let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba8Unorm,
-            width: Config.stabWidth,
-            height: Config.stabHeight,
-            mipmapped: false
-        )
-        desc.usage = .shaderRead
-        desc.storageMode = .private
-
-        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
-        self.stagingTexture = tex
+        var textures: [MTLTexture] = []
+        for _ in 0..<2 {
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .rgba8Unorm,
+                width: Config.stabWidth,
+                height: Config.stabHeight,
+                mipmapped: false
+            )
+            desc.usage = .shaderRead
+            desc.storageMode = .private
+            guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+            textures.append(tex)
+        }
+        self.stagingTextures = textures
     }
 
     func start() {
@@ -80,6 +84,9 @@ class YOLODetector {
     }
 
     func enqueue(stabTexture: MTLTexture) {
+        let writeIdx = stagingWriteIndex
+        let targetTexture = stagingTextures[writeIdx]
+
         guard let cmdBuf = stagingCommandQueue.makeCommandBuffer(),
               let blit = cmdBuf.makeBlitCommandEncoder() else { return }
 
@@ -89,20 +96,24 @@ class YOLODetector {
             sourceLevel: 0,
             sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
             sourceSize: MTLSize(width: stabTexture.width, height: stabTexture.height, depth: 1),
-            to: stagingTexture,
+            to: targetTexture,
             destinationSlice: 0,
             destinationLevel: 0,
             destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
         )
         blit.endEncoding()
+
+        cmdBuf.addCompletedHandler { [weak self] _ in
+            guard let self = self else { return }
+            self.stagingLock.lock()
+            self.stagingReadIndex = writeIdx
+            self.stagingLock.unlock()
+            while self.semaphore.wait(timeout: .now()) == .success {}
+            self.semaphore.signal()
+        }
         cmdBuf.commit()
 
-        stagingLock.lock()
-        stagingReady = true
-        stagingLock.unlock()
-
-        while semaphore.wait(timeout: .now()) == .success {}
-        semaphore.signal()
+        stagingWriteIndex = (writeIdx + 1) % stagingTextures.count
     }
 
     func updatePadding(_ padding: Int) {
@@ -114,20 +125,21 @@ class YOLODetector {
         while running {
             semaphore.wait()
 
-            stagingLock.lock()
-            let ready = stagingReady
-            stagingReady = false
-            stagingLock.unlock()
+            autoreleasepool {
+                stagingLock.lock()
+                let readIdx = stagingReadIndex
+                stagingLock.unlock()
 
-            guard ready else { continue }
+                let stabTexture = stagingTextures[readIdx]
 
-            let prepStart = CACurrentMediaTime()
-            guard let pixelBuffer = preprocessor.process(stabOutputTexture: stagingTexture) else { continue }
-            let prepElapsed = CACurrentMediaTime() - prepStart
+                let prepStart = CACurrentMediaTime()
+                guard let pixelBuffer = preprocessor.process(stabOutputTexture: stabTexture) else { return }
+                let prepElapsed = CACurrentMediaTime() - prepStart
 
-            let result = infer(pixelBuffer, preprocessMs: prepElapsed * 1000.0)
-            if let r = result {
-                onDetection?(r)
+                let result = infer(pixelBuffer, preprocessMs: prepElapsed * 1000.0)
+                if let r = result {
+                    onDetection?(r)
+                }
             }
         }
     }
