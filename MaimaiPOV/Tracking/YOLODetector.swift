@@ -1,6 +1,6 @@
 import CoreML
 import CoreVideo
-import Vision
+import QuartzCore
 
 class YOLODetector {
 
@@ -22,7 +22,7 @@ class YOLODetector {
     private let uniforms: YOLOPreprocessUniforms
     private let yoloQueue = DispatchQueue(label: "com.maimai.yolo", qos: .userInitiated)
     private var latestBuffer: CVPixelBuffer?
-    private let bufferLock = NSLock
+    private let bufferLock = NSLock()
     private var running = false
     private let semaphore = DispatchSemaphore(value: 0)
 
@@ -76,7 +76,11 @@ class YOLODetector {
     private func infer(_ pixelBuffer: CVPixelBuffer) -> DetectionResult? {
         let start = CACurrentMediaTime()
 
-        guard let input = try? bestInput(image: pixelBuffer) else { return nil }
+        guard let input = try? bestInput(
+            image: pixelBuffer,
+            iouThreshold: 0.45,
+            confidenceThreshold: Config.defaultConfidenceThreshold
+        ) else { return nil }
         guard let output = try? model.prediction(input: input) else { return nil }
 
         let elapsed = CACurrentMediaTime() - start
@@ -85,9 +89,8 @@ class YOLODetector {
         let coordinates = output.coordinates
 
         let confShape = confidence.shape
-        let coordShape = coordinates.shape
-        let numBoxes = confShape.dimensions[0]
-        let numClasses = confShape.dimensions[1]
+        let numBoxes = confShape.dimensions[0].intValue
+        let numClasses = confShape.dimensions[1].intValue
 
         let innerClass = 1
         let confThresh = Config.defaultConfidenceThreshold
