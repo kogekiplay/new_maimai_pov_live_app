@@ -43,6 +43,7 @@ struct Phase2View: View {
     @State private var yoloPreviewImage: UIImage?
     @State private var yoloEnabled: Bool = true
     @State private var yoloPreviewFrameCount: Int = 0
+    @State private var yoloPadding: Double = Double(Config.yoloPadding)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -85,6 +86,12 @@ struct Phase2View: View {
         .onChange(of: yaw) { stabilizer?.yaw = $0 }
         .onChange(of: pitch) { stabilizer?.pitch = $0 }
         .onChange(of: roll) { stabilizer?.roll = $0 }
+        .onChange(of: yoloPadding) { newVal in
+            let pad = Int(newVal)
+            Config.yoloPadding = pad
+            yoloPreprocessor?.updatePadding(pad)
+            debug.yoloPadding = pad
+        }
         .onReceive(fpsTimer) { _ in
             currentFPS = Double(frameCount)
             debug.fps = Double(frameCount)
@@ -188,6 +195,7 @@ struct Phase2View: View {
                         yawPitchRollRow
                         syncRow
                         audioDelayRow
+                        yoloPaddingRow
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -329,6 +337,14 @@ struct Phase2View: View {
             Slider(value: $audioDelayMs, in: -200...200)
         } valueLabel: {
             Text("\(Int(audioDelayMs))ms").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+        }
+    }
+
+    private var yoloPaddingRow: some View {
+        labeledRow("YOLOPad") {
+            Slider(value: $yoloPadding, in: 0...100, step: 1)
+        } valueLabel: {
+            Text("\(Int(yoloPadding))px").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 

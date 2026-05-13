@@ -7,7 +7,14 @@ enum Config {
     static let stabWidth   = 1080
     static let stabHeight  = 1440
     static let yoloInputSize = 640
-    static let yoloPadding: Int = 40
+    static let defaultYoloPadding: Int = 40
+    static var yoloPadding: Int {
+        get {
+            let v = UserDefaults.standard.integer(forKey: yoloPaddingKey)
+            return v == 0 ? defaultYoloPadding : v
+        }
+        set { UserDefaults.standard.set(newValue, forKey: yoloPaddingKey) }
+    }
     static let outputWidth  = 720
     static let outputHeight = 1280
 
@@ -40,6 +47,7 @@ enum Config {
     static let defaultReadoutTimeMs: Double = 9.18
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
+    private static let yoloPaddingKey = "com.maimai.yoloPadding"
 
     // Video encoding
     static let videoBitrate: Int = 4_000_000

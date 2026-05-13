@@ -89,6 +89,7 @@ struct DebugOverlayView: View {
             infoRow("BBox", debug.yoloBbox)
             infoRow("Infer", String(format: "%.1fms", debug.yoloInferenceMs))
             infoRow("Prep", String(format: "%.1fms", debug.yoloPreprocessMs))
+            infoRow("Pad", "\(debug.yoloPadding)px")
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 

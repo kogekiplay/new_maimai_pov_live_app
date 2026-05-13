@@ -2,7 +2,8 @@
 using namespace metal;
 
 struct YOLOPreprocessUniforms {
-    float padding;
+    float padV;
+    float padH;
     float scale;
     float padLeft;
     float padTop;
@@ -27,8 +28,8 @@ kernel void yoloPreprocess(
         return;
     }
 
-    float stab_x = (float(gid.x) - u.padLeft) / u.scale + u.padding;
-    float stab_y = (float(gid.y) - u.padTop) / u.scale + u.padding;
+    float stab_x = (float(gid.x) - u.padLeft) / u.scale - u.padH;
+    float stab_y = (float(gid.y) - u.padTop) / u.scale - u.padV;
 
     float2 uv = float2(stab_x / u.stabWidth, stab_y / u.stabHeight);
 

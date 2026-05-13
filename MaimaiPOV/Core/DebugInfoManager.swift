@@ -19,6 +19,7 @@ class DebugInfoManager: ObservableObject {
     @Published var yoloBbox: String = "--"
     @Published var yoloInferenceMs: Double = 0
     @Published var yoloPreprocessMs: Double = 0
+    @Published var yoloPadding: Int = Config.defaultYoloPadding
 
     @Published var trackCx: Float = 0
     @Published var trackCy: Float = 0

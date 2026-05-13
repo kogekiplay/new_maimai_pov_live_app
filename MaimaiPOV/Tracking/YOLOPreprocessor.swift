@@ -7,14 +7,14 @@ class YOLOPreprocessor {
     private let commandQueue: MTLCommandQueue
     private let pipelineState: MTLComputePipelineState
     private let uniformsBuffer: MTLBuffer
-    private let uniforms: YOLOPreprocessUniforms
+    private var uniforms: YOLOPreprocessUniforms
 
     private(set) var outputTexture: MTLTexture
     private var readbackBuffer: MTLBuffer
 
     let yoloSize: Int
 
-    init?(device: MTLDevice) {
+    init?(device: MTLDevice, padding: Int = Config.yoloPadding) {
         self.device = device
         self.yoloSize = Config.yoloInputSize
 
@@ -28,7 +28,7 @@ class YOLOPreprocessor {
         }
         self.pipelineState = ps
 
-        self.uniforms = YOLOPreprocessUniforms()
+        self.uniforms = YOLOPreprocessUniforms(padding: padding)
         self.uniformsBuffer = device.makeBuffer(
             length: MemoryLayout<YOLOPreprocessUniforms>.stride,
             options: .storageModeShared
@@ -58,6 +58,12 @@ class YOLOPreprocessor {
             bytesPerRow: rowBytes
         ) else { return nil }
         self.outputTexture = tex
+    }
+
+    func updatePadding(_ padding: Int) {
+        uniforms = YOLOPreprocessUniforms(padding: padding)
+        var u = uniforms
+        memcpy(uniformsBuffer.contents(), &u, MemoryLayout<YOLOPreprocessUniforms>.stride)
     }
 
     func process(stabOutputTexture: MTLTexture) -> CVPixelBuffer? {

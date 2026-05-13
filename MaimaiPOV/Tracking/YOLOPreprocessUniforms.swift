@@ -1,7 +1,8 @@
 import Foundation
 
 struct YOLOPreprocessUniforms {
-    var padding: Float
+    var padV: Float
+    var padH: Float
     var scale: Float
     var padLeft: Float
     var padTop: Float
@@ -10,16 +11,22 @@ struct YOLOPreprocessUniforms {
     var stabWidth: Float
     var stabHeight: Float
 
-    init() {
-        let pad = Float(Config.yoloPadding)
+    init(padding: Int) {
         let yoloIn = Float(Config.yoloInputSize)
         let sw = Float(Config.stabWidth)
         let sh = Float(Config.stabHeight)
 
-        let paddedW = sw + pad * 2
-        let paddedH = sh + pad * 2
+        let pv = Float(padding)
+        let squareSize = sh + pv * 2
+        let ph = (squareSize - sw) / 2.0
 
-        scale = min(yoloIn / paddedW, yoloIn / paddedH)
+        self.padV = pv
+        self.padH = ph
+
+        let paddedW = sw + ph * 2
+        let paddedH = sh + pv * 2
+
+        scale = yoloIn / max(paddedW, paddedH)
 
         let newW = Int(paddedW * scale)
         let newH = Int(paddedH * scale)
@@ -29,7 +36,6 @@ struct YOLOPreprocessUniforms {
         let pr = Config.yoloInputSize - newW - pl
         let pb = Config.yoloInputSize - newH - pt
 
-        padding = pad
         padLeft = Float(pl)
         padTop = Float(pt)
         padRight = Float(pr)
