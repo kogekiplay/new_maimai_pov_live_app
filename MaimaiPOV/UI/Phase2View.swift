@@ -9,33 +9,11 @@ import QuartzCore
 import UIKit
 
 struct Phase2View: View {
-    @StateObject private var camera = CameraCaptureManager()
-    @State private var focusValue: Double = 0.5
-    @State private var shutterTimescale: Double = 244.0
-    @State private var isoValue: Double = 2000.0
-    @State private var minISO: Double = 50.0
-    @State private var maxISO: Double = 3200.0
-    @State private var selectedLens: LensType = .main
-    @State private var syncOffsetMs: Double = Config.defaultSyncOffsetMs
-    @State private var readoutTimeMs: Double = Config.defaultReadoutTimeMs
-    @State private var audioDelayMs: Double = 0.0
-
-    // Stabilizer
-    @State private var fov: Float = 100.0
-    @State private var distRatio: Float = 0.0
-    @State private var yaw: Float = 0.0
-    @State private var pitch: Float = 0.0
-    @State private var roll: Float = 0.0
-    @State private var stabEnabled: Bool = true
-    @State private var lagMs: Double = 0
+    @StateObject private var pipeline = LivePipelineManager()
     @State private var controlsExpanded: Bool = true
 
     @State private var frameCount: Int = 0
-    @State private var currentFPS: Double = 0
-    @State private var latestQuat: simd_quatf?
     private let fpsTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    @StateObject private var debug = DebugInfoManager.shared
 
     private let device = MTLCreateSystemDefaultDevice()!
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
@@ -43,24 +21,14 @@ struct Phase2View: View {
     @State private var yoloPreprocessor: YOLOPreprocessor?
     @State private var yoloDetector: YOLODetector?
     @State private var smoothTracker = SmoothTracker()
-    @State private var yoloEnabled: Bool = true
-    @State private var yoloPadding: Double = Double(Config.yoloPadding)
-
     @State private var cropRenderer: CropRenderer?
     @State private var latestTrackOutput: SmoothTracker.TrackOutput?
 
-    @State private var trackAlpha: Double = Double(Config.defaultAlpha)
-    @State private var trackMaxSpeed: Double = Double(Config.defaultMaxSpeed)
-    @State private var trackDeadZone: Double = Double(Config.defaultDeadZone)
-    @State private var trackTargetRatio: Double = Double(Config.defaultTargetRatio)
-
     var body: some View {
         VStack(spacing: 0) {
-            // Preview
             previewSection
                 .frame(maxHeight: .infinity)
 
-            // Collapsible control card
             controlCard
         }
         .preferredColorScheme(.dark)
@@ -69,68 +37,67 @@ struct Phase2View: View {
             UIApplication.shared.isIdleTimerDisabled = true
             setupPipeline()
         }
-        .onChange(of: selectedLens) { newLens in
-            camera.switchLens(to: newLens)
+        .onChange(of: pipeline.selectedLens) { newLens in
+            pipeline.camera.switchLens(to: newLens)
             reconfigureLens()
-            debug.lensType = newLens.rawValue
+            pipeline.debug.lensType = newLens.rawValue
         }
-        .onChange(of: focusValue) { camera.setFocus(Float($0)) }
-        .onChange(of: shutterTimescale) { applyExposure() }
-        .onChange(of: isoValue) { applyExposure() }
-        .onChange(of: syncOffsetMs) { newVal in Config.syncOffsetMs = newVal }
-        .onChange(of: readoutTimeMs) { newVal in Config.readoutTimeMs = newVal }
-        .onChange(of: audioDelayMs) { camera.audioDelayMs = $0 }
-        .onChange(of: stabEnabled) { newVal in
+        .onChange(of: pipeline.focusValue) { pipeline.camera.setFocus(Float($0)) }
+        .onChange(of: pipeline.shutterTimescale) { applyExposure() }
+        .onChange(of: pipeline.isoValue) { applyExposure() }
+        .onChange(of: pipeline.syncOffsetMs) { newVal in Config.syncOffsetMs = newVal }
+        .onChange(of: pipeline.readoutTimeMs) { newVal in Config.readoutTimeMs = newVal }
+        .onChange(of: pipeline.audioDelayMs) { pipeline.camera.audioDelayMs = $0 }
+        .onChange(of: pipeline.stabEnabled) { newVal in
             stabilizer?.stabilizerEnabled = newVal
-            debug.stabEnabled = newVal
+            pipeline.debug.stabEnabled = newVal
         }
-        .onChange(of: fov) { newVal in
+        .onChange(of: pipeline.fov) { newVal in
             stabilizer?.fov = newVal
-            debug.fov = newVal
+            pipeline.debug.fov = newVal
         }
-        .onChange(of: distRatio) { newVal in
+        .onChange(of: pipeline.distRatio) { newVal in
             stabilizer?.distRatio = newVal
-            debug.distRatio = newVal
+            pipeline.debug.distRatio = newVal
         }
-        .onChange(of: yaw) { stabilizer?.yaw = $0 }
-        .onChange(of: pitch) { stabilizer?.pitch = $0 }
-        .onChange(of: roll) { stabilizer?.roll = $0 }
-        .onChange(of: yoloPadding) { newVal in
+        .onChange(of: pipeline.yaw) { stabilizer?.yaw = $0 }
+        .onChange(of: pipeline.pitch) { stabilizer?.pitch = $0 }
+        .onChange(of: pipeline.roll) { stabilizer?.roll = $0 }
+        .onChange(of: pipeline.yoloPadding) { newVal in
             let pad = Int(newVal)
             Config.yoloPadding = pad
             yoloPreprocessor?.updatePadding(pad)
             yoloDetector?.updatePadding(pad)
-            debug.yoloPadding = pad
+            pipeline.debug.yoloPadding = pad
             let u = YOLOPreprocessUniforms(padding: pad)
-            debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
+            pipeline.debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
                 u.scale, u.padH, u.padV, u.padLeft, u.padTop)
         }
-        .onChange(of: trackAlpha) { newVal in
+        .onChange(of: pipeline.trackAlpha) { newVal in
             smoothTracker.alpha = Float(newVal)
-            debug.trackAlpha = Float(newVal)
+            pipeline.debug.trackAlpha = Float(newVal)
         }
-        .onChange(of: trackMaxSpeed) { newVal in
+        .onChange(of: pipeline.trackMaxSpeed) { newVal in
             smoothTracker.maxSpeed = Float(newVal)
-            debug.trackMaxSpeed = Float(newVal)
+            pipeline.debug.trackMaxSpeed = Float(newVal)
         }
-        .onChange(of: trackDeadZone) { newVal in
+        .onChange(of: pipeline.trackDeadZone) { newVal in
             smoothTracker.deadZone = Float(newVal)
-            debug.trackDeadZone = Float(newVal)
+            pipeline.debug.trackDeadZone = Float(newVal)
         }
-        .onChange(of: trackTargetRatio) { newVal in
+        .onChange(of: pipeline.trackTargetRatio) { newVal in
             smoothTracker.targetRatio = Float(newVal)
-            debug.trackTargetRatio = Float(newVal)
+            pipeline.debug.trackTargetRatio = Float(newVal)
         }
         .onReceive(fpsTimer) { _ in
-            currentFPS = Double(frameCount)
-            debug.fps = Double(frameCount)
-            debug.frameCount = frameCount
+            pipeline.currentFPS = Double(frameCount)
+            pipeline.debug.fps = Double(frameCount)
+            pipeline.debug.frameCount = frameCount
             frameCount = 0
-            latestQuat = MotionManager.shared.latestQuaternion()
         }
         .onDisappear {
-            camera.onVideoFrame = nil
-            camera.stopRunning()
+            pipeline.camera.onVideoFrame = nil
+            pipeline.camera.stopRunning()
             MotionManager.shared.stopUpdates()
         }
     }
@@ -139,7 +106,7 @@ struct Phase2View: View {
 
     private var previewSection: some View {
         ZStack(alignment: .topTrailing) {
-            if let stab = stabilizer, stab.stabilizerEnabled, camera.cameraAuthorized {
+            if let stab = stabilizer, stab.stabilizerEnabled, pipeline.camera.cameraAuthorized {
                 if let cr = cropRenderer {
                     MetalView(device: device, texture: cr.outputTexture)
                         .aspectRatio(9.0 / 16.0, contentMode: .fit)
@@ -147,8 +114,8 @@ struct Phase2View: View {
                     MetalView(device: device, texture: stab.outputTexture)
                         .aspectRatio(3.0 / 4.0, contentMode: .fit)
                 }
-            } else if camera.cameraAuthorized {
-                CameraPreviewView(session: camera.session)
+            } else if pipeline.camera.cameraAuthorized {
+                CameraPreviewView(session: pipeline.camera.session)
                     .aspectRatio(3.0 / 4.0, contentMode: .fit)
             } else {
                 Rectangle()
@@ -158,10 +125,10 @@ struct Phase2View: View {
             }
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("FPS: \(Int(currentFPS))")
+                Text("FPS: \(Int(pipeline.currentFPS))")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(currentFPS >= 55 ? .green : .orange)
-                Text("Lag: \(String(format: "%.1f", lagMs))ms")
+                    .foregroundColor(pipeline.currentFPS >= 55 ? .green : .orange)
+                Text("Lag: \(String(format: "%.1f", pipeline.lagMs))ms")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.gray)
             }
@@ -170,11 +137,11 @@ struct Phase2View: View {
             .cornerRadius(4)
             .padding(4)
 
-            DebugOverlayView(debug: debug)
+            DebugOverlayView(debug: pipeline.debug)
                 .padding(.leading, 4)
                 .padding(.top, 4)
 
-            if yoloEnabled, let img = debug.yoloPreviewImage {
+            if pipeline.yoloEnabled, let img = pipeline.debug.yoloPreviewImage {
                 VStack {
                     Spacer()
                     HStack {
@@ -195,7 +162,6 @@ struct Phase2View: View {
 
     private var controlCard: some View {
         VStack(spacing: 0) {
-            // Card header
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     controlsExpanded.toggle()
@@ -250,7 +216,7 @@ struct Phase2View: View {
     // MARK: - Control Rows
 
     private var lensPicker: some View {
-        Picker("Lens", selection: $selectedLens) {
+        Picker("Lens", selection: $pipeline.selectedLens) {
             ForEach(LensType.allCases, id: \.self) { lens in
                 Text(lens.rawValue).tag(lens)
             }
@@ -263,29 +229,29 @@ struct Phase2View: View {
             Text("Shutter").font(.caption).frame(width: 55, alignment: .leading)
             Spacer()
             Button("1/244") {
-                shutterTimescale = 244.0; applyExposure()
+                pipeline.shutterTimescale = 244.0; applyExposure()
             }
             .buttonStyle(.borderedProminent)
-            .tint(shutterTimescale == 244.0 ? .orange : .gray)
+            .tint(pipeline.shutterTimescale == 244.0 ? .orange : .gray)
             .controlSize(.small)
-            .disabled(camera.exposureMode != .custom)
+            .disabled(pipeline.camera.exposureMode != .custom)
 
             Button("1/122") {
-                shutterTimescale = 122.0; applyExposure()
+                pipeline.shutterTimescale = 122.0; applyExposure()
             }
             .buttonStyle(.borderedProminent)
-            .tint(shutterTimescale == 122.0 ? .orange : .gray)
+            .tint(pipeline.shutterTimescale == 122.0 ? .orange : .gray)
             .controlSize(.small)
-            .disabled(camera.exposureMode != .custom)
+            .disabled(pipeline.camera.exposureMode != .custom)
 
             Spacer()
-            Button(camera.exposureMode == .custom ? "M" : "A") {
-                camera.exposureMode == .custom
-                    ? camera.setAutoExposure()
-                    : camera.setCustomExposure()
+            Button(pipeline.camera.exposureMode == .custom ? "M" : "A") {
+                pipeline.camera.exposureMode == .custom
+                    ? pipeline.camera.setAutoExposure()
+                    : pipeline.camera.setCustomExposure()
             }
             .buttonStyle(.borderedProminent)
-            .tint(camera.exposureMode == .custom ? .orange : .green)
+            .tint(pipeline.camera.exposureMode == .custom ? .orange : .green)
             .controlSize(.small)
             .font(.caption2)
         }
@@ -293,66 +259,66 @@ struct Phase2View: View {
 
     private var isoRow: some View {
         labeledRow("ISO") {
-            Slider(value: $isoValue, in: minISO...maxISO, step: 1)
+            Slider(value: $pipeline.isoValue, in: pipeline.minISO...pipeline.maxISO, step: 1)
         } valueLabel: {
-            Text("\(Int(isoValue))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text("\(Int(pipeline.isoValue))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
-        .disabled(camera.exposureMode != .custom)
-        .onChange(of: camera.isRunning) { running in
+        .disabled(pipeline.camera.exposureMode != .custom)
+        .onChange(of: pipeline.camera.isRunning) { running in
             if running { updateISORange() }
         }
     }
 
     private var focusRow: some View {
         labeledRow("Focus") {
-            Slider(value: $focusValue, in: 0...1)
+            Slider(value: $pipeline.focusValue, in: 0...1)
         } valueLabel: {
-            Text(String(format: "%.2f", focusValue)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text(String(format: "%.2f", pipeline.focusValue)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
     private var stabilizerToggleRow: some View {
         HStack {
             Text("Stabilizer").font(.caption).frame(width: 55, alignment: .leading)
-            Toggle("", isOn: $stabEnabled).labelsHidden()
+            Toggle("", isOn: $pipeline.stabEnabled).labelsHidden()
             Spacer()
-            Text("Lag: \(String(format: "%.1f", lagMs))ms")
+            Text("Lag: \(String(format: "%.1f", pipeline.lagMs))ms")
                 .font(.caption2).foregroundColor(.gray)
         }
     }
 
     private var fovRow: some View {
         labeledRow("FOV") {
-            Slider(value: Binding(get: { Double(fov) }, set: { fov = Float($0) }), in: 30...160, step: 1)
+            Slider(value: Binding(get: { Double(pipeline.fov) }, set: { pipeline.fov = Float($0) }), in: 30...160, step: 1)
         } valueLabel: {
-            Text("\(Int(fov))°").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text("\(Int(pipeline.fov))°").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
     private var distRatioRow: some View {
         labeledRow("Dist") {
-            Slider(value: Binding(get: { Double(distRatio) }, set: { distRatio = Float($0) }), in: 0...1)
+            Slider(value: Binding(get: { Double(pipeline.distRatio) }, set: { pipeline.distRatio = Float($0) }), in: 0...1)
         } valueLabel: {
-            Text(String(format: "%.2f", distRatio)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text(String(format: "%.2f", pipeline.distRatio)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
     private var yawPitchRollRow: some View {
         VStack(spacing: 4) {
             labeledRow("Yaw") {
-                Slider(value: Binding(get: { Double(yaw) }, set: { yaw = Float($0) }), in: -30...30)
+                Slider(value: Binding(get: { Double(pipeline.yaw) }, set: { pipeline.yaw = Float($0) }), in: -30...30)
             } valueLabel: {
-                Text(String(format: "%.1f", yaw)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+                Text(String(format: "%.1f", pipeline.yaw)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
             labeledRow("Pitch") {
-                Slider(value: Binding(get: { Double(pitch) }, set: { pitch = Float($0) }), in: -30...30)
+                Slider(value: Binding(get: { Double(pipeline.pitch) }, set: { pipeline.pitch = Float($0) }), in: -30...30)
             } valueLabel: {
-                Text(String(format: "%.1f", pitch)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+                Text(String(format: "%.1f", pipeline.pitch)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
             labeledRow("Roll") {
-                Slider(value: Binding(get: { Double(roll) }, set: { roll = Float($0) }), in: -15...15)
+                Slider(value: Binding(get: { Double(pipeline.roll) }, set: { pipeline.roll = Float($0) }), in: -15...15)
             } valueLabel: {
-                Text(String(format: "%.1f", roll)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+                Text(String(format: "%.1f", pipeline.roll)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
         }
     }
@@ -360,74 +326,74 @@ struct Phase2View: View {
     private var syncRow: some View {
         Group {
             labeledRow("Sync") {
-                Slider(value: $syncOffsetMs, in: -50...50)
+                Slider(value: $pipeline.syncOffsetMs, in: -50...50)
             } valueLabel: {
-                Text(String(format: "%.0f", syncOffsetMs)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+                Text(String(format: "%.0f", pipeline.syncOffsetMs)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
             labeledRow("Readout") {
-                Slider(value: $readoutTimeMs, in: 5...15)
+                Slider(value: $pipeline.readoutTimeMs, in: 5...15)
             } valueLabel: {
-                Text(String(format: "%.1f", readoutTimeMs)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+                Text(String(format: "%.1f", pipeline.readoutTimeMs)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
         }
     }
 
     private var audioDelayRow: some View {
         labeledRow("AudioDel") {
-            Slider(value: $audioDelayMs, in: -200...200)
+            Slider(value: $pipeline.audioDelayMs, in: -200...200)
         } valueLabel: {
-            Text("\(Int(audioDelayMs))ms").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text("\(Int(pipeline.audioDelayMs))ms").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
     private var yoloToggleRow: some View {
         HStack {
             Text("YOLO").font(.caption).frame(width: 55, alignment: .leading)
-            Toggle("", isOn: $yoloEnabled).labelsHidden()
+            Toggle("", isOn: $pipeline.yoloEnabled).labelsHidden()
             Spacer()
-            Text(yoloEnabled ? "ON" : "OFF")
+            Text(pipeline.yoloEnabled ? "ON" : "OFF")
                 .font(.caption2)
-                .foregroundColor(yoloEnabled ? .green : .red)
+                .foregroundColor(pipeline.yoloEnabled ? .green : .red)
         }
     }
 
     private var yoloPaddingRow: some View {
         labeledRow("YOLOPad") {
-            Slider(value: $yoloPadding, in: 0...100, step: 1)
+            Slider(value: $pipeline.yoloPadding, in: 0...100, step: 1)
         } valueLabel: {
-            Text("\(Int(yoloPadding))px").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text("\(Int(pipeline.yoloPadding))px").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
     private var trackAlphaRow: some View {
         labeledRow("Alpha") {
-            Slider(value: $trackAlpha, in: 0.01...1.0, step: 0.01)
+            Slider(value: $pipeline.trackAlpha, in: 0.01...1.0, step: 0.01)
         } valueLabel: {
-            Text(String(format: "%.2f", trackAlpha)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text(String(format: "%.2f", pipeline.trackAlpha)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
     private var trackMaxSpeedRow: some View {
         labeledRow("MaxSpeed") {
-            Slider(value: $trackMaxSpeed, in: 1...30, step: 1)
+            Slider(value: $pipeline.trackMaxSpeed, in: 1...30, step: 1)
         } valueLabel: {
-            Text("\(Int(trackMaxSpeed))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text("\(Int(pipeline.trackMaxSpeed))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
     private var trackDeadZoneRow: some View {
         labeledRow("DeadZone") {
-            Slider(value: $trackDeadZone, in: 0...50, step: 1)
+            Slider(value: $pipeline.trackDeadZone, in: 0...50, step: 1)
         } valueLabel: {
-            Text("\(Int(trackDeadZone))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text("\(Int(pipeline.trackDeadZone))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
     private var trackTargetRatioRow: some View {
         labeledRow("TargetRatio") {
-            Slider(value: $trackTargetRatio, in: 0.1...1.0, step: 0.05)
+            Slider(value: $pipeline.trackTargetRatio, in: 0.1...1.0, step: 0.05)
         } valueLabel: {
-            Text(String(format: "%.2f", trackTargetRatio)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+            Text(String(format: "%.2f", pipeline.trackTargetRatio)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
@@ -456,38 +422,38 @@ struct Phase2View: View {
     }
 
     private func setupPipeline() {
-        let lensCfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
+        let lensCfg = LensCalibration.config(for: pipeline.selectedLens, inputWidth: Config.inputWidth)
         let stab = MetalStabilizer(device: device, lensConfig: lensCfg)
-        stab?.stabilizerEnabled = stabEnabled
-        stab?.fov = fov
+        stab?.stabilizerEnabled = pipeline.stabEnabled
+        stab?.fov = pipeline.fov
         self.stabilizer = stab
 
-        debug.fov = fov
-        debug.distRatio = distRatio
-        debug.stabEnabled = stabEnabled
-        debug.lensType = selectedLens.rawValue
-        debug.log("Pipeline initialized: \(selectedLens.rawValue)")
+        pipeline.debug.fov = pipeline.fov
+        pipeline.debug.distRatio = pipeline.distRatio
+        pipeline.debug.stabEnabled = pipeline.stabEnabled
+        pipeline.debug.lensType = pipeline.selectedLens.rawValue
+        pipeline.debug.log("Pipeline initialized: \(pipeline.selectedLens.rawValue)")
 
         let yoloPrep = YOLOPreprocessor(device: device)
         self.yoloPreprocessor = yoloPrep
         if yoloPrep != nil {
-            debug.log("YOLO preprocessor initialized")
+            pipeline.debug.log("YOLO preprocessor initialized")
         }
 
         let cropR = CropRenderer(device: device)
         self.cropRenderer = cropR
 
-        self.trackAlpha = Double(smoothTracker.alpha)
-        self.trackMaxSpeed = Double(smoothTracker.maxSpeed)
-        self.trackDeadZone = Double(smoothTracker.deadZone)
-        self.trackTargetRatio = Double(smoothTracker.targetRatio)
+        self.pipeline.trackAlpha = Double(smoothTracker.alpha)
+        self.pipeline.trackMaxSpeed = Double(smoothTracker.maxSpeed)
+        self.pipeline.trackDeadZone = Double(smoothTracker.deadZone)
+        self.pipeline.trackTargetRatio = Double(smoothTracker.targetRatio)
 
         let detector = YOLODetector(device: device)
         self.yoloDetector = detector
         let tracker = smoothTracker
         var yoloPreviewFrameCount = 0
         if detector != nil {
-            detector?.onDetection = { [weak debug, weak detector, weak tracker] result in
+            detector?.onDetection = { [weak debug = pipeline.debug, weak detector, weak tracker] result in
                 DispatchQueue.main.async {
                     debug?.yoloDetected = result.detected
                     debug?.yoloConfidence = result.confidence
@@ -537,18 +503,18 @@ struct Phase2View: View {
                 }
             }
             detector?.start()
-            debug.log("YOLO detector initialized and started")
+            pipeline.debug.log("YOLO detector initialized and started")
         }
 
         let u = YOLOPreprocessUniforms(padding: Config.yoloPadding)
-        debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
+        pipeline.debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
             u.scale, u.padH, u.padV, u.padLeft, u.padTop)
 
-        camera.checkPermissionAndStart()
-        camera.setFocus(Float(focusValue))
+        pipeline.camera.checkPermissionAndStart()
+        pipeline.camera.setFocus(Float(pipeline.focusValue))
         MotionManager.shared.startUpdates()
 
-        camera.onVideoFrame = { [weak camera] pixelBuffer, alignedTime in
+        pipeline.camera.onVideoFrame = { [weak camera = pipeline.camera] pixelBuffer, alignedTime in
             frameCount += 1
             guard let stab = stabilizer, stab.stabilizerEnabled else { return }
 
@@ -564,11 +530,11 @@ struct Phase2View: View {
             stab.process(pixelBuffer: pixelBuffer, qCenter: qCenter, qTop: qTop, qBottom: qBottom)
             let elapsed = CACurrentMediaTime() - start
             DispatchQueue.main.async {
-                lagMs = elapsed * 1000.0
-                debug.stabLagMs = elapsed * 1000.0
+                pipeline.lagMs = elapsed * 1000.0
+                pipeline.debug.stabLagMs = elapsed * 1000.0
             }
 
-            if yoloEnabled, let detector = yoloDetector {
+            if pipeline.yoloEnabled, let detector = yoloDetector {
                 detector.enqueue(stabTexture: stab.outputTexture)
             }
 
@@ -586,25 +552,25 @@ struct Phase2View: View {
             }
         }
 
-        camera.onAudioSample = { _ in }
+        pipeline.camera.onAudioSample = { _ in }
     }
 
     private func applyExposure() {
-        guard camera.exposureMode == .custom else { return }
-        camera.setExposure(duration: CMTime(value: 1, timescale: Int32(shutterTimescale)), iso: Float(isoValue))
+        guard pipeline.camera.exposureMode == .custom else { return }
+        pipeline.camera.setExposure(duration: CMTime(value: 1, timescale: Int32(pipeline.shutterTimescale)), iso: Float(pipeline.isoValue))
     }
 
     private func updateISORange() {
-        let actualMin = Double(camera.getMinISO()), actualMax = Double(camera.getMaxISO())
+        let actualMin = Double(pipeline.camera.getMinISO()), actualMax = Double(pipeline.camera.getMaxISO())
         guard actualMin > 0, actualMax > actualMin else { return }
-        minISO = actualMin; maxISO = actualMax
-        if isoValue < actualMin || isoValue > actualMax { isoValue = actualMin }
+        pipeline.minISO = actualMin; pipeline.maxISO = actualMax
+        if pipeline.isoValue < actualMin || pipeline.isoValue > actualMax { pipeline.isoValue = actualMin }
     }
 
     private func reconfigureLens() {
-        let cfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
+        let cfg = LensCalibration.config(for: pipeline.selectedLens, inputWidth: Config.inputWidth)
         stabilizer?.loadLensConfig(cfg)
-        fov = cfg.defaultFov
+        pipeline.fov = cfg.defaultFov
         stabilizer?.fov = cfg.defaultFov
     }
 
