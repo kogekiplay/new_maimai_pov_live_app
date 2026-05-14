@@ -1,6 +1,7 @@
 import SwiftUI
 import HaishinKit
 import CoreMedia
+import VideoToolbox
 
 enum StreamResolution: String, CaseIterable {
     case r720p = "720p"
@@ -14,6 +15,7 @@ enum StreamResolution: String, CaseIterable {
     }
 }
 
+@MainActor
 class RTMPStreamManager: ObservableObject {
     @Published var isStreaming: Bool = false
     @Published var streamStatus: String = "Idle"
@@ -25,8 +27,6 @@ class RTMPStreamManager: ObservableObject {
     private var statusTask: Task<Void, Never>?
     private var streamStatusTask: Task<Void, Never>?
 
-    let debug = DebugInfoManager.shared
-
     func startPublish(url: String, streamKey: String) {
         guard !isStreaming else { return }
         guard !url.isEmpty, !streamKey.isEmpty else {
@@ -37,10 +37,13 @@ class RTMPStreamManager: ObservableObject {
         let connection = RTMPConnection()
         let stream = RTMPStream(connection: connection)
 
-        Task { [weak self] in
+        let resolution = streamResolution
+        let bitrate = videoBitrate
+
+        Task {
             await stream.setVideoSettings(VideoCodecSettings(
-                videoSize: self?.streamResolution.size ?? StreamResolution.r720p.size,
-                bitRate: (self?.videoBitrate ?? 4000) * 1000,
+                videoSize: resolution.size,
+                bitRate: bitrate * 1000,
                 profileLevel: kVTProfileLevel_H264_Main_3_1 as String
             ))
             await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
@@ -48,12 +51,9 @@ class RTMPStreamManager: ObservableObject {
 
         self.connection = connection
         self.stream = stream
-
-        await MainActor.run {
-            self.isStreaming = true
-            self.streamStatus = "Connecting"
-            self.debug.rtmpStatus = "Connecting"
-        }
+        self.isStreaming = true
+        self.streamStatus = "Connecting"
+        DebugInfoManager.shared.rtmpStatus = "Connecting"
 
         statusTask = Task { [weak self] in
             for await status in await connection.status {
@@ -79,12 +79,12 @@ class RTMPStreamManager: ObservableObject {
                 _ = try await stream.publish(streamKey)
                 await MainActor.run {
                     self?.streamStatus = "Publishing"
-                    self?.debug.rtmpStatus = "Publishing"
+                    DebugInfoManager.shared.rtmpStatus = "Publishing"
                 }
             } catch {
                 await MainActor.run {
                     self?.streamStatus = "Failed: \(error.localizedDescription)"
-                    self?.debug.rtmpStatus = "Failed"
+                    DebugInfoManager.shared.rtmpStatus = "Failed"
                     self?.isStreaming = false
                     self?.cleanup()
                 }
@@ -109,7 +109,7 @@ class RTMPStreamManager: ObservableObject {
 
         isStreaming = false
         streamStatus = "Idle"
-        debug.rtmpStatus = "Idle"
+        DebugInfoManager.shared.rtmpStatus = "Idle"
         cleanup()
     }
 
@@ -123,22 +123,22 @@ class RTMPStreamManager: ObservableObject {
         switch code {
         case "NetConnection.Connect.Success":
             streamStatus = "Connected"
-            debug.rtmpStatus = "Connected"
+            DebugInfoManager.shared.rtmpStatus = "Connected"
         case "NetConnection.Connect.Closed":
             if isStreaming {
                 streamStatus = "Disconnected"
-                debug.rtmpStatus = "Disconnected"
+                DebugInfoManager.shared.rtmpStatus = "Disconnected"
                 isStreaming = false
                 cleanup()
             }
         case "NetConnection.Connect.Failed":
             streamStatus = "Failed"
-            debug.rtmpStatus = "Failed"
+            DebugInfoManager.shared.rtmpStatus = "Failed"
             isStreaming = false
             cleanup()
         case "NetConnection.Connect.Rejected":
             streamStatus = "Rejected"
-            debug.rtmpStatus = "Rejected"
+            DebugInfoManager.shared.rtmpStatus = "Rejected"
             isStreaming = false
             cleanup()
         default:
@@ -150,17 +150,17 @@ class RTMPStreamManager: ObservableObject {
         switch code {
         case "NetStream.Publish.Start":
             streamStatus = "Publishing"
-            debug.rtmpStatus = "Publishing"
+            DebugInfoManager.shared.rtmpStatus = "Publishing"
         case "NetStream.Publish.BadName":
             streamStatus = "BadName"
-            debug.rtmpStatus = "BadName"
+            DebugInfoManager.shared.rtmpStatus = "BadName"
         case "NetStream.Unpublish.Success":
             streamStatus = "Unpublished"
-            debug.rtmpStatus = "Unpublished"
+            DebugInfoManager.shared.rtmpStatus = "Unpublished"
         case "NetStream.Connect.Closed":
             if isStreaming {
                 streamStatus = "Stream Closed"
-                debug.rtmpStatus = "Stream Closed"
+                DebugInfoManager.shared.rtmpStatus = "Stream Closed"
                 isStreaming = false
                 cleanup()
             }
