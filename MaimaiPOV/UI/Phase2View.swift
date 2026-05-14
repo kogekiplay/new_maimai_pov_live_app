@@ -11,18 +11,8 @@ import UIKit
 struct Phase2View: View {
     @StateObject private var pipeline = LivePipelineManager()
     @State private var controlsExpanded: Bool = true
-
     @State private var frameCount: Int = 0
     private let fpsTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    private let device = MTLCreateSystemDefaultDevice()!
-    private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
-    @State private var stabilizer: MetalStabilizer?
-    @State private var yoloPreprocessor: YOLOPreprocessor?
-    @State private var yoloDetector: YOLODetector?
-    @State private var smoothTracker = SmoothTracker()
-    @State private var cropRenderer: CropRenderer?
-    @State private var latestTrackOutput: SmoothTracker.TrackOutput?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -49,44 +39,43 @@ struct Phase2View: View {
         .onChange(of: pipeline.readoutTimeMs) { newVal in Config.readoutTimeMs = newVal }
         .onChange(of: pipeline.audioDelayMs) { pipeline.camera.audioDelayMs = $0 }
         .onChange(of: pipeline.stabEnabled) { newVal in
-            stabilizer?.stabilizerEnabled = newVal
+            pipeline.stabilizer?.stabilizerEnabled = newVal
             pipeline.debug.stabEnabled = newVal
         }
         .onChange(of: pipeline.fov) { newVal in
-            stabilizer?.fov = newVal
+            pipeline.stabilizer?.fov = newVal
             pipeline.debug.fov = newVal
         }
         .onChange(of: pipeline.distRatio) { newVal in
-            stabilizer?.distRatio = newVal
+            pipeline.stabilizer?.distRatio = newVal
             pipeline.debug.distRatio = newVal
         }
-        .onChange(of: pipeline.yaw) { stabilizer?.yaw = $0 }
-        .onChange(of: pipeline.pitch) { stabilizer?.pitch = $0 }
-        .onChange(of: pipeline.roll) { stabilizer?.roll = $0 }
+        .onChange(of: pipeline.yaw) { pipeline.stabilizer?.yaw = $0 }
+        .onChange(of: pipeline.pitch) { pipeline.stabilizer?.pitch = $0 }
+        .onChange(of: pipeline.roll) { pipeline.stabilizer?.roll = $0 }
         .onChange(of: pipeline.yoloPadding) { newVal in
             let pad = Int(newVal)
             Config.yoloPadding = pad
-            yoloPreprocessor?.updatePadding(pad)
-            yoloDetector?.updatePadding(pad)
+            pipeline.yoloDetector?.updatePadding(pad)
             pipeline.debug.yoloPadding = pad
             let u = YOLOPreprocessUniforms(padding: pad)
             pipeline.debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
                 u.scale, u.padH, u.padV, u.padLeft, u.padTop)
         }
         .onChange(of: pipeline.trackAlpha) { newVal in
-            smoothTracker.alpha = Float(newVal)
+            pipeline.smoothTracker.alpha = Float(newVal)
             pipeline.debug.trackAlpha = Float(newVal)
         }
         .onChange(of: pipeline.trackMaxSpeed) { newVal in
-            smoothTracker.maxSpeed = Float(newVal)
+            pipeline.smoothTracker.maxSpeed = Float(newVal)
             pipeline.debug.trackMaxSpeed = Float(newVal)
         }
         .onChange(of: pipeline.trackDeadZone) { newVal in
-            smoothTracker.deadZone = Float(newVal)
+            pipeline.smoothTracker.deadZone = Float(newVal)
             pipeline.debug.trackDeadZone = Float(newVal)
         }
         .onChange(of: pipeline.trackTargetRatio) { newVal in
-            smoothTracker.targetRatio = Float(newVal)
+            pipeline.smoothTracker.targetRatio = Float(newVal)
             pipeline.debug.trackTargetRatio = Float(newVal)
         }
         .onReceive(fpsTimer) { _ in
@@ -106,13 +95,10 @@ struct Phase2View: View {
 
     private var previewSection: some View {
         ZStack(alignment: .topTrailing) {
-            if let stab = stabilizer, stab.stabilizerEnabled, pipeline.camera.cameraAuthorized {
-                if let cr = cropRenderer {
-                    MetalView(device: device, texture: cr.outputTexture)
-                        .aspectRatio(9.0 / 16.0, contentMode: .fit)
-                } else {
-                    MetalView(device: device, texture: stab.outputTexture)
-                        .aspectRatio(3.0 / 4.0, contentMode: .fit)
+            if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
+                if let texture = pipeline.previewTexture {
+                    MetalView(device: pipeline.device, texture: texture)
+                        .aspectRatio(pipeline.cropRenderer != nil ? 9.0 / 16.0 : 3.0 / 4.0, contentMode: .fit)
                 }
             } else if pipeline.camera.cameraAuthorized {
                 CameraPreviewView(session: pipeline.camera.session)
@@ -423,10 +409,10 @@ struct Phase2View: View {
 
     private func setupPipeline() {
         let lensCfg = LensCalibration.config(for: pipeline.selectedLens, inputWidth: Config.inputWidth)
-        let stab = MetalStabilizer(device: device, lensConfig: lensCfg)
+        let stab = MetalStabilizer(device: pipeline.device, lensConfig: lensCfg)
         stab?.stabilizerEnabled = pipeline.stabEnabled
         stab?.fov = pipeline.fov
-        self.stabilizer = stab
+        pipeline.stabilizer = stab
 
         pipeline.debug.fov = pipeline.fov
         pipeline.debug.distRatio = pipeline.distRatio
@@ -434,23 +420,17 @@ struct Phase2View: View {
         pipeline.debug.lensType = pipeline.selectedLens.rawValue
         pipeline.debug.log("Pipeline initialized: \(pipeline.selectedLens.rawValue)")
 
-        let yoloPrep = YOLOPreprocessor(device: device)
-        self.yoloPreprocessor = yoloPrep
-        if yoloPrep != nil {
-            pipeline.debug.log("YOLO preprocessor initialized")
-        }
+        let cropR = CropRenderer(device: pipeline.device)
+        pipeline.cropRenderer = cropR
 
-        let cropR = CropRenderer(device: device)
-        self.cropRenderer = cropR
+        pipeline.trackAlpha = Double(pipeline.smoothTracker.alpha)
+        pipeline.trackMaxSpeed = Double(pipeline.smoothTracker.maxSpeed)
+        pipeline.trackDeadZone = Double(pipeline.smoothTracker.deadZone)
+        pipeline.trackTargetRatio = Double(pipeline.smoothTracker.targetRatio)
 
-        self.pipeline.trackAlpha = Double(smoothTracker.alpha)
-        self.pipeline.trackMaxSpeed = Double(smoothTracker.maxSpeed)
-        self.pipeline.trackDeadZone = Double(smoothTracker.deadZone)
-        self.pipeline.trackTargetRatio = Double(smoothTracker.targetRatio)
-
-        let detector = YOLODetector(device: device)
-        self.yoloDetector = detector
-        let tracker = smoothTracker
+        let detector = YOLODetector(device: pipeline.device)
+        pipeline.yoloDetector = detector
+        let tracker = pipeline.smoothTracker
         var yoloPreviewFrameCount = 0
         if detector != nil {
             detector?.onDetection = { [weak debug = pipeline.debug, weak detector, weak tracker] result in
@@ -479,7 +459,7 @@ struct Phase2View: View {
                             stabW: result.stabW,
                             stabH: result.stabH
                         )
-                        self.latestTrackOutput = track
+                        pipeline.latestTrackOutput = track
                         debug?.trackCx = track.cx
                         debug?.trackCy = track.cy
                         debug?.trackCropW = track.cropW
@@ -516,7 +496,7 @@ struct Phase2View: View {
 
         pipeline.camera.onVideoFrame = { [weak camera = pipeline.camera] pixelBuffer, alignedTime in
             frameCount += 1
-            guard let stab = stabilizer, stab.stabilizerEnabled else { return }
+            guard let stab = pipeline.stabilizer, stab.stabilizerEnabled else { return }
 
             let centerTime = alignedTime + (Config.syncOffsetMs / 1000.0)
             let topTime    = centerTime - (Config.readoutTimeMs / 2000.0)
@@ -534,12 +514,12 @@ struct Phase2View: View {
                 pipeline.debug.stabLagMs = elapsed * 1000.0
             }
 
-            if pipeline.yoloEnabled, let detector = yoloDetector {
+            if pipeline.yoloEnabled, let detector = pipeline.yoloDetector {
                 detector.enqueue(stabTexture: stab.outputTexture)
             }
 
-            if let cr = cropRenderer {
-                if let track = latestTrackOutput {
+            if let cr = pipeline.cropRenderer {
+                if let track = pipeline.latestTrackOutput {
                     cr.process(stabTexture: stab.outputTexture,
                                cx: track.cx, cy: track.cy,
                                cropW: track.cropW, cropH: track.cropH)
@@ -569,15 +549,9 @@ struct Phase2View: View {
 
     private func reconfigureLens() {
         let cfg = LensCalibration.config(for: pipeline.selectedLens, inputWidth: Config.inputWidth)
-        stabilizer?.loadLensConfig(cfg)
+        pipeline.stabilizer?.loadLensConfig(cfg)
         pipeline.fov = cfg.defaultFov
-        stabilizer?.fov = cfg.defaultFov
-    }
-
-    private func imageFromCVPixelBuffer(_ buffer: CVPixelBuffer) -> UIImage? {
-        let ciImage = CIImage(cvPixelBuffer: buffer)
-        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return nil }
-        return UIImage(cgImage: cgImage)
+        pipeline.stabilizer?.fov = cfg.defaultFov
     }
 }
 

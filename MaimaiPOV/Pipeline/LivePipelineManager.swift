@@ -6,6 +6,7 @@ import Metal
 import simd
 import QuartzCore
 import UIKit
+import CoreImage
 
 class LivePipelineManager: ObservableObject {
     @Published var focusValue: Double = 0.5
@@ -39,6 +40,22 @@ class LivePipelineManager: ObservableObject {
 
     let camera = CameraCaptureManager()
     let debug = DebugInfoManager.shared
+    let device: MTLDevice = MTLCreateSystemDefaultDevice()!
+    let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+
+    var stabilizer: MetalStabilizer?
+    var yoloDetector: YOLODetector?
+    var cropRenderer: CropRenderer?
+    var smoothTracker = SmoothTracker()
+    var latestTrackOutput: SmoothTracker.TrackOutput?
+
+    var previewTexture: MTLTexture? {
+        if let cr = cropRenderer {
+            return cr.outputTexture
+        }
+        return stabilizer?.outputTexture
+    }
+
     private var cancellables = Set<AnyCancellable>()
 
     init() {
