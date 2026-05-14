@@ -63,6 +63,7 @@ class LivePipelineManager: ObservableObject {
 
     let pipelineQueue = DispatchQueue(label: "com.maimai.pipeline", qos: .userInteractive)
 
+    private var textureReadback: TextureReadback?
     private var frameCount: Int = 0
     private var fpsTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -92,6 +93,10 @@ class LivePipelineManager: ObservableObject {
 
         let cropR = CropRenderer(device: device)
         self.cropRenderer = cropR
+
+        textureReadback = TextureReadback(device: device,
+                                           width: Config.outputWidth,
+                                           height: Config.outputHeight)
 
         trackAlpha = Double(smoothTracker.alpha)
         trackMaxSpeed = Double(smoothTracker.maxSpeed)
@@ -195,6 +200,13 @@ class LivePipelineManager: ObservableObject {
                                    cx: fb.cx, cy: fb.cy,
                                    cropW: fb.cropW, cropH: fb.cropH)
                     }
+                }
+
+                if let readback = self.textureReadback,
+                   let cr = self.cropRenderer,
+                   let pixelBuffer = readback.read(from: cr.outputTexture) {
+                    let timestamp = CMTime(seconds: alignedTime, preferredTimescale: 1000000000)
+                    self.onStreamBufferAvailable?(pixelBuffer, timestamp)
                 }
 
                 DispatchQueue.main.async {
