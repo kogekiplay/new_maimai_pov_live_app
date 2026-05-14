@@ -49,6 +49,8 @@ class DebugInfoManager: ObservableObject {
     @Published var rtmpStatus: String = "Idle"
     @Published var rtmpBitrate: Int = 0
     @Published var rtmpDroppedFrames: Int = 0
+    @Published var rtmpVideoFrames: Int = 0
+    @Published var rtmpAudioFrames: Int = 0
 
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()

@@ -23,10 +23,21 @@ class RTMPStreamManager: ObservableObject {
 
     private var connection: RTMPConnection?
     private var stream: RTMPStream?
+
     private var statusTask: Task<Void, Never>?
     private var streamStatusTask: Task<Void, Never>?
+
+    private var videoIngestTask: Task<Void, Never>?
+    private var audioIngestTask: Task<Void, Never>?
+    private var videoContinuation: AsyncStream<CMSampleBuffer>.Continuation?
+    private var audioContinuation: AsyncStream<CMSampleBuffer>.Continuation?
+
     private var videoFormatDescription: CMVideoFormatDescription?
     private let lock = NSLock()
+
+    private var videoFrameCount: Int64 = 0
+    private var audioFrameCount: Int64 = 0
+    private var lastLogTime: CFAbsoluteTime = 0
 
     @MainActor
     func startPublish(url: String, streamKey: String) {
@@ -56,9 +67,28 @@ class RTMPStreamManager: ObservableObject {
         self.stream = stream
         lock.unlock()
 
+        let vStream = AsyncStream<CMSampleBuffer> { continuation in
+            self.videoContinuation = continuation
+        }
+        videoIngestTask = Task { [weak stream] in
+            for await buffer in vStream {
+                await stream?.append(buffer)
+            }
+        }
+
+        let aStream = AsyncStream<CMSampleBuffer> { continuation in
+            self.audioContinuation = continuation
+        }
+        audioIngestTask = Task { [weak stream] in
+            for await buffer in aStream {
+                await stream?.append(buffer)
+            }
+        }
+
         isStreaming = true
         streamStatus = "Connecting"
         DebugInfoManager.shared.rtmpStatus = "Connecting"
+        DebugInfoManager.shared.log("RTMP: Connecting to \(url)")
 
         statusTask = Task { [weak self] in
             for await status in await connection.status {
@@ -85,11 +115,13 @@ class RTMPStreamManager: ObservableObject {
                 await MainActor.run {
                     self?.streamStatus = "Publishing"
                     DebugInfoManager.shared.rtmpStatus = "Publishing"
+                    DebugInfoManager.shared.log("RTMP: Publishing started")
                 }
             } catch {
                 await MainActor.run {
                     self?.streamStatus = "Failed: \(error.localizedDescription)"
                     DebugInfoManager.shared.rtmpStatus = "Failed"
+                    DebugInfoManager.shared.log("RTMP: Failed - \(error.localizedDescription)")
                     self?.isStreaming = false
                     self?.cleanup()
                 }
@@ -109,27 +141,19 @@ class RTMPStreamManager: ObservableObject {
         lock.unlock()
 
         Task {
-            if let stream {
-                _ = try? await stream.close()
-            }
-            if let connection {
-                try? await connection.close()
-            }
+            if let stream { _ = try? await stream.close() }
+            if let connection { try? await connection.close() }
         }
 
         isStreaming = false
         streamStatus = "Idle"
         DebugInfoManager.shared.rtmpStatus = "Idle"
+        DebugInfoManager.shared.log("RTMP: Stopped. Video frames sent: \(videoFrameCount), Audio frames sent: \(audioFrameCount)")
         cleanup()
     }
 
     func appendVideo(pixelBuffer: CVPixelBuffer, timestamp: CMTime) {
-        lock.lock()
-        let currentStream = stream
-        let streaming = isStreaming
-        lock.unlock()
-
-        guard streaming, let currentStream else { return }
+        guard isStreaming else { return }
 
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
@@ -137,10 +161,9 @@ class RTMPStreamManager: ObservableObject {
 
         var needsNewFormat = false
         if let desc = videoFormatDescription {
-            let descWidth = CMVideoFormatDescriptionGetDimensions(desc).width
-            let descHeight = CMVideoFormatDescriptionGetDimensions(desc).height
+            let descDimensions = CMVideoFormatDescriptionGetDimensions(desc)
             let descCodec = CMFormatDescriptionGetMediaSubType(desc)
-            if descWidth != width || descHeight != height || descCodec != pixelFormat {
+            if descDimensions.width != width || descDimensions.height != height || descCodec != pixelFormat {
                 needsNewFormat = true
             }
         } else {
@@ -150,7 +173,7 @@ class RTMPStreamManager: ObservableObject {
         if needsNewFormat {
             var newDesc: CMVideoFormatDescription?
             let status = CMVideoFormatDescriptionCreateForImageBuffer(
-                allocator: nil,
+                allocator: kCFAllocatorDefault,
                 imageBuffer: pixelBuffer,
                 formatDescriptionOut: &newDesc
             )
@@ -167,35 +190,34 @@ class RTMPStreamManager: ObservableObject {
         )
 
         var sampleBuffer: CMSampleBuffer?
-        let result = CMSampleBufferCreateForImageBuffer(
-            allocator: nil,
+        let result = CMSampleBufferCreateReadyWithImageBuffer(
+            allocator: kCFAllocatorDefault,
             imageBuffer: pixelBuffer,
-            dataReady: true,
-            makeDataReadyCallback: nil,
-            refcon: nil,
             formatDescription: formatDescription,
             sampleTiming: &timingInfo,
             sampleBufferOut: &sampleBuffer
         )
 
-        guard result == noErr, let sampleBuffer else { return }
+        guard result == noErr, let finalSampleBuffer = sampleBuffer else { return }
 
-        Task {
-            await currentStream.append(sampleBuffer)
+        videoFrameCount += 1
+        videoContinuation?.yield(finalSampleBuffer)
+
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - lastLogTime >= 2.0 {
+            lastLogTime = now
+            DispatchQueue.main.async {
+                DebugInfoManager.shared.rtmpVideoFrames = Int(self.videoFrameCount)
+                DebugInfoManager.shared.rtmpAudioFrames = Int(self.audioFrameCount)
+                DebugInfoManager.shared.log("RTMP: vFrames=\(self.videoFrameCount) aFrames=\(self.audioFrameCount) PTS=\(timestamp.seconds)")
+            }
         }
     }
 
     func appendAudio(sampleBuffer: CMSampleBuffer) {
-        lock.lock()
-        let currentStream = stream
-        let streaming = isStreaming
-        lock.unlock()
-
-        guard streaming, let currentStream else { return }
-
-        Task {
-            await currentStream.append(sampleBuffer)
-        }
+        guard isStreaming else { return }
+        audioFrameCount += 1
+        audioContinuation?.yield(sampleBuffer)
     }
 
     @MainActor
@@ -204,25 +226,14 @@ class RTMPStreamManager: ObservableObject {
         case "NetConnection.Connect.Success":
             streamStatus = "Connected"
             DebugInfoManager.shared.rtmpStatus = "Connected"
-        case "NetConnection.Connect.Closed":
-            if isStreaming {
-                streamStatus = "Disconnected"
-                DebugInfoManager.shared.rtmpStatus = "Disconnected"
-                isStreaming = false
-                cleanup()
-            }
-        case "NetConnection.Connect.Failed":
-            streamStatus = "Failed"
-            DebugInfoManager.shared.rtmpStatus = "Failed"
+            DebugInfoManager.shared.log("RTMP: Connection success")
+        case "NetConnection.Connect.Closed", "NetConnection.Connect.Failed", "NetConnection.Connect.Rejected":
+            streamStatus = code.components(separatedBy: ".").last ?? "Error"
+            DebugInfoManager.shared.rtmpStatus = streamStatus
+            DebugInfoManager.shared.log("RTMP: Connection \(streamStatus)")
             isStreaming = false
             cleanup()
-        case "NetConnection.Connect.Rejected":
-            streamStatus = "Rejected"
-            DebugInfoManager.shared.rtmpStatus = "Rejected"
-            isStreaming = false
-            cleanup()
-        default:
-            break
+        default: break
         }
     }
 
@@ -232,21 +243,20 @@ class RTMPStreamManager: ObservableObject {
         case "NetStream.Publish.Start":
             streamStatus = "Publishing"
             DebugInfoManager.shared.rtmpStatus = "Publishing"
+            DebugInfoManager.shared.log("RTMP: Publish started")
         case "NetStream.Publish.BadName":
             streamStatus = "BadName"
             DebugInfoManager.shared.rtmpStatus = "BadName"
-        case "NetStream.Unpublish.Success":
-            streamStatus = "Unpublished"
-            DebugInfoManager.shared.rtmpStatus = "Unpublished"
-        case "NetStream.Connect.Closed":
+            DebugInfoManager.shared.log("RTMP: Publish BadName")
+        case "NetStream.Connect.Closed", "NetStream.Unpublish.Success":
             if isStreaming {
                 streamStatus = "Stream Closed"
                 DebugInfoManager.shared.rtmpStatus = "Stream Closed"
+                DebugInfoManager.shared.log("RTMP: Stream closed")
                 isStreaming = false
                 cleanup()
             }
-        default:
-            break
+        default: break
         }
     }
 
@@ -255,10 +265,23 @@ class RTMPStreamManager: ObservableObject {
         statusTask = nil
         streamStatusTask?.cancel()
         streamStatusTask = nil
+
+        videoContinuation?.finish()
+        videoContinuation = nil
+        audioContinuation?.finish()
+        audioContinuation = nil
+        videoIngestTask?.cancel()
+        videoIngestTask = nil
+        audioIngestTask?.cancel()
+        audioIngestTask = nil
+
         lock.lock()
         stream = nil
         connection = nil
         lock.unlock()
         videoFormatDescription = nil
+
+        videoFrameCount = 0
+        audioFrameCount = 0
     }
 }
