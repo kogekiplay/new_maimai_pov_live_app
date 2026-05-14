@@ -244,19 +244,24 @@ class YOLODetector {
         }
 
         let yoloSize = Float(Config.yoloInputSize)
-        let rawCx = nx * yoloSize
-        let rawCy = ny * yoloSize
-        let rawW = nw * yoloSize
-        let rawH = nh * yoloSize
+        let rawCx = nx
+        let rawCy = ny
+        let rawW = nw
+        let rawH = nh
 
-        let topBoxesStr = String(format: "1:%.3f,%.3f,%.3f,%.3f,c%.2f", nx, ny, nw, nh, bestConf)
+        let normNx = nx / yoloSize
+        let normNy = ny / yoloSize
+        let normNw = nw / yoloSize
+        let normNh = nh / yoloSize
+
+        let topBoxesStr = String(format: "1:%.3f,%.3f,%.3f,%.3f,c%.2f", normNx, normNy, normNw, normNh, bestConf)
 
         if rawW < 5.0 || rawH < 5.0 {
             return DetectionResult(
                 detected: false, confidence: bestConf,
                 stabCx: 0, stabCy: 0, stabW: 0, stabH: 0,
                 rawYoloCx: rawCx, rawYoloCy: rawCy, rawYoloW: rawW, rawYoloH: rawH,
-                rawNx: nx, rawNy: ny, rawNw: nw, rawNh: nh,
+                rawNx: normNx, rawNy: normNy, rawNw: normNw, rawNh: normNh,
                 inferenceMs: elapsed * 1000.0, preprocessMs: preprocessMs,
                 allBoxesCount: numAnchors, innerScreenBoxesCount: aboveThreshCount,
                 topBoxes: topBoxesStr, bestBoxRank: 1
@@ -272,7 +277,7 @@ class YOLODetector {
             detected: true, confidence: bestConf,
             stabCx: stabCx, stabCy: stabCy, stabW: stabW, stabH: stabH,
             rawYoloCx: rawCx, rawYoloCy: rawCy, rawYoloW: rawW, rawYoloH: rawH,
-            rawNx: nx, rawNy: ny, rawNw: nw, rawNh: nh,
+            rawNx: normNx, rawNy: normNy, rawNw: normNw, rawNh: normNh,
             inferenceMs: elapsed * 1000.0, preprocessMs: preprocessMs,
             allBoxesCount: numAnchors, innerScreenBoxesCount: aboveThreshCount,
             topBoxes: topBoxesStr, bestBoxRank: 1
