@@ -263,14 +263,12 @@ class RTMPStreamManager: ObservableObject {
         var audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)
 
         let delayMs = audioDelayMs
-        if delayMs != 0 {
+        if delayMs != 0 && audioTime.isHostTimeValid {
             let delaySeconds = delayMs / 1000.0
-            let hostTime = AVAudioTime.hostTime(forSeconds: delaySeconds)
-            if let currentHostTime = audioTime.hostTime {
-                let adjustedHostTime = currentHostTime + hostTime
-                let adjustedSampleTime = sampleTime + AVAudioFramePosition(delaySeconds * audioFormat.sampleRate)
-                audioTime = AVAudioTime(hostTime: adjustedHostTime, sampleTime: adjustedSampleTime, atRate: audioFormat.sampleRate)
-            }
+            let hostTimeOffset = AVAudioTime.hostTime(forSeconds: delaySeconds)
+            let adjustedHostTime = audioTime.hostTime + hostTimeOffset
+            let adjustedSampleTime = sampleTime + AVAudioFramePosition(delaySeconds * audioFormat.sampleRate)
+            audioTime = AVAudioTime(hostTime: adjustedHostTime, sampleTime: adjustedSampleTime, atRate: audioFormat.sampleRate)
         }
 
         audioContinuation?.yield((pcmBuffer, audioTime))
