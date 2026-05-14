@@ -7,8 +7,10 @@ class TextureReadback {
     private let height: Int
     private let sourceFormat: MTLPixelFormat
     private let commandQueue: MTLCommandQueue
-    private var readbackBuffer: MTLBuffer?
-    private var readbackTexture: MTLTexture?
+    private static let bufferCount = 3
+    private var readbackBuffers: [MTLBuffer] = []
+    private var readbackTextures: [MTLTexture] = []
+    private var currentIndex: Int = 0
     private var pixelBufferPool: CVPixelBufferPool?
 
     init?(device: MTLDevice, width: Int, height: Int, sourceFormat: MTLPixelFormat = .bgra8Unorm) {
@@ -20,30 +22,32 @@ class TextureReadback {
         self.commandQueue = queue
         setupReadbackResources()
         setupPixelBufferPool()
+        assert(sourceFormat == .bgra8Unorm, "Non-BGRA format triggers CPU channel swap which is slow at \(width)x\(height)")
     }
 
     private func setupReadbackResources() {
         let rowBytes = width * 4
         let bufferSize = rowBytes * height
 
-        guard let buffer = device.makeBuffer(length: bufferSize, options: .storageModeShared) else { return }
-        readbackBuffer = buffer
+        for _ in 0..<Self.bufferCount {
+            guard let buffer = device.makeBuffer(length: bufferSize, options: .storageModeShared) else { return }
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: sourceFormat,
+                width: width,
+                height: height,
+                mipmapped: false
+            )
+            desc.usage = .shaderRead
+            desc.storageMode = .shared
 
-        let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: sourceFormat,
-            width: width,
-            height: height,
-            mipmapped: false
-        )
-        desc.usage = .shaderRead
-        desc.storageMode = .shared
-
-        guard let tex = buffer.makeTexture(
-            descriptor: desc,
-            offset: 0,
-            bytesPerRow: rowBytes
-        ) else { return }
-        readbackTexture = tex
+            guard let tex = buffer.makeTexture(
+                descriptor: desc,
+                offset: 0,
+                bytesPerRow: rowBytes
+            ) else { return }
+            readbackBuffers.append(buffer)
+            readbackTextures.append(tex)
+        }
     }
 
     private func setupPixelBufferPool() {
@@ -67,9 +71,15 @@ class TextureReadback {
     }
 
     func read(from texture: MTLTexture) -> CVPixelBuffer? {
-        guard let readbackTex = readbackTexture,
+        let index = currentIndex
+        currentIndex = (index + 1) % Self.bufferCount
+
+        guard index < readbackTextures.count, index < readbackBuffers.count,
               let cmdBuf = commandQueue.makeCommandBuffer(),
               let blitEncoder = cmdBuf.makeBlitCommandEncoder() else { return nil }
+
+        let readbackTex = readbackTextures[index]
+        let readbackBuf = readbackBuffers[index]
 
         blitEncoder.copy(
             from: texture,
@@ -98,7 +108,7 @@ class TextureReadback {
         guard let dstBase = CVPixelBufferGetBaseAddress(pb) else { return nil }
         let dstRowBytes = CVPixelBufferGetBytesPerRow(pb)
         let srcRowBytes = width * 4
-        guard let srcBase = readbackBuffer?.contents() else { return nil }
+        let srcBase = readbackBuf.contents()
 
         if sourceFormat == .bgra8Unorm {
             copyRows(dstBase: dstBase, dstRowBytes: dstRowBytes,
@@ -109,6 +119,57 @@ class TextureReadback {
         }
 
         return pb
+    }
+
+    func readAsync(from texture: MTLTexture, completion: @escaping (CVPixelBuffer) -> Void) {
+        let index = currentIndex
+        currentIndex = (index + 1) % Self.bufferCount
+
+        guard index < readbackTextures.count, index < readbackBuffers.count,
+              let cmdBuf = commandQueue.makeCommandBuffer(),
+              let blitEncoder = cmdBuf.makeBlitCommandEncoder() else { return }
+
+        let readbackTex = readbackTextures[index]
+        let readbackBuf = readbackBuffers[index]
+
+        blitEncoder.copy(
+            from: texture,
+            sourceSlice: 0,
+            sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: texture.width, height: texture.height, depth: 1),
+            to: readbackTex,
+            destinationSlice: 0,
+            destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        blitEncoder.endEncoding()
+
+        let w = self.width, h = self.height, fmt = self.sourceFormat
+        cmdBuf.addCompletedHandler { [weak self] _ in
+            guard let self = self, let pool = self.pixelBufferPool else { return }
+            var pixelBuffer: CVPixelBuffer?
+            let result = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixelBuffer)
+            guard result == kCVReturnSuccess, let pb = pixelBuffer else { return }
+
+            CVPixelBufferLockBaseAddress(pb, [])
+            defer { CVPixelBufferUnlockBaseAddress(pb, []) }
+
+            guard let dstBase = CVPixelBufferGetBaseAddress(pb) else { return }
+            let dstRowBytes = CVPixelBufferGetBytesPerRow(pb)
+            let srcRowBytes = w * 4
+            let srcBase = readbackBuf.contents()
+
+            if fmt == .bgra8Unorm {
+                self.copyRows(dstBase: dstBase, dstRowBytes: dstRowBytes,
+                              srcBase: srcBase, srcRowBytes: srcRowBytes)
+            } else {
+                self.copyRowsSwapRB(dstBase: dstBase, dstRowBytes: dstRowBytes,
+                                    srcBase: srcBase, srcRowBytes: srcRowBytes)
+            }
+            completion(pb)
+        }
+        cmdBuf.commit()
     }
 
     private func copyRows(dstBase: UnsafeMutableRawPointer, dstRowBytes: Int,
