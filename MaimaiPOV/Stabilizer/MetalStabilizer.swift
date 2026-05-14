@@ -266,15 +266,19 @@ class MetalStabilizer {
 
         guard let srcBase = readbackBuffer?.contents() else { return nil }
 
-        if dstRowBytes == srcRowBytes {
-            memcpy(dstBase, srcBase, srcRowBytes * h)
-        } else {
-            var srcPtr = srcBase
-            var dstPtr = dstBase
-            for _ in 0..<h {
-                memcpy(dstPtr, srcPtr, srcRowBytes)
-                srcPtr = srcPtr.advanced(by: srcRowBytes)
-                dstPtr = dstPtr.advanced(by: dstRowBytes)
+        let srcPtr = srcBase.assumingMemoryBound(to: UInt8.self)
+        let dstPtr = dstBase.assumingMemoryBound(to: UInt8.self)
+
+        for y in 0..<h {
+            let srcRow = srcPtr.advanced(by: y * srcRowBytes)
+            let dstRow = dstPtr.advanced(by: y * dstRowBytes)
+            for x in 0..<w {
+                let si = x * 4
+                let di = x * 4
+                dstRow[di]     = srcRow[si + 2]
+                dstRow[di + 1] = srcRow[si + 1]
+                dstRow[di + 2] = srcRow[si]
+                dstRow[di + 3] = srcRow[si + 3]
             }
         }
 
