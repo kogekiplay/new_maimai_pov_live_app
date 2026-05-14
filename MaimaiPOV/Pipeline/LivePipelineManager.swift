@@ -30,6 +30,7 @@ class LivePipelineManager: ObservableObject {
 
     @Published var yoloEnabled: Bool = true
     @Published var yoloPadding: Double = Double(Config.yoloPadding)
+    @Published var yoloPreviewEnabled: Bool = Config.yoloPreviewEnabled
 
     @Published var trackAlpha: Double = Double(Config.defaultAlpha)
     @Published var trackMaxSpeed: Double = Double(Config.defaultMaxSpeed)
@@ -151,14 +152,17 @@ class LivePipelineManager: ObservableObject {
                     self.debug.trackSmoothH = track.smoothH
                     self.debug.trackState = track.state
 
-                    yoloPreviewFrameCount += 1
-                    if yoloPreviewFrameCount % 10 == 0,
-                       let pb = self.yoloDetector?.previewPixelBuffer {
-                        let ciImage = CIImage(cvPixelBuffer: pb)
-                        let context = CIContext()
-                        if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
-                            self.debug.yoloPreviewImage = UIImage(cgImage: cgImage)
+                    if self.yoloPreviewEnabled {
+                        yoloPreviewFrameCount += 1
+                        if yoloPreviewFrameCount % 10 == 0,
+                           let pb = self.yoloDetector?.previewPixelBuffer {
+                            let ciImage = CIImage(cvPixelBuffer: pb)
+                            if let cgImage = self.ciContext.createCGImage(ciImage, from: ciImage.extent) {
+                                self.debug.yoloPreviewImage = UIImage(cgImage: cgImage)
+                            }
                         }
+                    } else {
+                        self.debug.yoloPreviewImage = nil
                     }
                 }
             }
@@ -325,6 +329,10 @@ class LivePipelineManager: ObservableObject {
         let u = YOLOPreprocessUniforms(padding: pad)
         debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
             u.scale, u.padH, u.padV, u.padLeft, u.padTop)
+    }
+
+    @MainActor func updateYoloPreviewEnabled() {
+        Config.yoloPreviewEnabled = yoloPreviewEnabled
     }
 
     @MainActor func updateTrackAlpha() {

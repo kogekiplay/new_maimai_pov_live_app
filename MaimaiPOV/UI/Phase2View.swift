@@ -42,6 +42,7 @@ struct Phase2View: View {
         .onChange(of: pipeline.pitch) { _ in pipeline.updatePitch() }
         .onChange(of: pipeline.roll) { _ in pipeline.updateRoll() }
         .onChange(of: pipeline.yoloPadding) { _ in pipeline.updateYoloPadding() }
+        .onChange(of: pipeline.yoloPreviewEnabled) { _ in pipeline.updateYoloPreviewEnabled() }
         .onChange(of: pipeline.trackAlpha) { _ in pipeline.updateTrackAlpha() }
         .onChange(of: pipeline.trackMaxSpeed) { _ in pipeline.updateTrackMaxSpeed() }
         .onChange(of: pipeline.trackDeadZone) { _ in pipeline.updateTrackDeadZone() }
@@ -303,6 +304,15 @@ struct Phase2View: View {
             Text("YOLO").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.yoloEnabled).labelsHidden()
             Spacer()
+            Button {
+                pipeline.yoloPreviewEnabled.toggle()
+                pipeline.updateYoloPreviewEnabled()
+            } label: {
+                Image(systemName: pipeline.yoloPreviewEnabled ? "eye.fill" : "eye.slash")
+                    .font(.caption)
+                    .foregroundColor(pipeline.yoloPreviewEnabled ? .cyan : .gray)
+            }
+            .disabled(!pipeline.yoloEnabled)
             Text(pipeline.yoloEnabled ? "ON" : "OFF")
                 .font(.caption2)
                 .foregroundColor(pipeline.yoloEnabled ? .green : .red)

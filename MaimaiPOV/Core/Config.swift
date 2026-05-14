@@ -15,6 +15,16 @@ enum Config {
         }
         set { UserDefaults.standard.set(newValue, forKey: yoloPaddingKey) }
     }
+    static let defaultYoloPreviewEnabled: Bool = false
+    static var yoloPreviewEnabled: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: yoloPreviewEnabledKey) != nil else {
+                return defaultYoloPreviewEnabled
+            }
+            return UserDefaults.standard.bool(forKey: yoloPreviewEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: yoloPreviewEnabledKey) }
+    }
     static let outputWidth  = 720
     static let outputHeight = 1280
 
@@ -68,6 +78,7 @@ enum Config {
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
     private static let yoloPaddingKey = "com.maimai.yoloPadding"
+    private static let yoloPreviewEnabledKey = "com.maimai.yoloPreviewEnabled"
     private static let audioDelayKey = "com.maimai.audioDelayMs"
 
     // Video encoding
