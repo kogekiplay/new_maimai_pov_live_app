@@ -26,6 +26,7 @@ class RTMPStreamManager: ObservableObject {
     private var stream: RTMPStream?
     private var statusTask: Task<Void, Never>?
     private var streamStatusTask: Task<Void, Never>?
+    private var videoFormatDescription: CMVideoFormatDescription?
 
     func startPublish(url: String, streamKey: String) {
         guard !isStreaming else { return }
@@ -114,9 +115,68 @@ class RTMPStreamManager: ObservableObject {
     }
 
     func appendVideo(pixelBuffer: CVPixelBuffer, timestamp: CMTime) {
+        guard isStreaming, let stream else { return }
+
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+        let pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer)
+
+        var needsNewFormat = false
+        if let desc = videoFormatDescription {
+            let descWidth = CMVideoFormatDescriptionGetDimensions(desc).width
+            let descHeight = CMVideoFormatDescriptionGetDimensions(desc).height
+            let descCodec = CMFormatDescriptionGetMediaSubType(desc)
+            if descWidth != width || descHeight != height || descCodec != pixelFormat {
+                needsNewFormat = true
+            }
+        } else {
+            needsNewFormat = true
+        }
+
+        if needsNewFormat {
+            var newDesc: CMVideoFormatDescription?
+            let status = CMVideoFormatDescriptionCreateForImageBuffer(
+                allocator: nil,
+                imageBuffer: pixelBuffer,
+                formatDescriptionOut: &newDesc
+            )
+            guard status == noErr, let newDesc else { return }
+            videoFormatDescription = newDesc
+        }
+
+        guard let formatDescription = videoFormatDescription else { return }
+
+        var timingInfo = CMSampleTimingInfo(
+            duration: CMTimeMake(value: 1, timescale: 60),
+            presentationTimeStamp: timestamp,
+            decodeTimeStamp: .invalid
+        )
+
+        var sampleBuffer: CMSampleBuffer?
+        let result = CMSampleBufferCreateForImageBuffer(
+            allocator: nil,
+            imageBuffer: pixelBuffer,
+            dataReady: true,
+            makeDataReadyCallback: nil,
+            refcon: nil,
+            formatDescription: formatDescription,
+            sampleTiming: &timingInfo,
+            sampleBufferOut: &sampleBuffer
+        )
+
+        guard result == noErr, let sampleBuffer else { return }
+
+        Task {
+            await stream.append(sampleBuffer)
+        }
     }
 
     func appendAudio(sampleBuffer: CMSampleBuffer) {
+        guard isStreaming, let stream else { return }
+
+        Task {
+            await stream.append(sampleBuffer)
+        }
     }
 
     private func handleConnectionStatus(_ code: String) {
@@ -176,5 +236,6 @@ class RTMPStreamManager: ObservableObject {
         streamStatusTask = nil
         stream = nil
         connection = nil
+        videoFormatDescription = nil
     }
 }
