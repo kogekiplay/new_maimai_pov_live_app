@@ -21,7 +21,23 @@ class RTMPStreamManager: ObservableObject {
     @Published var streamStatus: String = "Idle"
     @Published var streamResolution: StreamResolution = .r720p
     @Published var videoBitrate: Int = Config.videoBitrate / 1000
-    @Published var audioDelayMs: Double = 0.0
+    private let audioDelayLock = NSLock()
+    private var _audioDelayMs: Double = 0.0
+    var audioDelayMs: Double {
+        get {
+            audioDelayLock.lock()
+            defer { audioDelayLock.unlock() }
+            return _audioDelayMs
+        }
+        set {
+            audioDelayLock.lock()
+            _audioDelayMs = newValue
+            audioDelayLock.unlock()
+            DispatchQueue.main.async { [weak self] in
+                self?.objectWillChange.send()
+            }
+        }
+    }
 
     private var connection: RTMPConnection?
     private var stream: RTMPStream?
@@ -290,7 +306,11 @@ class RTMPStreamManager: ObservableObject {
         let sampleTime = AVAudioFramePosition(CMTimeGetSeconds(pts) * audioFormat.sampleRate)
         var audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)
 
-        let delayMs = audioDelayMs
+        let delayMs: Double = {
+            audioDelayLock.lock()
+            defer { audioDelayLock.unlock() }
+            return _audioDelayMs
+        }()
         if delayMs != 0 {
             let delaySeconds = delayMs / 1000.0
             let adjustedSampleTime = sampleTime + AVAudioFramePosition(delaySeconds * audioFormat.sampleRate)

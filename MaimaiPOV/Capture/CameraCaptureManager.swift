@@ -26,8 +26,6 @@ class CameraCaptureManager: NSObject, ObservableObject {
     // We track individual offsets so audio delay can be adjusted independently.
     private var videoClockOffset: Double?
     private var audioClockOffset: Double?
-    /// Positive values delay audio relative to video (ms).
-    @Published var audioDelayMs: Double = 0.0
 
     func checkPermissionAndStart() {
         let videoStatus = AVCaptureDevice.authorizationStatus(for: .video)
@@ -356,14 +354,6 @@ extension CameraCaptureManager: AVCaptureVideoDataOutputSampleBufferDelegate,
             audioClockOffset = systemTime - audioTime
         } else {
             audioClockOffset = audioClockOffset! * 0.99 + (systemTime - audioTime) * 0.01
-        }
-
-        // Apply audio delay adjustment: if audio is ahead of video, add a small offset
-        // This is a placeholder — actual sync is handled in RTMPStreamer by comparing PTS.
-        let delaySec = audioDelayMs / 1000.0
-        if delaySec != 0 {
-            // Audio delay will be applied at the RTMP muxing stage.
-            // Here we just pass through with aligned clock for reference.
         }
 
         onAudioSample?(sampleBuffer)

@@ -32,7 +32,7 @@ struct Phase2View: View {
             pipeline.updateReadoutTime()
         }
         .onChange(of: pipeline.audioDelayMs) {
-            pipeline.camera.audioDelayMs = $0
+            Config.audioDelayMs = $0
             pipeline.streamManager.audioDelayMs = $0
         }
         .onChange(of: pipeline.stabEnabled) { _ in pipeline.updateStabilizerEnabled() }

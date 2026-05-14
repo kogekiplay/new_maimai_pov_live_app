@@ -14,7 +14,7 @@ struct Phase1View: View {
     @State private var selectedLens: LensType = .main
     @State private var syncOffsetMs: Double = Config.syncOffsetMs
     @State private var readoutTimeMs: Double = Config.readoutTimeMs
-    @State private var audioDelayMs: Double = 0.0
+    @State private var audioDelayMs: Double = Config.audioDelayMs
 
     @State private var frameCount: Int = 0
     @State private var currentFPS: Double = 0
@@ -47,7 +47,7 @@ struct Phase1View: View {
         .onChange(of: isoValue) { applyExposure() }
         .onChange(of: syncOffsetMs) { newVal in Config.syncOffsetMs = newVal }
         .onChange(of: readoutTimeMs) { newVal in Config.readoutTimeMs = newVal }
-        .onChange(of: audioDelayMs) { camera.audioDelayMs = $0 }
+        .onChange(of: audioDelayMs) { Config.audioDelayMs = $0 }
         .onReceive(fpsTimer) { _ in
             currentFPS = Double(frameCount)
             frameCount = 0

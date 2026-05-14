@@ -18,7 +18,7 @@ class LivePipelineManager: ObservableObject {
 
     @Published var syncOffsetMs: Double = Config.syncOffsetMs
     @Published var readoutTimeMs: Double = Config.readoutTimeMs
-    @Published var audioDelayMs: Double = 0.0
+    @Published var audioDelayMs: Double = Config.audioDelayMs
 
     @Published var fov: Float = 100.0
     @Published var distRatio: Float = 0.0
