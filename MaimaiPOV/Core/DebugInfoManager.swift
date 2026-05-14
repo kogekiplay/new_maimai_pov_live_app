@@ -46,6 +46,10 @@ class DebugInfoManager: ObservableObject {
     @Published var streamInfo: String = "--"
     private let maxLogMessages = 30
 
+    @Published var rtmpStatus: String = "Idle"
+    @Published var rtmpBitrate: Int = 0
+    @Published var rtmpDroppedFrames: Int = 0
+
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss.SSS"

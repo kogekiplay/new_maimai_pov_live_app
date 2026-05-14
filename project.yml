@@ -6,6 +6,11 @@ options:
   generateEmptyDirectories: true
   createIntermediateGroups: true
 
+packages:
+  HaishinKit:
+    url: https://github.com/HaishinKit/HaishinKit.swift
+    minorVersion: 2.0
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -57,5 +62,10 @@ targets:
         ENABLE_NS_ASSERTIONS: NO
         CLANG_ENABLE_MODULES: YES
         OTHER_SWIFT_FLAGS: ["-Xfrontend", "-warn-long-expression-type-checking=200"]
+    dependencies:
+      - package: HaishinKit
+        product: HaishinKit
+      - package: HaishinKit
+        product: RTMPHaishinKit
     entitlements:
       path: MaimaiPOV/App/MaimaiPOV.entitlements
