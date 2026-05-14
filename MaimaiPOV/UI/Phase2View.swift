@@ -395,7 +395,10 @@ struct Phase2View: View {
     private var resolutionRow: some View {
         HStack {
             Text("Res").font(.caption).frame(width: 55, alignment: .leading)
-            Picker("", selection: $pipeline.streamManager.streamResolution) {
+            Picker("", selection: Binding(
+                get: { pipeline.streamManager.streamResolution },
+                set: { pipeline.streamManager.streamResolution = $0 }
+            )) {
                 ForEach(StreamResolution.allCases, id: \.self) { res in
                     Text(res.rawValue).tag(res)
                 }
@@ -413,7 +416,10 @@ struct Phase2View: View {
 
     private var bitrateRow: some View {
         labeledRow("Bitrate") {
-            Slider(value: $pipeline.streamManager.videoBitrate, in: 1000...10000, step: 500)
+            Slider(value: Binding(
+                get: { Double(pipeline.streamManager.videoBitrate) },
+                set: { pipeline.streamManager.videoBitrate = Int($0) }
+            ), in: 1000...10000, step: 500)
         } valueLabel: {
             Text("\(pipeline.streamManager.videoBitrate)kbps")
                 .font(.caption)
