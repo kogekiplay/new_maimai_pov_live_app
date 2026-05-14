@@ -124,9 +124,7 @@ struct DebugOverlayView: View {
             infoRow("Status", debug.rtmpStatus,
                     color: rtmpStatusColor(debug.rtmpStatus))
             infoRow("Bitrate", "\(debug.rtmpBitrate)kbps")
-            infoRow("Dropped", "\(debug.rtmpDroppedFrames)frames")
-            infoRow("vFrames", "\(debug.rtmpVideoFrames)")
-            infoRow("aFrames", "\(debug.rtmpAudioFrames)")
+            infoRow("FPS", "\(debug.rtmpFPS)")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
