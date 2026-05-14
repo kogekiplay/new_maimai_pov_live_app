@@ -84,7 +84,9 @@ class SmoothTracker {
         }
 
         let baseH = max(smoothH, smoothW / outputRatio)
-        let cropH = baseH * (1.0 + targetRatio)
+        let desiredCropH = baseH * (1.0 + targetRatio)
+        let maxCropH = stabHeight
+        let cropH = min(desiredCropH, maxCropH)
         let cropW = cropH * outputRatio
 
         let state: String
