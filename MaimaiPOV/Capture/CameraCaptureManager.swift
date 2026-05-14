@@ -137,6 +137,21 @@ class CameraCaptureManager: NSObject, ObservableObject {
 
         // Audio setup (once)
         if !session.outputs.contains(where: { $0 is AVCaptureAudioDataOutput }) {
+            let audioSession = AVAudioSession.sharedInstance()
+            try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+            try? audioSession.setActive(true)
+
+            if let inputs = audioSession.availableInputs {
+                let builtInMic = inputs.first(where: { $0.portType == .builtInMic })
+                if let dataSources = builtInMic?.dataSources {
+                    let backMic = dataSources.first(where: { $0.orientation == .back })
+                    try? builtInMic?.setPreferredDataSource(backMic)
+                    if let supportedPatterns = backMic?.supportedPolarPatterns, supportedPatterns.contains(.cardioid) {
+                        try? backMic?.setPreferredPolarPattern(.cardioid)
+                    }
+                }
+            }
+
             guard let audioDevice = AVCaptureDevice.default(for: .audio),
                   let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
                   session.canAddInput(audioInput) else {
@@ -144,16 +159,6 @@ class CameraCaptureManager: NSObject, ObservableObject {
                 return
             }
             session.addInput(audioInput)
-
-            // Prefer rear mic with cardioid pattern
-            if let builtInMic = AVAudioSession.sharedInstance().availableInputs?.first(where: { $0.portType == .builtInMic }),
-               let dataSources = builtInMic.dataSources,
-               let backMic = dataSources.first(where: { $0.orientation == .back }) {
-                try? builtInMic.setPreferredDataSource(backMic)
-                if let patterns = backMic.supportedPolarPatterns, patterns.contains(.cardioid) {
-                    try? backMic.setPreferredPolarPattern(.cardioid)
-                }
-            }
 
             guard session.canAddOutput(audioOutput) else {
                 print("CameraCaptureManager: Cannot add audio output")
