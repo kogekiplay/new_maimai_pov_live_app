@@ -42,9 +42,7 @@ struct Phase2View: View {
     @State private var stabilizer: MetalStabilizer?
     @State private var yoloPreprocessor: YOLOPreprocessor?
     @State private var yoloDetector: YOLODetector?
-    @State private var yoloPreviewImage: UIImage?
     @State private var yoloEnabled: Bool = true
-    @State private var yoloPreviewFrameCount: Int = 0
     @State private var yoloPadding: Double = Double(Config.yoloPadding)
 
     var body: some View {
@@ -146,7 +144,7 @@ struct Phase2View: View {
                 .padding(.leading, 4)
                 .padding(.top, 4)
 
-            if yoloEnabled, let img = yoloPreviewImage {
+            if yoloEnabled, let img = debug.yoloPreviewImage {
                 VStack {
                     Spacer()
                     HStack {
@@ -401,26 +399,34 @@ struct Phase2View: View {
 
         let detector = YOLODetector(device: device)
         self.yoloDetector = detector
+        var yoloPreviewFrameCount = 0
         if detector != nil {
-            detector?.onDetection = { [weak debug] result in
+            detector?.onDetection = { [weak debug, weak detector] result in
                 DispatchQueue.main.async {
                     debug?.yoloDetected = result.detected
                     debug?.yoloConfidence = result.confidence
                     debug?.yoloInferenceMs = result.inferenceMs
                     debug?.yoloPreprocessMs = result.preprocessMs
-                    debug?.yoloRawNorm = String(format: "%.3f,%.3f,%.3f,%.3f",
-                        result.rawNx, result.rawNy, result.rawNw, result.rawNh)
+                    debug?.yoloRawCoord = result.detected
+                        ? String(format: "%.0f,%.0f,%.0f,%.0f",
+                            result.rawYoloCx, result.rawYoloCy, result.rawYoloW, result.rawYoloH)
+                        : "--"
+                    debug?.yoloStabCoord = result.detected
+                        ? String(format: "%.0f,%.0f,%.0f,%.0f",
+                            result.stabCx, result.stabCy, result.stabW, result.stabH)
+                        : "--"
                     debug?.yoloBoxesInfo = "\(result.innerScreenBoxesCount)/\(result.allBoxesCount)"
                     debug?.yoloTopBoxes = result.topBoxes
                     debug?.yoloBestRank = result.bestBoxRank
-                    if result.detected {
-                        debug?.yoloRawCoord = String(format: "%.0f,%.0f,%.0f,%.0f",
-                            result.rawYoloCx, result.rawYoloCy, result.rawYoloW, result.rawYoloH)
-                        debug?.yoloStabCoord = String(format: "%.0f,%.0f,%.0f,%.0f",
-                            result.stabCx, result.stabCy, result.stabW, result.stabH)
-                    } else {
-                        debug?.yoloRawCoord = "--"
-                        debug?.yoloStabCoord = "--"
+
+                    yoloPreviewFrameCount += 1
+                    if yoloPreviewFrameCount % 10 == 0,
+                       let pb = detector?.previewPixelBuffer {
+                        let ciImage = CIImage(cvPixelBuffer: pb)
+                        let context = CIContext()
+                        if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
+                            debug?.yoloPreviewImage = UIImage(cgImage: cgImage)
+                        }
                     }
                 }
             }

@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 @MainActor
 class DebugInfoManager: ObservableObject {
@@ -23,10 +23,10 @@ class DebugInfoManager: ObservableObject {
     @Published var yoloRawCoord: String = "--"
     @Published var yoloStabCoord: String = "--"
     @Published var yoloUniforms: String = "--"
-    @Published var yoloRawNorm: String = "--"
     @Published var yoloBoxesInfo: String = "--"
     @Published var yoloTopBoxes: String = "--"
     @Published var yoloBestRank: Int = 0
+    @Published var yoloPreviewImage: UIImage?
 
     @Published var trackCx: Float = 0
     @Published var trackCy: Float = 0

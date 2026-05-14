@@ -44,6 +44,14 @@ class YOLODetector {
 
     var onDetection: ((DetectionResult) -> Void)?
 
+    private var lastPixelBuffer: CVPixelBuffer?
+    var previewPixelBuffer: CVPixelBuffer? {
+        stagingLock.lock()
+        let pb = lastPixelBuffer
+        stagingLock.unlock()
+        return pb
+    }
+
     init?(device: MTLDevice) {
         self.device = device
         guard let m = try? best(configuration: MLModelConfiguration()) else { return nil }
@@ -136,6 +144,7 @@ class YOLODetector {
 
                 let prepStart = CACurrentMediaTime()
                 guard let pixelBuffer = preprocessor.process(stabOutputTexture: stabTexture) else { return }
+                lastPixelBuffer = pixelBuffer
                 let prepElapsed = CACurrentMediaTime() - prepStart
 
                 let result = infer(pixelBuffer, preprocessMs: prepElapsed * 1000.0)
