@@ -42,6 +42,7 @@ class LivePipelineManager: ObservableObject {
     let debug = DebugInfoManager.shared
     let device: MTLDevice = MTLCreateSystemDefaultDevice()!
     let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+    let streamManager = RTMPStreamManager()
 
     var stabilizer: MetalStabilizer?
     var yoloDetector: YOLODetector?
@@ -75,6 +76,10 @@ class LivePipelineManager: ObservableObject {
         }.store(in: &cancellables)
 
         debug.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
+        streamManager.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)
     }
@@ -209,6 +214,9 @@ class LivePipelineManager: ObservableObject {
                     let timestamp = CMTime(seconds: alignedTime, preferredTimescale: 1000000000)
                     self.streamFrameCount += 1
                     self.onStreamBufferAvailable?(pixelBuffer, timestamp)
+                    DispatchQueue.main.async {
+                        self.streamManager.appendVideo(pixelBuffer: pixelBuffer, timestamp: timestamp)
+                    }
                 }
 
                 DispatchQueue.main.async {
@@ -221,6 +229,9 @@ class LivePipelineManager: ObservableObject {
 
         camera.onAudioSample = { [weak self] sample in
             self?.onAudioSampleAvailable?(sample)
+            DispatchQueue.main.async {
+                self?.streamManager.appendAudio(sampleBuffer: sample)
+            }
         }
 
         startFPSTimer()
