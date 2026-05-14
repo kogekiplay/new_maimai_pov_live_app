@@ -73,7 +73,7 @@ class LivePipelineManager: ObservableObject {
         }.store(in: &cancellables)
     }
 
-    func start() {
+    @MainActor func start() {
         let lensCfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
         let stab = MetalStabilizer(device: device, lensConfig: lensCfg)
         stab?.stabilizerEnabled = stabEnabled
