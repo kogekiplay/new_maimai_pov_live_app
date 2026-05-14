@@ -231,7 +231,7 @@ class LivePipelineManager: ObservableObject {
         fpsTimer = nil
     }
 
-    func handleLensChange(_ newLens: LensType) {
+    @MainActor func handleLensChange(_ newLens: LensType) {
         camera.switchLens(to: newLens)
         reconfigureLens()
         debug.lensType = newLens.rawValue
@@ -256,17 +256,17 @@ class LivePipelineManager: ObservableObject {
         if isoValue < actualMin || isoValue > actualMax { isoValue = actualMin }
     }
 
-    func updateStabilizerEnabled() {
+    @MainActor func updateStabilizerEnabled() {
         stabilizer?.stabilizerEnabled = stabEnabled
         debug.stabEnabled = stabEnabled
     }
 
-    func updateFov() {
+    @MainActor func updateFov() {
         stabilizer?.fov = fov
         debug.fov = fov
     }
 
-    func updateDistRatio() {
+    @MainActor func updateDistRatio() {
         stabilizer?.distRatio = distRatio
         debug.distRatio = distRatio
     }
@@ -283,7 +283,7 @@ class LivePipelineManager: ObservableObject {
         stabilizer?.roll = roll
     }
 
-    func updateYoloPadding() {
+    @MainActor func updateYoloPadding() {
         let pad = Int(yoloPadding)
         Config.yoloPadding = pad
         yoloDetector?.updatePadding(pad)
@@ -293,22 +293,22 @@ class LivePipelineManager: ObservableObject {
             u.scale, u.padH, u.padV, u.padLeft, u.padTop)
     }
 
-    func updateTrackAlpha() {
+    @MainActor func updateTrackAlpha() {
         smoothTracker.alpha = Float(trackAlpha)
         debug.trackAlpha = Float(trackAlpha)
     }
 
-    func updateTrackMaxSpeed() {
+    @MainActor func updateTrackMaxSpeed() {
         smoothTracker.maxSpeed = Float(trackMaxSpeed)
         debug.trackMaxSpeed = Float(trackMaxSpeed)
     }
 
-    func updateTrackDeadZone() {
+    @MainActor func updateTrackDeadZone() {
         smoothTracker.deadZone = Float(trackDeadZone)
         debug.trackDeadZone = Float(trackDeadZone)
     }
 
-    func updateTrackTargetRatio() {
+    @MainActor func updateTrackTargetRatio() {
         smoothTracker.targetRatio = Float(trackTargetRatio)
         debug.trackTargetRatio = Float(trackTargetRatio)
     }
