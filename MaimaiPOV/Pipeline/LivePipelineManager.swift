@@ -59,6 +59,8 @@ class LivePipelineManager: ObservableObject {
         return stabilizer?.outputTexture
     }
 
+    var isCropActive: Bool { cropRenderer != nil }
+
     private var frameCount: Int = 0
     private var fpsTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -227,5 +229,87 @@ class LivePipelineManager: ObservableObject {
     private func stopFPSTimer() {
         fpsTimer?.invalidate()
         fpsTimer = nil
+    }
+
+    func handleLensChange(_ newLens: LensType) {
+        camera.switchLens(to: newLens)
+        reconfigureLens()
+        debug.lensType = newLens.rawValue
+    }
+
+    func reconfigureLens() {
+        let cfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
+        stabilizer?.loadLensConfig(cfg)
+        fov = cfg.defaultFov
+        stabilizer?.fov = cfg.defaultFov
+    }
+
+    func applyExposure() {
+        guard camera.exposureMode == .custom else { return }
+        camera.setExposure(duration: CMTime(value: 1, timescale: Int32(shutterTimescale)), iso: Float(isoValue))
+    }
+
+    func updateISORange() {
+        let actualMin = Double(camera.getMinISO()), actualMax = Double(camera.getMaxISO())
+        guard actualMin > 0, actualMax > actualMin else { return }
+        minISO = actualMin; maxISO = actualMax
+        if isoValue < actualMin || isoValue > actualMax { isoValue = actualMin }
+    }
+
+    func updateStabilizerEnabled() {
+        stabilizer?.stabilizerEnabled = stabEnabled
+        debug.stabEnabled = stabEnabled
+    }
+
+    func updateFov() {
+        stabilizer?.fov = fov
+        debug.fov = fov
+    }
+
+    func updateDistRatio() {
+        stabilizer?.distRatio = distRatio
+        debug.distRatio = distRatio
+    }
+
+    func updateYaw() {
+        stabilizer?.yaw = yaw
+    }
+
+    func updatePitch() {
+        stabilizer?.pitch = pitch
+    }
+
+    func updateRoll() {
+        stabilizer?.roll = roll
+    }
+
+    func updateYoloPadding() {
+        let pad = Int(yoloPadding)
+        Config.yoloPadding = pad
+        yoloDetector?.updatePadding(pad)
+        debug.yoloPadding = pad
+        let u = YOLOPreprocessUniforms(padding: pad)
+        debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
+            u.scale, u.padH, u.padV, u.padLeft, u.padTop)
+    }
+
+    func updateTrackAlpha() {
+        smoothTracker.alpha = Float(trackAlpha)
+        debug.trackAlpha = Float(trackAlpha)
+    }
+
+    func updateTrackMaxSpeed() {
+        smoothTracker.maxSpeed = Float(trackMaxSpeed)
+        debug.trackMaxSpeed = Float(trackMaxSpeed)
+    }
+
+    func updateTrackDeadZone() {
+        smoothTracker.deadZone = Float(trackDeadZone)
+        debug.trackDeadZone = Float(trackDeadZone)
+    }
+
+    func updateTrackTargetRatio() {
+        smoothTracker.targetRatio = Float(trackTargetRatio)
+        debug.trackTargetRatio = Float(trackTargetRatio)
     }
 }

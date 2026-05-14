@@ -1,11 +1,6 @@
 import SwiftUI
-import simd
-import CoreMedia
-import CoreImage
-import Combine
 import AVFoundation
 import Metal
-import QuartzCore
 import UIKit
 
 struct Phase2View: View {
@@ -25,57 +20,24 @@ struct Phase2View: View {
             UIApplication.shared.isIdleTimerDisabled = true
             pipeline.start()
         }
-        .onChange(of: pipeline.selectedLens) { newLens in
-            pipeline.camera.switchLens(to: newLens)
-            reconfigureLens()
-            pipeline.debug.lensType = newLens.rawValue
-        }
+        .onChange(of: pipeline.selectedLens) { pipeline.handleLensChange($0) }
         .onChange(of: pipeline.focusValue) { pipeline.camera.setFocus(Float($0)) }
-        .onChange(of: pipeline.shutterTimescale) { applyExposure() }
-        .onChange(of: pipeline.isoValue) { applyExposure() }
-        .onChange(of: pipeline.syncOffsetMs) { newVal in Config.syncOffsetMs = newVal }
-        .onChange(of: pipeline.readoutTimeMs) { newVal in Config.readoutTimeMs = newVal }
+        .onChange(of: pipeline.shutterTimescale) { _ in pipeline.applyExposure() }
+        .onChange(of: pipeline.isoValue) { _ in pipeline.applyExposure() }
+        .onChange(of: pipeline.syncOffsetMs) { Config.syncOffsetMs = $0 }
+        .onChange(of: pipeline.readoutTimeMs) { Config.readoutTimeMs = $0 }
         .onChange(of: pipeline.audioDelayMs) { pipeline.camera.audioDelayMs = $0 }
-        .onChange(of: pipeline.stabEnabled) { newVal in
-            pipeline.stabilizer?.stabilizerEnabled = newVal
-            pipeline.debug.stabEnabled = newVal
-        }
-        .onChange(of: pipeline.fov) { newVal in
-            pipeline.stabilizer?.fov = newVal
-            pipeline.debug.fov = newVal
-        }
-        .onChange(of: pipeline.distRatio) { newVal in
-            pipeline.stabilizer?.distRatio = newVal
-            pipeline.debug.distRatio = newVal
-        }
-        .onChange(of: pipeline.yaw) { pipeline.stabilizer?.yaw = $0 }
-        .onChange(of: pipeline.pitch) { pipeline.stabilizer?.pitch = $0 }
-        .onChange(of: pipeline.roll) { pipeline.stabilizer?.roll = $0 }
-        .onChange(of: pipeline.yoloPadding) { newVal in
-            let pad = Int(newVal)
-            Config.yoloPadding = pad
-            pipeline.yoloDetector?.updatePadding(pad)
-            pipeline.debug.yoloPadding = pad
-            let u = YOLOPreprocessUniforms(padding: pad)
-            pipeline.debug.yoloUniforms = String(format: "s%.3f pH%.0f pV%.0f pL%.0f pT%.0f",
-                u.scale, u.padH, u.padV, u.padLeft, u.padTop)
-        }
-        .onChange(of: pipeline.trackAlpha) { newVal in
-            pipeline.smoothTracker.alpha = Float(newVal)
-            pipeline.debug.trackAlpha = Float(newVal)
-        }
-        .onChange(of: pipeline.trackMaxSpeed) { newVal in
-            pipeline.smoothTracker.maxSpeed = Float(newVal)
-            pipeline.debug.trackMaxSpeed = Float(newVal)
-        }
-        .onChange(of: pipeline.trackDeadZone) { newVal in
-            pipeline.smoothTracker.deadZone = Float(newVal)
-            pipeline.debug.trackDeadZone = Float(newVal)
-        }
-        .onChange(of: pipeline.trackTargetRatio) { newVal in
-            pipeline.smoothTracker.targetRatio = Float(newVal)
-            pipeline.debug.trackTargetRatio = Float(newVal)
-        }
+        .onChange(of: pipeline.stabEnabled) { _ in pipeline.updateStabilizerEnabled() }
+        .onChange(of: pipeline.fov) { _ in pipeline.updateFov() }
+        .onChange(of: pipeline.distRatio) { _ in pipeline.updateDistRatio() }
+        .onChange(of: pipeline.yaw) { _ in pipeline.updateYaw() }
+        .onChange(of: pipeline.pitch) { _ in pipeline.updatePitch() }
+        .onChange(of: pipeline.roll) { _ in pipeline.updateRoll() }
+        .onChange(of: pipeline.yoloPadding) { _ in pipeline.updateYoloPadding() }
+        .onChange(of: pipeline.trackAlpha) { _ in pipeline.updateTrackAlpha() }
+        .onChange(of: pipeline.trackMaxSpeed) { _ in pipeline.updateTrackMaxSpeed() }
+        .onChange(of: pipeline.trackDeadZone) { _ in pipeline.updateTrackDeadZone() }
+        .onChange(of: pipeline.trackTargetRatio) { _ in pipeline.updateTrackTargetRatio() }
         .onDisappear {
             pipeline.stop()
         }
@@ -88,7 +50,7 @@ struct Phase2View: View {
             if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
                 if let texture = pipeline.previewTexture {
                     MetalView(device: pipeline.device, texture: texture)
-                        .aspectRatio(pipeline.cropRenderer != nil ? 9.0 / 16.0 : 3.0 / 4.0, contentMode: .fit)
+                        .aspectRatio(pipeline.isCropActive ? 9.0 / 16.0 : 3.0 / 4.0, contentMode: .fit)
                 }
             } else if pipeline.camera.cameraAuthorized {
                 CameraPreviewView(session: pipeline.camera.session)
@@ -205,7 +167,7 @@ struct Phase2View: View {
             Text("Shutter").font(.caption).frame(width: 55, alignment: .leading)
             Spacer()
             Button("1/244") {
-                pipeline.shutterTimescale = 244.0; applyExposure()
+                pipeline.shutterTimescale = 244.0; pipeline.applyExposure()
             }
             .buttonStyle(.borderedProminent)
             .tint(pipeline.shutterTimescale == 244.0 ? .orange : .gray)
@@ -213,7 +175,7 @@ struct Phase2View: View {
             .disabled(pipeline.camera.exposureMode != .custom)
 
             Button("1/122") {
-                pipeline.shutterTimescale = 122.0; applyExposure()
+                pipeline.shutterTimescale = 122.0; pipeline.applyExposure()
             }
             .buttonStyle(.borderedProminent)
             .tint(pipeline.shutterTimescale == 122.0 ? .orange : .gray)
@@ -241,7 +203,7 @@ struct Phase2View: View {
         }
         .disabled(pipeline.camera.exposureMode != .custom)
         .onChange(of: pipeline.camera.isRunning) { running in
-            if running { updateISORange() }
+            if running { pipeline.updateISORange() }
         }
     }
 
@@ -395,25 +357,6 @@ struct Phase2View: View {
             content()
             valueLabel()
         }
-    }
-
-    private func applyExposure() {
-        guard pipeline.camera.exposureMode == .custom else { return }
-        pipeline.camera.setExposure(duration: CMTime(value: 1, timescale: Int32(pipeline.shutterTimescale)), iso: Float(pipeline.isoValue))
-    }
-
-    private func updateISORange() {
-        let actualMin = Double(pipeline.camera.getMinISO()), actualMax = Double(pipeline.camera.getMaxISO())
-        guard actualMin > 0, actualMax > actualMin else { return }
-        pipeline.minISO = actualMin; pipeline.maxISO = actualMax
-        if pipeline.isoValue < actualMin || pipeline.isoValue > actualMax { pipeline.isoValue = actualMin }
-    }
-
-    private func reconfigureLens() {
-        let cfg = LensCalibration.config(for: pipeline.selectedLens, inputWidth: Config.inputWidth)
-        pipeline.stabilizer?.loadLensConfig(cfg)
-        pipeline.fov = cfg.defaultFov
-        pipeline.stabilizer?.fov = cfg.defaultFov
     }
 }
 
