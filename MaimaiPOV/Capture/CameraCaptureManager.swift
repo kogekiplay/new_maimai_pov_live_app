@@ -83,12 +83,15 @@ class CameraCaptureManager: NSObject, ObservableObject {
         sessionQueue.async { [weak self] in
             guard let self else { return }
             self.configureSession(for: self.activeLens)
+            self.configureAudioSession()
             self.session.startRunning()
             DispatchQueue.main.async { self.isRunning = true }
         }
     }
 
     private func configureSession(for lens: LensType) {
+        session.automaticallyConfiguresApplicationAudioSession = false
+
         session.beginConfiguration()
         defer { session.commitConfiguration() }
 
@@ -137,25 +140,6 @@ class CameraCaptureManager: NSObject, ObservableObject {
 
         // Audio setup (once)
         if !session.outputs.contains(where: { $0 is AVCaptureAudioDataOutput }) {
-            let audioSession = AVAudioSession.sharedInstance()
-            try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
-            try? audioSession.setActive(true)
-
-            if let inputs = audioSession.availableInputs,
-               let builtInMicInput = inputs.first(where: { $0.portType == .builtInMic }) {
-                try? audioSession.setPreferredInput(builtInMicInput)
-
-                if let dataSources = builtInMicInput.dataSources,
-                   let backMic = dataSources.first(where: { $0.orientation == .back }) {
-                    if let supportedPatterns = backMic.supportedPolarPatterns, supportedPatterns.contains(.cardioid) {
-                        try? backMic.setPreferredPolarPattern(.cardioid)
-                    }
-                    try? builtInMicInput.setPreferredDataSource(backMic)
-                }
-            }
-
-            try? audioSession.setPreferredInputOrientation(.portrait)
-
             guard let audioDevice = AVCaptureDevice.default(for: .audio),
                   let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
                   session.canAddInput(audioInput) else {
@@ -171,6 +155,27 @@ class CameraCaptureManager: NSObject, ObservableObject {
             session.addOutput(audioOutput)
             audioOutput.setSampleBufferDelegate(self, queue: sessionQueue)
         }
+    }
+
+    private func configureAudioSession() {
+        let audioSession = AVAudioSession.sharedInstance()
+        try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+        try? audioSession.setActive(true)
+
+        if let inputs = audioSession.availableInputs,
+           let builtInMicInput = inputs.first(where: { $0.portType == .builtInMic }) {
+            try? audioSession.setPreferredInput(builtInMicInput)
+
+            if let dataSources = builtInMicInput.dataSources,
+               let backMic = dataSources.first(where: { $0.orientation == .back }) {
+                if let supportedPatterns = backMic.supportedPolarPatterns, supportedPatterns.contains(.cardioid) {
+                    try? backMic.setPreferredPolarPattern(.cardioid)
+                }
+                try? builtInMicInput.setPreferredDataSource(backMic)
+            }
+        }
+
+        try? audioSession.setPreferredInputOrientation(.portrait)
     }
 
     private func configureFormat(for device: AVCaptureDevice) {
