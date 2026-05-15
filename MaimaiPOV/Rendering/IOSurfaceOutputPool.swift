@@ -13,16 +13,25 @@ class IOSurfaceOutputPool {
     private let lock = NSLock()
 
     init?(device: MTLDevice, width: Int, height: Int, count: Int = 3) {
-        for _ in 0..<count {
-            let surfaceProps: [IOSurfacePropertyKey: Any] = [
-                .width: width,
-                .height: height,
-                .bytesPerRow: width * 4,
-                .pixelFormat: kCVPixelFormatType_32BGRA
-            ]
-            guard let ioSurface = IOSurface(properties: surfaceProps) else { continue }
+        let bufferAttrs: [String: Any] = [
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height,
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any]
+        ]
 
-            guard let pixelBuffer = IOSurfaceCreateCVPixelBuffer(ioSurface) else { continue }
+        for _ in 0..<count {
+            var pixelBuffer: CVPixelBuffer?
+            let result = CVPixelBufferCreate(
+                kCFAllocatorDefault,
+                width, height,
+                kCVPixelFormatType_32BGRA,
+                bufferAttrs as CFDictionary,
+                &pixelBuffer
+            )
+            guard result == kCVReturnSuccess, let pb = pixelBuffer else { continue }
+
+            guard let ioSurface = CVPixelBufferGetIOSurface(pb) else { continue }
 
             let texDesc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: .bgra8Unorm,
@@ -39,7 +48,7 @@ class IOSurfaceOutputPool {
                 plane: 0
             ) else { continue }
 
-            buffers.append(PooledBuffer(pixelBuffer: pixelBuffer, texture: texture))
+            buffers.append(PooledBuffer(pixelBuffer: pb, texture: texture))
         }
 
         guard buffers.count == count else { return nil }
