@@ -54,7 +54,7 @@ struct Phase2View: View {
         ZStack(alignment: .topTrailing) {
             if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
                 if let texture = pipeline.previewTexture {
-                    MetalView(device: pipeline.device, texture: texture)
+                    MetalView(device: pipeline.device, texture: texture, previewEnabled: pipeline.previewEnabled)
                         .aspectRatio(pipeline.isCropActive ? 9.0 / 16.0 : 3.0 / 4.0, contentMode: .fit)
                 }
             } else if pipeline.camera.cameraAuthorized {
@@ -229,6 +229,9 @@ struct Phase2View: View {
         HStack {
             Text("Stabilizer").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.stabEnabled).labelsHidden()
+            Spacer()
+            Text("Preview").font(.caption2).foregroundColor(.gray)
+            Toggle("", isOn: $pipeline.previewEnabled).labelsHidden()
             Spacer()
             Text("Lag: \(String(format: "%.1f", pipeline.lagMs))ms")
                 .font(.caption2).foregroundColor(.gray)

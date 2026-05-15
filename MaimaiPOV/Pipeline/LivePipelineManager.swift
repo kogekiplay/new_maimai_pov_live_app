@@ -28,6 +28,7 @@ class LivePipelineManager: ObservableObject {
     @Published var lagMs: Double = 0
 
     @Published var yoloEnabled: Bool = true
+    @Published var previewEnabled: Bool = true
     @Published var yoloPadding: Double = Double(Config.yoloPadding)
     @Published var yoloPreviewEnabled: Bool = Config.yoloPreviewEnabled
 

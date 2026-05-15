@@ -4,6 +4,7 @@ import MetalKit
 struct MetalView: UIViewRepresentable {
     let device: MTLDevice
     let texture: MTLTexture?
+    var previewEnabled: Bool = true
 
     func makeCoordinator() -> Coordinator {
         Coordinator(device: device)
@@ -23,6 +24,8 @@ struct MetalView: UIViewRepresentable {
 
     func updateUIView(_ uiView: MTKView, context: Context) {
         context.coordinator.currentTexture = texture
+        context.coordinator.previewEnabled = previewEnabled
+        uiView.isPaused = !previewEnabled
     }
 
     class Coordinator: NSObject, MTKViewDelegate {
@@ -30,6 +33,7 @@ struct MetalView: UIViewRepresentable {
         private let commandQueue: MTLCommandQueue
         private var renderPipeline: MTLRenderPipelineState?
         var currentTexture: MTLTexture?
+        var previewEnabled: Bool = true
 
         init(device: MTLDevice) {
             self.device = device
@@ -49,6 +53,7 @@ struct MetalView: UIViewRepresentable {
         func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
         func draw(in view: MTKView) {
+            guard previewEnabled else { return }
             guard let drawable = view.currentDrawable,
                   let desc = view.currentRenderPassDescriptor,
                   let pipeline = renderPipeline,
