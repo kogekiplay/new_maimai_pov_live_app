@@ -15,9 +15,6 @@ class MetalStabilizer {
 
     private var lastCommandBuffer: MTLCommandBuffer?
 
-    private var readbackBuffer: MTLBuffer?
-    private var readbackTexture: MTLTexture?
-
     var anchorQuaternion: simd_quatf?
     var lensConfig: LensConfig
 
@@ -74,8 +71,6 @@ class MetalStabilizer {
         texDesc.storageMode = .private
         guard let outTex = device.makeTexture(descriptor: texDesc) else { return nil }
         self.outputTexture = outTex
-
-        setupReadbackResources()
 
         loadLensConfig(lensConfig)
     }
@@ -190,102 +185,6 @@ class MetalStabilizer {
     func waitForCompletion() {
         lastCommandBuffer?.waitUntilCompleted()
     }
-
-    // MARK: - Texture Readback
-
-    private func setupReadbackResources() {
-        let w = Int(uniforms.outputWidth)
-        let h = Int(uniforms.outputHeight)
-        let rowBytes = w * 4
-        let bufferSize = rowBytes * h
-
-        guard let buffer = device.makeBuffer(length: bufferSize, options: .storageModeShared) else { return }
-        readbackBuffer = buffer
-
-        let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba8Unorm,
-            width: w,
-            height: h,
-            mipmapped: false
-        )
-        desc.usage = .shaderRead
-        desc.storageMode = .shared
-
-        guard let tex = buffer.makeTexture(
-            descriptor: desc,
-            offset: 0,
-            bytesPerRow: rowBytes
-        ) else { return }
-        readbackTexture = tex
-    }
-
-    func readOutputTexture() -> CVPixelBuffer? {
-        guard let readbackTex = readbackTexture,
-              let cmdBuf = commandQueue.makeCommandBuffer(),
-              let blitEncoder = cmdBuf.makeBlitCommandEncoder() else { return nil }
-
-        blitEncoder.copy(
-            from: outputTexture,
-            sourceSlice: 0,
-            sourceLevel: 0,
-            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-            sourceSize: MTLSize(width: outputTexture.width, height: outputTexture.height, depth: 1),
-            to: readbackTex,
-            destinationSlice: 0,
-            destinationLevel: 0,
-            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
-        )
-        blitEncoder.endEncoding()
-
-        cmdBuf.commit()
-        cmdBuf.waitUntilCompleted()
-
-        let w = Int(uniforms.outputWidth)
-        let h = Int(uniforms.outputHeight)
-
-        var pixelBuffer: CVPixelBuffer?
-        let attrs: [String: Any] = [
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any]
-        ]
-        CVPixelBufferCreate(
-            kCFAllocatorDefault,
-            w, h,
-            kCVPixelFormatType_32BGRA,
-            attrs as CFDictionary,
-            &pixelBuffer
-        )
-
-        guard let pb = pixelBuffer else { return nil }
-
-        CVPixelBufferLockBaseAddress(pb, [])
-        defer { CVPixelBufferUnlockBaseAddress(pb, []) }
-
-        guard let dstBase = CVPixelBufferGetBaseAddress(pb) else { return nil }
-        let dstRowBytes = CVPixelBufferGetBytesPerRow(pb)
-        let srcRowBytes = w * 4
-
-        guard let srcBase = readbackBuffer?.contents() else { return nil }
-
-        let srcPtr = srcBase.assumingMemoryBound(to: UInt8.self)
-        let dstPtr = dstBase.assumingMemoryBound(to: UInt8.self)
-
-        for y in 0..<h {
-            let srcRow = srcPtr.advanced(by: y * srcRowBytes)
-            let dstRow = dstPtr.advanced(by: y * dstRowBytes)
-            for x in 0..<w {
-                let si = x * 4
-                let di = x * 4
-                dstRow[di]     = srcRow[si + 2]
-                dstRow[di + 1] = srcRow[si + 1]
-                dstRow[di + 2] = srcRow[si]
-                dstRow[di + 3] = srcRow[si + 3]
-            }
-        }
-
-        return pb
-    }
-
-    // MARK: - Zero-copy bridge
 
     private func metalTexture(
         from pixelBuffer: CVPixelBuffer,
