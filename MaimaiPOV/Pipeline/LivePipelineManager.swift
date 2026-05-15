@@ -211,7 +211,17 @@ class LivePipelineManager: ObservableObject {
                    let cr = self.cropRenderer,
                    let writeBuffer = pool.nextWriteBuffer() {
                     let timestamp = CMTime(seconds: alignedTime, preferredTimescale: 1000000000)
-                    let track = self.latestTrackOutput ?? cr.makeFallbackTrack()
+                    let track: SmoothTracker.TrackOutput
+                    if let t = self.latestTrackOutput {
+                        track = t
+                    } else {
+                        let fb = cr.makeFallbackTrack()
+                        track = SmoothTracker.TrackOutput(
+                            cx: fb.cx, cy: fb.cy, cropW: fb.cropW, cropH: fb.cropH,
+                            smoothCx: fb.cx, smoothCy: fb.cy, smoothW: fb.cropW, smoothH: fb.cropH,
+                            detected: false, state: "fallback"
+                        )
+                    }
                     cr.process(
                         stabTexture: stab.outputTexture,
                         cx: track.cx, cy: track.cy,
