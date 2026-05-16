@@ -180,7 +180,7 @@ class YOLODetector {
 
         let isFloat16 = multiArray.dataType == MLMultiArrayDataType.float16
 
-        let innerClassIdx = 5
+        let innerClassIdx = 4
         let confThresh = Config.defaultConfidenceThreshold
 
         var bestConf: Float = 0
