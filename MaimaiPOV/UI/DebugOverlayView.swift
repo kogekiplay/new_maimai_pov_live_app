@@ -32,11 +32,11 @@ struct DebugOverlayView: View {
     private var headerBar: some View {
         HStack(spacing: 6) {
             Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                .font(.system(size: 8, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundColor(.cyan)
 
             Text("DEBUG")
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundColor(.cyan)
 
             Spacer()
@@ -50,8 +50,10 @@ struct DebugOverlayView: View {
                 }
             } label: {
                 Image(systemName: showLog ? "list.bullet.rectangle" : "list.bullet")
-                    .font(.system(size: 9))
+                    .font(.system(size: 14))
                     .foregroundColor(showLog ? .cyan : .gray)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
             }
 
             Button {
@@ -59,19 +61,22 @@ struct DebugOverlayView: View {
                     isCollapsed.toggle()
                 }
             } label: {
-                Image(systemName: "minus")
-                    .font(.system(size: 9))
+                Image(systemName: isCollapsed ? "arrow.up.right.and.arrow.down.left" : "minus")
+                    .font(.system(size: 14))
                     .foregroundColor(.gray)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.vertical, 6)
         .background(Color.black.opacity(0.5))
     }
 
     private var infoContent: some View {
         VStack(alignment: .leading, spacing: 2) {
             sectionHeader("STAB")
+            infoRow("Temp", String(format: "%.1f°C", debug.deviceTemperature))
             infoRow("Lag", String(format: "%.1fms", debug.pipelineLagMs))
             infoRow("FOV", String(format: "%.0f°", debug.fov))
             infoRow("Dist", String(format: "%.2f", debug.distRatio))
@@ -124,6 +129,7 @@ struct DebugOverlayView: View {
             sectionHeader("RTMP")
             infoRow("Status", debug.rtmpStatus,
                     color: rtmpStatusColor(debug.rtmpStatus))
+            infoRow("Duration", debug.streamingDuration)
             infoRow("Bitrate", "\(debug.rtmpBitrate)kbps")
             infoRow("FPS", "\(debug.rtmpFPS)")
         }

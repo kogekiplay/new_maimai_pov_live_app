@@ -58,6 +58,9 @@ class RTMPStreamManager: ObservableObject {
     private var reconnectAttempt: Int = 0
     private var reconnectTask: Task<Void, Never>?
 
+    private var streamingStartTime: Date?
+    private var durationUpdateTask: Task<Void, Never>?
+
     private var videoBufferCount: Int = 0
     private var audioBufferCount: Int = 0
     private let bufferCountLock = NSLock()
@@ -72,7 +75,9 @@ class RTMPStreamManager: ObservableObject {
         self.rtmpUrl = url
         self.streamKey = streamKey
         self.reconnectAttempt = 0
+        self.streamingStartTime = Date()
         isStreaming = true
+        startDurationTimer()
         connectAndPublish()
     }
 
@@ -200,6 +205,10 @@ class RTMPStreamManager: ObservableObject {
         reconnectTask?.cancel()
         reconnectTask = nil
         reconnectAttempt = 0
+        durationUpdateTask?.cancel()
+        durationUpdateTask = nil
+        streamingStartTime = nil
+        DebugInfoManager.shared.streamingDuration = "--"
 
         let stream: RTMPStream?
         let connection: RTMPConnection?
@@ -467,5 +476,24 @@ class RTMPStreamManager: ObservableObject {
         reconnectTask?.cancel()
         reconnectTask = nil
         resetStreams()
+    }
+
+    private func startDurationTimer() {
+        durationUpdateTask = Task { @MainActor in
+            while !Task.isCancelled {
+                if let startTime = streamingStartTime {
+                    let duration = Date().timeIntervalSince(startTime)
+                    let hours = Int(duration) / 3600
+                    let minutes = (Int(duration) % 3600) / 60
+                    let seconds = Int(duration) % 60
+                    if hours > 0 {
+                        DebugInfoManager.shared.streamingDuration = String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+                    } else {
+                        DebugInfoManager.shared.streamingDuration = String(format: "%02d:%02d", minutes, seconds)
+                    }
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
     }
 }

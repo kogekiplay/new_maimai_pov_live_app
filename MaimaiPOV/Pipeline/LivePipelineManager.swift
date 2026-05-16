@@ -75,6 +75,7 @@ class LivePipelineManager: ObservableObject {
     private var frameCount: Int = 0
     private var streamFrameCount: Int = 0
     private var fpsTimer: Timer?
+    private var temperatureTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -262,6 +263,7 @@ class LivePipelineManager: ObservableObject {
         }
 
         startFPSTimer()
+        startTemperatureTimer()
     }
 
     func stop() {
@@ -270,6 +272,7 @@ class LivePipelineManager: ObservableObject {
         MotionManager.shared.stopUpdates()
         yoloDetector?.stop()
         stopFPSTimer()
+        stopTemperatureTimer()
     }
 
     private func startFPSTimer() {
@@ -348,17 +351,17 @@ class LivePipelineManager: ObservableObject {
 
     func updateYaw() {
         Config.yaw = yaw
-        stabilizer?.yaw = yaw
+        stabilizer?.yawDeg = yaw
     }
 
     func updatePitch() {
         Config.pitch = pitch
-        stabilizer?.pitch = pitch
+        stabilizer?.pitchDeg = pitch
     }
 
     func updateRoll() {
         Config.roll = roll
-        stabilizer?.roll = roll
+        stabilizer?.rollDeg = roll
     }
 
     @MainActor func updateYoloPadding() {
@@ -402,5 +405,23 @@ class LivePipelineManager: ObservableObject {
     @MainActor func updateReadoutTime() {
         Config.readoutTimeMs = readoutTimeMs
         stabilizer?.useRollingShutter = readoutTimeMs > 0
+    }
+
+    private func startTemperatureTimer() {
+        temperatureTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.updateDeviceTemperature()
+        }
+        updateDeviceTemperature()
+    }
+
+    private func stopTemperatureTimer() {
+        temperatureTimer?.invalidate()
+        temperatureTimer = nil
+    }
+
+    private func updateDeviceTemperature() {
+        DispatchQueue.main.async { [weak self] in
+            self?.debug.deviceTemperature = 0.0
+        }
     }
 }

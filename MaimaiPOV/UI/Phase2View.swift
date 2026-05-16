@@ -73,19 +73,6 @@ struct Phase2View: View {
                     .overlay(Text("Camera not authorized").foregroundColor(.gray))
             }
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("FPS: \(Int(pipeline.currentFPS))")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(pipeline.currentFPS >= 55 ? .green : .orange)
-                Text("Lag: \(String(format: "%.1f", pipeline.lagMs))ms")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.gray)
-            }
-            .padding(6)
-            .background(Color.black.opacity(0.5))
-            .cornerRadius(4)
-            .padding(4)
-
             DebugOverlayView(debug: pipeline.debug)
                 .padding(.leading, 4)
                 .padding(.top, 4)
@@ -263,19 +250,19 @@ struct Phase2View: View {
     private var yawPitchRollRow: some View {
         VStack(spacing: 4) {
             labeledRow("Yaw") {
-                Slider(value: Binding(get: { Double(pipeline.yaw) }, set: { pipeline.yaw = Float($0) }), in: -30...30)
+                Slider(value: Binding(get: { Double(pipeline.yaw) }, set: { pipeline.yaw = Float($0) }), in: -90...90)
             } valueLabel: {
-                Text(String(format: "%.1f", pipeline.yaw)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+                Text(String(format: "%.1f°", pipeline.yaw)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
             labeledRow("Pitch") {
-                Slider(value: Binding(get: { Double(pipeline.pitch) }, set: { pipeline.pitch = Float($0) }), in: -30...30)
+                Slider(value: Binding(get: { Double(pipeline.pitch) }, set: { pipeline.pitch = Float($0) }), in: -90...90)
             } valueLabel: {
-                Text(String(format: "%.1f", pipeline.pitch)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+                Text(String(format: "%.1f°", pipeline.pitch)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
             labeledRow("Roll") {
-                Slider(value: Binding(get: { Double(pipeline.roll) }, set: { pipeline.roll = Float($0) }), in: -15...15)
+                Slider(value: Binding(get: { Double(pipeline.roll) }, set: { pipeline.roll = Float($0) }), in: -45...45)
             } valueLabel: {
-                Text(String(format: "%.1f", pipeline.roll)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+                Text(String(format: "%.1f°", pipeline.roll)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
         }
     }

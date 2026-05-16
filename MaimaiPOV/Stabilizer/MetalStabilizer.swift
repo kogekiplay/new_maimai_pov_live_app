@@ -30,10 +30,14 @@ class MetalStabilizer {
         get { uniforms.useRollingShutter != 0 }
         set { uniforms.useRollingShutter = newValue ? 1 : 0 }
     }
-    var yaw: Float = 0
-    var pitch: Float = 0
-    var roll: Float = 0
+    var yawDeg: Float = 0
+    var pitchDeg: Float = 0
+    var rollDeg: Float = 0
     var stabilizerEnabled: Bool = true
+
+    var yaw: Float { yawDeg * .pi / 180.0 }
+    var pitch: Float { pitchDeg * .pi / 180.0 }
+    var roll: Float { rollDeg * .pi / 180.0 }
 
     init?(device: MTLDevice, lensConfig: LensConfig) {
         self.device = device

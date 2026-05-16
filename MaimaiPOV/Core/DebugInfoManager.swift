@@ -50,6 +50,8 @@ class DebugInfoManager: ObservableObject {
     @Published var rtmpStatus: String = "Idle"
     @Published var rtmpBitrate: Int = 0
     @Published var rtmpFPS: Int = 0
+    @Published var deviceTemperature: Double = 0.0
+    @Published var streamingDuration: String = "--"
 
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()
