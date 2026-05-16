@@ -54,7 +54,9 @@ class YOLODetector {
 
     init?(device: MTLDevice) {
         self.device = device
-        guard let m = try? best(configuration: MLModelConfiguration()) else { return nil }
+        let config = MLModelConfiguration()
+        config.computeUnits = .cpuAndNeuralEngine
+        guard let m = try? best(configuration: config) else { return nil }
         self.model = m
         self.uniforms = YOLOPreprocessUniforms(padding: Config.yoloPadding)
 
