@@ -9,33 +9,33 @@ import UIKit
 import CoreImage
 
 class LivePipelineManager: ObservableObject {
-    @Published var focusValue: Double = 0.5
-    @Published var shutterTimescale: Double = 244.0
-    @Published var isoValue: Double = 2000.0
+    @Published var focusValue: Double = Config.focusValue
+    @Published var shutterTimescale: Double = Config.shutterTimescale
+    @Published var isoValue: Double = Config.isoValue
     @Published var minISO: Double = 50.0
     @Published var maxISO: Double = 3200.0
-    @Published var selectedLens: LensType = .main
+    @Published var selectedLens: LensType = Config.selectedLens
 
     @Published var syncOffsetMs: Double = Config.syncOffsetMs
     @Published var readoutTimeMs: Double = Config.readoutTimeMs
 
-    @Published var fov: Float = 100.0
-    @Published var distRatio: Float = 0.0
-    @Published var yaw: Float = 0.0
-    @Published var pitch: Float = 0.0
-    @Published var roll: Float = 0.0
-    @Published var stabEnabled: Bool = true
+    @Published var fov: Float = Config.fov
+    @Published var distRatio: Float = Config.distRatio
+    @Published var yaw: Float = Config.yaw
+    @Published var pitch: Float = Config.pitch
+    @Published var roll: Float = Config.roll
+    @Published var stabEnabled: Bool = Config.stabEnabled
     @Published var lagMs: Double = 0
 
-    @Published var yoloEnabled: Bool = true
-    @Published var previewEnabled: Bool = true
+    @Published var yoloEnabled: Bool = Config.yoloEnabled
+    @Published var previewEnabled: Bool = Config.previewEnabled
     @Published var yoloPadding: Double = Double(Config.yoloPadding)
     @Published var yoloPreviewEnabled: Bool = Config.yoloPreviewEnabled
 
-    @Published var trackAlpha: Double = Double(Config.defaultAlpha)
-    @Published var trackMaxSpeed: Double = Double(Config.defaultMaxSpeed)
-    @Published var trackDeadZone: Double = Double(Config.defaultDeadZone)
-    @Published var trackTargetRatio: Double = Double(Config.defaultTargetRatio)
+    @Published var trackAlpha: Double = Config.trackAlpha
+    @Published var trackMaxSpeed: Double = Config.trackMaxSpeed
+    @Published var trackDeadZone: Double = Config.trackDeadZone
+    @Published var trackTargetRatio: Double = Config.trackTargetRatio
 
     @Published var currentFPS: Double = 0
 
@@ -296,6 +296,7 @@ class LivePipelineManager: ObservableObject {
     }
 
     @MainActor func handleLensChange(_ newLens: LensType) {
+        Config.selectedLens = newLens
         camera.switchLens(to: newLens)
         reconfigureLens()
         debug.lensType = newLens.rawValue
@@ -305,10 +306,14 @@ class LivePipelineManager: ObservableObject {
         let cfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
         stabilizer?.loadLensConfig(cfg)
         fov = cfg.defaultFov
+        Config.fov = cfg.defaultFov
         stabilizer?.fov = cfg.defaultFov
     }
 
     func applyExposure() {
+        Config.focusValue = focusValue
+        Config.shutterTimescale = shutterTimescale
+        Config.isoValue = isoValue
         guard camera.exposureMode == .custom else { return }
         camera.setExposure(duration: CMTime(value: 1, timescale: Int32(shutterTimescale)), iso: Float(isoValue))
     }
@@ -317,33 +322,42 @@ class LivePipelineManager: ObservableObject {
         let actualMin = Double(camera.getMinISO()), actualMax = Double(camera.getMaxISO())
         guard actualMin > 0, actualMax > actualMin else { return }
         minISO = actualMin; maxISO = actualMax
-        if isoValue < actualMin || isoValue > actualMax { isoValue = actualMin }
+        if isoValue < actualMin || isoValue > actualMax { 
+            isoValue = actualMin
+            Config.isoValue = actualMin
+        }
     }
 
     @MainActor func updateStabilizerEnabled() {
+        Config.stabEnabled = stabEnabled
         stabilizer?.stabilizerEnabled = stabEnabled
         debug.stabEnabled = stabEnabled
     }
 
     @MainActor func updateFov() {
+        Config.fov = fov
         stabilizer?.fov = fov
         debug.fov = fov
     }
 
     @MainActor func updateDistRatio() {
+        Config.distRatio = distRatio
         stabilizer?.distRatio = distRatio
         debug.distRatio = distRatio
     }
 
     func updateYaw() {
+        Config.yaw = yaw
         stabilizer?.yaw = yaw
     }
 
     func updatePitch() {
+        Config.pitch = pitch
         stabilizer?.pitch = pitch
     }
 
     func updateRoll() {
+        Config.roll = roll
         stabilizer?.roll = roll
     }
 
@@ -362,26 +376,31 @@ class LivePipelineManager: ObservableObject {
     }
 
     @MainActor func updateTrackAlpha() {
+        Config.trackAlpha = trackAlpha
         smoothTracker.alpha = Float(trackAlpha)
         debug.trackAlpha = Float(trackAlpha)
     }
 
     @MainActor func updateTrackMaxSpeed() {
+        Config.trackMaxSpeed = trackMaxSpeed
         smoothTracker.maxSpeed = Float(trackMaxSpeed)
         debug.trackMaxSpeed = Float(trackMaxSpeed)
     }
 
     @MainActor func updateTrackDeadZone() {
+        Config.trackDeadZone = trackDeadZone
         smoothTracker.deadZone = Float(trackDeadZone)
         debug.trackDeadZone = Float(trackDeadZone)
     }
 
     @MainActor func updateTrackTargetRatio() {
+        Config.trackTargetRatio = trackTargetRatio
         smoothTracker.targetRatio = Float(trackTargetRatio)
         debug.trackTargetRatio = Float(trackTargetRatio)
     }
 
     @MainActor func updateReadoutTime() {
+        Config.readoutTimeMs = readoutTimeMs
         stabilizer?.useRollingShutter = readoutTimeMs > 0
     }
 }

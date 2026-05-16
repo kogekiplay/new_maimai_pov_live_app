@@ -23,7 +23,7 @@ struct Phase2View: View {
             pipeline.start()
         }
         .onChange(of: pipeline.selectedLens) { pipeline.handleLensChange($0) }
-        .onChange(of: pipeline.focusValue) { pipeline.camera.setFocus(Float($0)) }
+        .onChange(of: pipeline.focusValue) { _ in pipeline.applyExposure() }
         .onChange(of: pipeline.shutterTimescale) { _ in pipeline.applyExposure() }
         .onChange(of: pipeline.isoValue) { _ in pipeline.applyExposure() }
         .onChange(of: pipeline.syncOffsetMs) { Config.syncOffsetMs = $0 }
@@ -38,7 +38,13 @@ struct Phase2View: View {
         .onChange(of: pipeline.pitch) { _ in pipeline.updatePitch() }
         .onChange(of: pipeline.roll) { _ in pipeline.updateRoll() }
         .onChange(of: pipeline.yoloPadding) { _ in pipeline.updateYoloPadding() }
+        .onChange(of: pipeline.yoloEnabled) { newValue in 
+            Config.yoloEnabled = newValue
+        }
         .onChange(of: pipeline.yoloPreviewEnabled) { _ in pipeline.updateYoloPreviewEnabled() }
+        .onChange(of: pipeline.previewEnabled) { newValue in 
+            Config.previewEnabled = newValue
+        }
         .onChange(of: pipeline.trackAlpha) { _ in pipeline.updateTrackAlpha() }
         .onChange(of: pipeline.trackMaxSpeed) { _ in pipeline.updateTrackMaxSpeed() }
         .onChange(of: pipeline.trackDeadZone) { _ in pipeline.updateTrackDeadZone() }
