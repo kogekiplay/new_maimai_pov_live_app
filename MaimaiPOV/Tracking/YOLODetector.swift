@@ -43,14 +43,14 @@ class YOLODetector {
         return lastPixelBuffer
     }
 
-    init?(device: MTLDevice) {
+    init?(device: MTLDevice, commandQueue: MTLCommandQueue) {
         let config = MLModelConfiguration()
         config.computeUnits = .cpuAndNeuralEngine
         guard let m = try? best(configuration: config) else { return nil }
         self.model = m
         self.uniforms = YOLOPreprocessUniforms(padding: Config.yoloPadding)
 
-        guard let prep = YOLOPreprocessor(device: device) else { return nil }
+        guard let prep = YOLOPreprocessor(device: device, commandQueue: commandQueue) else { return nil }
         self.preprocessor = prep
     }
 

@@ -19,7 +19,7 @@ struct DebugOverlayView: View {
         }
         .font(.system(size: 10, design: .monospaced))
         .foregroundColor(.white)
-        .background(Color.black.opacity(0.75))
+        .background(Color.black.opacity(isCollapsed ? 0.6 : 0.75))
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
@@ -48,21 +48,24 @@ struct DebugOverlayView: View {
                 .foregroundColor(debug.pipelineLagMs < 10 ? .green :
                                    debug.pipelineLagMs < 20 ? .yellow : .red)
 
-            Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    showLog.toggle()
+            if !isCollapsed {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        showLog.toggle()
+                    }
+                } label: {
+                    Image(systemName: showLog ? "list.bullet.rectangle" : "list.bullet")
+                        .font(.system(size: 14))
+                        .foregroundColor(showLog ? .cyan : .gray)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
                 }
-            } label: {
-                Image(systemName: showLog ? "list.bullet.rectangle" : "list.bullet")
-                    .font(.system(size: 14))
-                    .foregroundColor(showLog ? .cyan : .gray)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
             }
 
             Button {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     isCollapsed.toggle()
+                    debug.isDetailVisible = !isCollapsed
                 }
             } label: {
                 Image(systemName: isCollapsed ? "arrow.up.right.and.arrow.down.left" : "minus")
@@ -156,9 +159,7 @@ struct DebugOverlayView: View {
                 .frame(maxHeight: 120)
                 .onChange(of: debug.logMessages.count) { count in
                     if count > 0 {
-                        withAnimation {
-                            proxy.scrollTo(count - 1, anchor: .bottom)
-                        }
+                        proxy.scrollTo(count - 1, anchor: .bottom)
                     }
                 }
             }

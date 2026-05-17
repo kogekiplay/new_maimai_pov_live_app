@@ -5,18 +5,26 @@ class CropRenderer {
     private let commandQueue: MTLCommandQueue
     private let pipelineState: MTLComputePipelineState
     private let uniformsBuffer: MTLBuffer
-    private(set) var outputTexture: MTLTexture
+    private(set) lazy var outputTexture: MTLTexture = {
+        let texDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: outWidth,
+            height: outHeight,
+            mipmapped: false
+        )
+        texDesc.usage = [.shaderWrite, .shaderRead]
+        texDesc.storageMode = .private
+        return device.makeTexture(descriptor: texDesc)!
+    }()
 
     let outWidth = Config.outputWidth
     let outHeight = Config.outputHeight
     let stabWidth = Float(Config.stabWidth)
     let stabHeight = Float(Config.stabHeight)
 
-    init?(device: MTLDevice) {
+    init?(device: MTLDevice, commandQueue: MTLCommandQueue) {
         self.device = device
-
-        guard let queue = device.makeCommandQueue() else { return nil }
-        self.commandQueue = queue
+        self.commandQueue = commandQueue
 
         guard let library = device.makeDefaultLibrary(),
               let kernel = library.makeFunction(name: "cropAndResize"),
@@ -29,18 +37,6 @@ class CropRenderer {
             length: MemoryLayout<CropUniforms>.stride,
             options: .storageModeShared
         )!
-
-        let texDesc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: outWidth,
-            height: outHeight,
-            mipmapped: false
-        )
-        texDesc.usage = [.shaderWrite, .shaderRead]
-        texDesc.storageMode = .private
-
-        guard let tex = device.makeTexture(descriptor: texDesc) else { return nil }
-        self.outputTexture = tex
     }
 
     func process(stabTexture: MTLTexture, cx: Float, cy: Float, cropW: Float, cropH: Float) {

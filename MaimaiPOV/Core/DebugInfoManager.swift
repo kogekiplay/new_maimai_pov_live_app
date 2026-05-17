@@ -4,6 +4,8 @@ import SwiftUI
 class DebugInfoManager: ObservableObject {
     static let shared = DebugInfoManager()
 
+    var isDetailVisible: Bool = true
+
     @Published var fps: Double = 0
     @Published var pipelineLagMs: Double = 0
     @Published var audioQueueDepth: Int = 0

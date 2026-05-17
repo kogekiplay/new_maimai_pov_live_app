@@ -44,6 +44,7 @@ class LivePipelineManager: ObservableObject {
     let debug = DebugInfoManager.shared
     let device: MTLDevice = MTLCreateSystemDefaultDevice()!
     let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+    let sharedCommandQueue: MTLCommandQueue
     let streamManager = RTMPStreamManager()
 
     var stabilizer: MetalStabilizer?
@@ -85,6 +86,8 @@ class LivePipelineManager: ObservableObject {
     private var yoloPreviewFrameCount: Int = 0
 
     init() {
+        sharedCommandQueue = device.makeCommandQueue()!
+
         camera.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)
@@ -100,7 +103,7 @@ class LivePipelineManager: ObservableObject {
 
     @MainActor func start() {
         let lensCfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
-        let stab = MetalStabilizer(device: device, lensConfig: lensCfg)
+        let stab = MetalStabilizer(device: device, commandQueue: sharedCommandQueue, lensConfig: lensCfg)
         stab?.stabilizerEnabled = stabEnabled
         stab?.fov = fov
         stab?.distRatio = distRatio
@@ -116,7 +119,7 @@ class LivePipelineManager: ObservableObject {
         debug.lensType = selectedLens.rawValue
         debug.log("Pipeline initialized: \(selectedLens.rawValue)")
 
-        let cropR = CropRenderer(device: device)
+        let cropR = CropRenderer(device: device, commandQueue: sharedCommandQueue)
         self.cropRenderer = cropR
 
         ioSurfacePool = IOSurfaceOutputPool(
@@ -130,7 +133,7 @@ class LivePipelineManager: ObservableObject {
         debug.trackTargetRatio = Float(trackTargetRatio)
         debug.trackRecenterSpeed = Float(trackRecenterSpeed)
 
-        let detector = YOLODetector(device: device)
+        let detector = YOLODetector(device: device, commandQueue: sharedCommandQueue)
         self.yoloDetector = detector
         detector?.targetFPS = yoloTargetFPS
         if detector != nil {
@@ -172,6 +175,7 @@ class LivePipelineManager: ObservableObject {
                     detectionResult = detector.detect(stabTexture: stab.outputTexture)
                 }
 
+                var yoloPreviewImage: UIImage?
                 let track: BBoxTracker.TrackOutput
                 if let result = detectionResult {
                     track = self.bboxTracker.update(
@@ -183,38 +187,14 @@ class LivePipelineManager: ObservableObject {
                     )
                     self.latestTrackOutput = track
 
-                    DispatchQueue.main.async {
-                        self.debug.yoloDetected = result.detected
-                        self.debug.yoloConfidence = result.confidence
-                        self.debug.yoloInferenceMs = result.inferenceMs
-                        self.debug.yoloPreprocessMs = result.preprocessMs
-                        self.debug.yoloRawCoord = result.detected
-                            ? String(format: "%.0f,%.0f,%.0f,%.0f",
-                                result.rawYoloCx, result.rawYoloCy, result.rawYoloW, result.rawYoloH)
-                            : "--"
-                        self.debug.yoloStabCoord = result.detected
-                            ? String(format: "%.0f,%.0f,%.0f,%.0f",
-                                result.stabCx, result.stabCy, result.stabW, result.stabH)
-                            : "--"
-                        self.debug.yoloStabCx = result.stabCx
-                        self.debug.yoloStabCy = result.stabCy
-                        self.debug.yoloStabW = result.stabW
-                        self.debug.yoloStabH = result.stabH
-                        self.debug.yoloBoxesInfo = "\(result.innerScreenBoxesCount)/\(result.allBoxesCount)"
-                        self.debug.yoloTopBoxes = result.topBoxes
-                        self.debug.yoloBestRank = result.bestBoxRank
-
-                        if self.yoloPreviewEnabled {
-                            self.yoloPreviewFrameCount += 1
-                            if self.yoloPreviewFrameCount % 10 == 0,
-                               let pb = self.yoloDetector?.previewPixelBuffer {
-                                let ciImage = CIImage(cvPixelBuffer: pb)
-                                if let cgImage = self.ciContext.createCGImage(ciImage, from: ciImage.extent) {
-                                    self.debug.yoloPreviewImage = UIImage(cgImage: cgImage)
-                                }
+                    if self.yoloPreviewEnabled {
+                        self.yoloPreviewFrameCount += 1
+                        if self.yoloPreviewFrameCount % 10 == 0,
+                           let pb = self.yoloDetector?.previewPixelBuffer {
+                            let ciImage = CIImage(cvPixelBuffer: pb)
+                            if let cgImage = self.ciContext.createCGImage(ciImage, from: ciImage.extent) {
+                                yoloPreviewImage = UIImage(cgImage: cgImage)
                             }
-                        } else {
-                            self.debug.yoloPreviewImage = nil
                         }
                     }
                 } else if self.latestTrackOutput != nil {
@@ -235,7 +215,34 @@ class LivePipelineManager: ObservableObject {
                     )
                 }
 
+                let resultCopy = detectionResult
+                let previewEnabled = self.yoloPreviewEnabled
+                let detailVisible = self.debug.isDetailVisible
                 DispatchQueue.main.async {
+                    if let result = resultCopy {
+                        self.debug.yoloDetected = result.detected
+                        self.debug.yoloConfidence = result.confidence
+                        self.debug.yoloInferenceMs = result.inferenceMs
+                        self.debug.yoloPreprocessMs = result.preprocessMs
+                        if detailVisible {
+                            self.debug.yoloRawCoord = result.detected
+                                ? String(format: "%.0f,%.0f,%.0f,%.0f",
+                                    result.rawYoloCx, result.rawYoloCy, result.rawYoloW, result.rawYoloH)
+                                : "--"
+                            self.debug.yoloStabCoord = result.detected
+                                ? String(format: "%.0f,%.0f,%.0f,%.0f",
+                                    result.stabCx, result.stabCy, result.stabW, result.stabH)
+                                : "--"
+                            self.debug.yoloBoxesInfo = "\(result.innerScreenBoxesCount)/\(result.allBoxesCount)"
+                            self.debug.yoloTopBoxes = result.topBoxes
+                        }
+                        self.debug.yoloStabCx = result.stabCx
+                        self.debug.yoloStabCy = result.stabCy
+                        self.debug.yoloStabW = result.stabW
+                        self.debug.yoloStabH = result.stabH
+                        self.debug.yoloBestRank = result.bestBoxRank
+                        self.debug.yoloPreviewImage = previewEnabled ? yoloPreviewImage : nil
+                    }
                     self.debug.trackCx = track.cx
                     self.debug.trackCy = track.cy
                     self.debug.trackCropW = track.cropW

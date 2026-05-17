@@ -16,12 +16,10 @@ class YOLOPreprocessor {
 
     let yoloSize: Int
 
-    init?(device: MTLDevice, padding: Int = Config.yoloPadding) {
+    init?(device: MTLDevice, commandQueue: MTLCommandQueue, padding: Int = Config.yoloPadding) {
         self.device = device
         self.yoloSize = Config.yoloInputSize
-
-        guard let queue = device.makeCommandQueue() else { return nil }
-        self.commandQueue = queue
+        self.commandQueue = commandQueue
 
         guard let library = device.makeDefaultLibrary(),
               let kernel = library.makeFunction(name: "yoloPreprocess"),

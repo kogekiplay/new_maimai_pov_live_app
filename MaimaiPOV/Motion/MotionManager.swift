@@ -29,7 +29,7 @@ class MotionManager {
             print("MotionManager: DeviceMotion not available")
             return
         }
-        motionManager.deviceMotionUpdateInterval = 1.0 / 200.0
+        motionManager.deviceMotionUpdateInterval = 1.0 / 100.0
         motionManager.startDeviceMotionUpdates(using: .xMagneticNorthZVertical, to: OperationQueue()) { [weak self] motion, error in
             guard let self, let motion else { return }
             if let error {
@@ -48,7 +48,7 @@ class MotionManager {
             self.headIndex = (self.headIndex + 1) % self.bufferSize
             self.lock.unlock()
         }
-        print("MotionManager: Started at 200Hz")
+        print("MotionManager: Started at 100Hz")
     }
 
     func stopUpdates() {

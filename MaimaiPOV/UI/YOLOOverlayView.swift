@@ -12,8 +12,6 @@ struct YOLOOverlayView: View {
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
     
-    private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
-    
     var body: some View {
         GeometryReader { geometry in
             ZStack {

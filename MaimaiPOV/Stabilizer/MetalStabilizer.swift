@@ -39,12 +39,10 @@ class MetalStabilizer {
     var pitch: Float { pitchDeg * .pi / 180.0 }
     var roll: Float { rollDeg * .pi / 180.0 }
 
-    init?(device: MTLDevice, lensConfig: LensConfig) {
+    init?(device: MTLDevice, commandQueue: MTLCommandQueue, lensConfig: LensConfig) {
         self.device = device
         self.lensConfig = lensConfig
-
-        guard let queue = device.makeCommandQueue() else { return nil }
-        self.commandQueue = queue
+        self.commandQueue = commandQueue
 
         guard let library = device.makeDefaultLibrary(),
               let kernel = library.makeFunction(name: "stabilize"),
