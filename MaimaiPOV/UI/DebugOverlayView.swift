@@ -109,18 +109,12 @@ struct DebugOverlayView: View {
             sectionHeader("TRACK")
             infoRow("State", debug.trackState,
                     color: debug.trackState == "tracking" ? .green :
-                           debug.trackState == "coasting" ? .yellow : .orange)
-            infoRow("Smooth", String(format: "%.0f,%.0f,%.0f,%.0f",
-                debug.trackSmoothCx, debug.trackSmoothCy,
-                debug.trackSmoothW, debug.trackSmoothH))
+                           debug.trackState == "recenter" ? .yellow : .orange)
             infoRow("Crop", String(format: "%.0f×%.0f @%.0f,%.0f",
                 debug.trackCropW, debug.trackCropH,
                 debug.trackCx, debug.trackCy))
-            infoRow("Vel", String(format: "%.1f,%.1f,%.1f,%.1f",
-                debug.kalmanVx, debug.kalmanVy, debug.kalmanVw, debug.kalmanVh))
-            infoRow("Sm/Resp", String(format: "%.2f/%.2f",
-                debug.trackSmoothness, debug.trackResponsiveness))
             infoRow("Ratio", String(format: "%.2f", debug.trackTargetRatio))
+            infoRow("Recenter", String(format: "%.2f", debug.trackRecenterSpeed))
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 

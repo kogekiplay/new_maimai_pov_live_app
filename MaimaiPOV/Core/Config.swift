@@ -102,66 +102,6 @@ enum Config {
     }
 
     // Tracking defaults
-    static let defaultSmoothness: Float = 0.3
-    static var trackSmoothness: Double {
-        get {
-            guard UserDefaults.standard.object(forKey: trackSmoothnessKey) != nil else {
-                return Double(defaultSmoothness)
-            }
-            return UserDefaults.standard.double(forKey: trackSmoothnessKey)
-        }
-        set { UserDefaults.standard.set(newValue, forKey: trackSmoothnessKey) }
-    }
-    static let defaultResponsiveness: Float = 0.7
-    static var trackResponsiveness: Double {
-        get {
-            guard UserDefaults.standard.object(forKey: trackResponsivenessKey) != nil else {
-                return Double(defaultResponsiveness)
-            }
-            return UserDefaults.standard.double(forKey: trackResponsivenessKey)
-        }
-        set { UserDefaults.standard.set(newValue, forKey: trackResponsivenessKey) }
-    }
-    static let defaultQPos: Float = 5.0
-    static var trackQPos: Double {
-        get {
-            guard UserDefaults.standard.object(forKey: trackQPosKey) != nil else {
-                return Double(defaultQPos)
-            }
-            return UserDefaults.standard.double(forKey: trackQPosKey)
-        }
-        set { UserDefaults.standard.set(newValue, forKey: trackQPosKey) }
-    }
-    static let defaultQVel: Float = 1.0
-    static var trackQVel: Double {
-        get {
-            guard UserDefaults.standard.object(forKey: trackQVelKey) != nil else {
-                return Double(defaultQVel)
-            }
-            return UserDefaults.standard.double(forKey: trackQVelKey)
-        }
-        set { UserDefaults.standard.set(newValue, forKey: trackQVelKey) }
-    }
-    static let defaultRPos: Float = 10.0
-    static var trackRPos: Double {
-        get {
-            guard UserDefaults.standard.object(forKey: trackRPosKey) != nil else {
-                return Double(defaultRPos)
-            }
-            return UserDefaults.standard.double(forKey: trackRPosKey)
-        }
-        set { UserDefaults.standard.set(newValue, forKey: trackRPosKey) }
-    }
-    static let defaultRSize: Float = 20.0
-    static var trackRSize: Double {
-        get {
-            guard UserDefaults.standard.object(forKey: trackRSizeKey) != nil else {
-                return Double(defaultRSize)
-            }
-            return UserDefaults.standard.double(forKey: trackRSizeKey)
-        }
-        set { UserDefaults.standard.set(newValue, forKey: trackRSizeKey) }
-    }
     static let defaultTargetRatio: Float = 0.35
     static var trackTargetRatio: Double {
         get {
@@ -172,8 +112,16 @@ enum Config {
         }
         set { UserDefaults.standard.set(newValue, forKey: trackTargetRatioKey) }
     }
-    static let defaultRecenterDecay: Float = 0.02
-    static let defaultRecenterGrace: Double = 0.5
+    static let defaultRecenterSpeed: Float = 0.15
+    static var trackRecenterSpeed: Double {
+        get {
+            guard UserDefaults.standard.object(forKey: trackRecenterSpeedKey) != nil else {
+                return Double(defaultRecenterSpeed)
+            }
+            return UserDefaults.standard.double(forKey: trackRecenterSpeedKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: trackRecenterSpeedKey) }
+    }
     static let defaultConfidenceThreshold: Float = 0.8
 
     // Stabilizer defaults
@@ -300,13 +248,8 @@ enum Config {
     private static let stabEnabledKey = "com.maimai.stabEnabled"
     private static let previewEnabledKey = "com.maimai.previewEnabled"
     private static let yoloEnabledKey = "com.maimai.yoloEnabled"
-    private static let trackSmoothnessKey = "com.maimai.trackSmoothness"
-    private static let trackResponsivenessKey = "com.maimai.trackResponsiveness"
-    private static let trackQPosKey = "com.maimai.trackQPos"
-    private static let trackQVelKey = "com.maimai.trackQVel"
-    private static let trackRPosKey = "com.maimai.trackRPos"
-    private static let trackRSizeKey = "com.maimai.trackRSize"
     private static let trackTargetRatioKey = "com.maimai.trackTargetRatio"
+    private static let trackRecenterSpeedKey = "com.maimai.trackRecenterSpeed"
 
     // Video encoding
     static let videoBitrate: Int = 4_000_000

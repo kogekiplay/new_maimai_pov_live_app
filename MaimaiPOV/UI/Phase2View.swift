@@ -46,13 +46,8 @@ struct Phase2View: View {
         .onChange(of: pipeline.previewEnabled) { newValue in 
             Config.previewEnabled = newValue
         }
-        .onChange(of: pipeline.trackSmoothness) { _ in pipeline.updateTrackSmoothness() }
-        .onChange(of: pipeline.trackResponsiveness) { _ in pipeline.updateTrackResponsiveness() }
         .onChange(of: pipeline.trackTargetRatio) { _ in pipeline.updateTrackTargetRatio() }
-        .onChange(of: pipeline.trackQPos) { _ in pipeline.updateTrackQPos() }
-        .onChange(of: pipeline.trackQVel) { _ in pipeline.updateTrackQVel() }
-        .onChange(of: pipeline.trackRPos) { _ in pipeline.updateTrackRPos() }
-        .onChange(of: pipeline.trackRSize) { _ in pipeline.updateTrackRSize() }
+        .onChange(of: pipeline.trackRecenterSpeed) { _ in pipeline.updateTrackRecenterSpeed() }
         .onDisappear {
             pipeline.stop()
         }
@@ -156,14 +151,8 @@ struct Phase2View: View {
                         yoloOverlayToggleRow
                         yoloOverlayScaleRow
                         trackingSectionHeader
-                        trackSmoothnessRow
-                        trackResponsivenessRow
                         trackTargetRatioRow
-                        advancedKalmanSectionHeader
-                        trackQPosRow
-                        trackQVelRow
-                        trackRPosRow
-                        trackRSizeRow
+                        trackRecenterSpeedRow
                         liveStreamSectionHeader
                         rtmpUrlRow
                         streamKeyRow
@@ -372,27 +361,19 @@ struct Phase2View: View {
         }
     }
 
-    private var trackSmoothnessRow: some View {
-        labeledRow("Smooth") {
-            Slider(value: $pipeline.trackSmoothness, in: 0.0...1.0, step: 0.05)
-        } valueLabel: {
-            Text(String(format: "%.2f", pipeline.trackSmoothness)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
-    }
-
-    private var trackResponsivenessRow: some View {
-        labeledRow("Resp") {
-            Slider(value: $pipeline.trackResponsiveness, in: 0.0...1.0, step: 0.05)
-        } valueLabel: {
-            Text(String(format: "%.2f", pipeline.trackResponsiveness)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
-    }
-
     private var trackTargetRatioRow: some View {
         labeledRow("TargetRatio") {
             Slider(value: $pipeline.trackTargetRatio, in: 0.1...1.0, step: 0.05)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.trackTargetRatio)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+        }
+    }
+
+    private var trackRecenterSpeedRow: some View {
+        labeledRow("Recenter") {
+            Slider(value: $pipeline.trackRecenterSpeed, in: 0.05...0.5, step: 0.01)
+        } valueLabel: {
+            Text(String(format: "%.2f", pipeline.trackRecenterSpeed)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
@@ -404,48 +385,6 @@ struct Phase2View: View {
             Spacer()
         }
         .padding(.top, 8)
-    }
-
-    private var advancedKalmanSectionHeader: some View {
-        HStack {
-            Text("Kalman Advanced")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.cyan)
-            Spacer()
-        }
-        .padding(.top, 4)
-    }
-
-    private var trackQPosRow: some View {
-        labeledRow("Q Pos") {
-            Slider(value: $pipeline.trackQPos, in: 0.1...100.0, step: 0.1)
-        } valueLabel: {
-            Text(String(format: "%.1f", pipeline.trackQPos)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
-    }
-
-    private var trackQVelRow: some View {
-        labeledRow("Q Vel") {
-            Slider(value: $pipeline.trackQVel, in: 0.01...20.0, step: 0.01)
-        } valueLabel: {
-            Text(String(format: "%.2f", pipeline.trackQVel)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
-    }
-
-    private var trackRPosRow: some View {
-        labeledRow("R Pos") {
-            Slider(value: $pipeline.trackRPos, in: 1.0...200.0, step: 1.0)
-        } valueLabel: {
-            Text(String(format: "%.0f", pipeline.trackRPos)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
-    }
-
-    private var trackRSizeRow: some View {
-        labeledRow("R Size") {
-            Slider(value: $pipeline.trackRSize, in: 1.0...400.0, step: 1.0)
-        } valueLabel: {
-            Text(String(format: "%.0f", pipeline.trackRSize)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
     }
 
     private var liveStreamSectionHeader: some View {

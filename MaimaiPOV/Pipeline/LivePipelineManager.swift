@@ -35,13 +35,8 @@ class LivePipelineManager: ObservableObject {
     @Published var yoloOverlayScale: Double = Config.yoloOverlayScale
     @Published var yoloTargetFPS: Double = Config.yoloTargetFPS
 
-    @Published var trackSmoothness: Double = Config.trackSmoothness
-    @Published var trackResponsiveness: Double = Config.trackResponsiveness
     @Published var trackTargetRatio: Double = Config.trackTargetRatio
-    @Published var trackQPos: Double = Config.trackQPos
-    @Published var trackQVel: Double = Config.trackQVel
-    @Published var trackRPos: Double = Config.trackRPos
-    @Published var trackRSize: Double = Config.trackRSize
+    @Published var trackRecenterSpeed: Double = Config.trackRecenterSpeed
 
     @Published var currentFPS: Double = 0
 
@@ -54,8 +49,8 @@ class LivePipelineManager: ObservableObject {
     var stabilizer: MetalStabilizer?
     var yoloDetector: YOLODetector?
     var cropRenderer: CropRenderer?
-    var kalmanTracker = KalmanTracker()
-    var latestTrackOutput: KalmanTracker.TrackOutput?
+    var bboxTracker = BBoxTracker()
+    var latestTrackOutput: BBoxTracker.TrackOutput?
     private var pendingDetection: (detected: Bool, stabCx: Float, stabCy: Float, stabW: Float, stabH: Float)?
     private var pendingDetectionLock = NSLock()
 
@@ -132,18 +127,11 @@ class LivePipelineManager: ObservableObject {
             height: Config.outputHeight
         )
 
-        // 2. 初始化卡尔曼跟踪器
-        kalmanTracker.smoothness = Float(trackSmoothness)
-        kalmanTracker.responsiveness = Float(trackResponsiveness)
-        kalmanTracker.targetRatio = Float(trackTargetRatio)
-        kalmanTracker.qPos = Float(trackQPos)
-        kalmanTracker.qVel = Float(trackQVel)
-        kalmanTracker.rPos = Float(trackRPos)
-        kalmanTracker.rSize = Float(trackRSize)
-        kalmanTracker.updateNoiseFromIntuitiveParams()
-        debug.trackSmoothness = Float(trackSmoothness)
-        debug.trackResponsiveness = Float(trackResponsiveness)
+        // 2. 初始化追踪器
+        bboxTracker.targetRatio = Float(trackTargetRatio)
+        bboxTracker.recenterSpeed = Float(trackRecenterSpeed)
         debug.trackTargetRatio = Float(trackTargetRatio)
+        debug.trackRecenterSpeed = Float(trackRecenterSpeed)
 
         let detector = YOLODetector(device: device)
         self.yoloDetector = detector
@@ -234,35 +222,30 @@ class LivePipelineManager: ObservableObject {
                 self.pendingDetection = nil
                 self.pendingDetectionLock.unlock()
 
-                let track: KalmanTracker.TrackOutput
+                let track: BBoxTracker.TrackOutput
                 if let det = pending {
-                    track = self.kalmanTracker.update(
+                    track = self.bboxTracker.update(
                         detected: det.detected,
                         stabCx: det.stabCx,
                         stabCy: det.stabCy,
                         stabW: det.stabW,
-                        stabH: det.stabH,
-                        dt: 0
+                        stabH: det.stabH
                     )
                     self.latestTrackOutput = track
                 } else if self.latestTrackOutput != nil {
-                    track = self.kalmanTracker.predictOnly()
-                    self.latestTrackOutput = track
+                    track = self.bboxTracker.freeze()
                 } else if let cr = self.cropRenderer {
                     let fb = cr.makeFallbackTrack()
-                    track = KalmanTracker.TrackOutput(
+                    track = BBoxTracker.TrackOutput(
                         cx: fb.cx, cy: fb.cy, cropW: fb.cropW, cropH: fb.cropH,
-                        smoothCx: fb.cx, smoothCy: fb.cy, smoothW: fb.cropW, smoothH: fb.cropH,
                         detected: false, state: "fallback"
                     )
                 } else {
                     let stabW = Float(Config.stabWidth)
                     let stabH = Float(Config.stabHeight)
-                    track = KalmanTracker.TrackOutput(
+                    track = BBoxTracker.TrackOutput(
                         cx: stabW / 2.0, cy: stabH / 2.0,
                         cropW: stabH * (9.0 / 16.0), cropH: stabH,
-                        smoothCx: stabW / 2.0, smoothCy: stabH / 2.0,
-                        smoothW: stabH * (9.0 / 16.0), smoothH: stabH,
                         detected: false, state: "nofallback"
                     )
                 }
@@ -272,15 +255,7 @@ class LivePipelineManager: ObservableObject {
                     self.debug.trackCy = track.cy
                     self.debug.trackCropW = track.cropW
                     self.debug.trackCropH = track.cropH
-                    self.debug.trackSmoothCx = track.smoothCx
-                    self.debug.trackSmoothCy = track.smoothCy
-                    self.debug.trackSmoothW = track.smoothW
-                    self.debug.trackSmoothH = track.smoothH
                     self.debug.trackState = track.state
-                    self.debug.kalmanVx = self.kalmanTracker.getVelocityVx()
-                    self.debug.kalmanVy = self.kalmanTracker.getVelocityVy()
-                    self.debug.kalmanVw = self.kalmanTracker.getVelocityVw()
-                    self.debug.kalmanVh = self.kalmanTracker.getVelocityVh()
                 }
 
                 if let pool = self.ioSurfacePool,
@@ -459,61 +434,16 @@ class LivePipelineManager: ObservableObject {
         debug.yoloTargetFPS = yoloTargetFPS
     }
 
-    @MainActor func updateTrackSmoothness() {
-        Config.trackSmoothness = trackSmoothness
-        kalmanTracker.smoothness = Float(trackSmoothness)
-        kalmanTracker.updateNoiseFromIntuitiveParams()
-        debug.trackSmoothness = Float(trackSmoothness)
-        syncAdvancedParamsFromKalman()
-    }
-
-    @MainActor func updateTrackResponsiveness() {
-        Config.trackResponsiveness = trackResponsiveness
-        kalmanTracker.responsiveness = Float(trackResponsiveness)
-        kalmanTracker.updateNoiseFromIntuitiveParams()
-        debug.trackResponsiveness = Float(trackResponsiveness)
-        syncAdvancedParamsFromKalman()
-    }
-
     @MainActor func updateTrackTargetRatio() {
         Config.trackTargetRatio = trackTargetRatio
-        kalmanTracker.targetRatio = Float(trackTargetRatio)
+        bboxTracker.targetRatio = Float(trackTargetRatio)
         debug.trackTargetRatio = Float(trackTargetRatio)
     }
 
-    @MainActor func updateTrackQPos() {
-        Config.trackQPos = trackQPos
-        kalmanTracker.qPos = Float(trackQPos)
-        kalmanTracker.updateNoiseFromAdvancedParams()
-    }
-
-    @MainActor func updateTrackQVel() {
-        Config.trackQVel = trackQVel
-        kalmanTracker.qVel = Float(trackQVel)
-        kalmanTracker.updateNoiseFromAdvancedParams()
-    }
-
-    @MainActor func updateTrackRPos() {
-        Config.trackRPos = trackRPos
-        kalmanTracker.rPos = Float(trackRPos)
-        kalmanTracker.updateNoiseFromAdvancedParams()
-    }
-
-    @MainActor func updateTrackRSize() {
-        Config.trackRSize = trackRSize
-        kalmanTracker.rSize = Float(trackRSize)
-        kalmanTracker.updateNoiseFromAdvancedParams()
-    }
-
-    private func syncAdvancedParamsFromKalman() {
-        trackQPos = Double(kalmanTracker.qPos)
-        trackQVel = Double(kalmanTracker.qVel)
-        trackRPos = Double(kalmanTracker.rPos)
-        trackRSize = Double(kalmanTracker.rSize)
-        Config.trackQPos = trackQPos
-        Config.trackQVel = trackQVel
-        Config.trackRPos = trackRPos
-        Config.trackRSize = trackRSize
+    @MainActor func updateTrackRecenterSpeed() {
+        Config.trackRecenterSpeed = trackRecenterSpeed
+        bboxTracker.recenterSpeed = Float(trackRecenterSpeed)
+        debug.trackRecenterSpeed = Float(trackRecenterSpeed)
     }
 
     @MainActor func updateReadoutTime() {
