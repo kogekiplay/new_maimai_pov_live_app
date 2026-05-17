@@ -38,6 +38,10 @@ class LivePipelineManager: ObservableObject {
     @Published var trackSmoothness: Double = Config.trackSmoothness
     @Published var trackResponsiveness: Double = Config.trackResponsiveness
     @Published var trackTargetRatio: Double = Config.trackTargetRatio
+    @Published var trackQPos: Double = Config.trackQPos
+    @Published var trackQVel: Double = Config.trackQVel
+    @Published var trackRPos: Double = Config.trackRPos
+    @Published var trackRSize: Double = Config.trackRSize
 
     @Published var currentFPS: Double = 0
 
@@ -130,6 +134,10 @@ class LivePipelineManager: ObservableObject {
         kalmanTracker.smoothness = Float(trackSmoothness)
         kalmanTracker.responsiveness = Float(trackResponsiveness)
         kalmanTracker.targetRatio = Float(trackTargetRatio)
+        kalmanTracker.qPos = Float(trackQPos)
+        kalmanTracker.qVel = Float(trackQVel)
+        kalmanTracker.rPos = Float(trackRPos)
+        kalmanTracker.rSize = Float(trackRSize)
         kalmanTracker.updateNoiseFromIntuitiveParams()
         debug.trackSmoothness = Float(trackSmoothness)
         debug.trackResponsiveness = Float(trackResponsiveness)
@@ -443,6 +451,30 @@ class LivePipelineManager: ObservableObject {
         Config.trackTargetRatio = trackTargetRatio
         kalmanTracker.targetRatio = Float(trackTargetRatio)
         debug.trackTargetRatio = Float(trackTargetRatio)
+    }
+
+    @MainActor func updateTrackQPos() {
+        Config.trackQPos = trackQPos
+        kalmanTracker.qPos = Float(trackQPos)
+        kalmanTracker.updateNoiseFromAdvancedParams()
+    }
+
+    @MainActor func updateTrackQVel() {
+        Config.trackQVel = trackQVel
+        kalmanTracker.qVel = Float(trackQVel)
+        kalmanTracker.updateNoiseFromAdvancedParams()
+    }
+
+    @MainActor func updateTrackRPos() {
+        Config.trackRPos = trackRPos
+        kalmanTracker.rPos = Float(trackRPos)
+        kalmanTracker.updateNoiseFromAdvancedParams()
+    }
+
+    @MainActor func updateTrackRSize() {
+        Config.trackRSize = trackRSize
+        kalmanTracker.rSize = Float(trackRSize)
+        kalmanTracker.updateNoiseFromAdvancedParams()
     }
 
     @MainActor func updateReadoutTime() {
