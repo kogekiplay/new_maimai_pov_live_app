@@ -1,5 +1,6 @@
 import Metal
 import CoreVideo
+import IOSurface
 
 class YOLOPreprocessor {
 
@@ -9,9 +10,8 @@ class YOLOPreprocessor {
     private let uniformsBuffer: MTLBuffer
     private var uniforms: YOLOPreprocessUniforms
 
-    private(set) var outputTexture: MTLTexture
-    private var readbackBuffer: MTLBuffer
     private var pixelBuffers: [CVPixelBuffer] = []
+    private var outputTextures: [MTLTexture] = []
     private var bufferIndex: Int = 0
 
     let yoloSize: Int
@@ -39,43 +39,39 @@ class YOLOPreprocessor {
         memcpy(uniformsBuffer.contents(), &u, MemoryLayout<YOLOPreprocessUniforms>.stride)
 
         let size = Config.yoloInputSize
-        let rowBytes = size * 4
-        let bufferSize = rowBytes * size
-
-        guard let buffer = device.makeBuffer(length: bufferSize, options: .storageModeShared) else { return nil }
-        self.readbackBuffer = buffer
-
-        let texDesc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: size,
-            height: size,
-            mipmapped: false
-        )
-        texDesc.usage = .shaderWrite
-        texDesc.storageMode = .shared
-
-        guard let tex = buffer.makeTexture(
-            descriptor: texDesc,
-            offset: 0,
-            bytesPerRow: rowBytes
-        ) else { return nil }
-        self.outputTexture = tex
+        let bytesPerRow = size * 4
 
         for _ in 0..<3 {
-            var pb: CVPixelBuffer?
-            let attrs: [String: Any] = [
-                kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any]
+            let surfaceProps: [IOSurfacePropertyKey: Any] = [
+                .width: size,
+                .height: size,
+                .pixelFormat: kCVPixelFormatType_32BGRA as UInt32,
+                .bytesPerRow: bytesPerRow
             ]
-            CVPixelBufferCreate(
+            guard let surface = IOSurface(properties: surfaceProps) else { return nil }
+
+            var pb: CVPixelBuffer?
+            let err = CVPixelBufferCreateWithIOSurface(
                 kCFAllocatorDefault,
-                size, size,
-                kCVPixelFormatType_32BGRA,
-                attrs as CFDictionary,
+                surface,
+                nil,
                 &pb
             )
-            if let pb = pb {
-                pixelBuffers.append(pb)
-            }
+            guard err == kCVReturnSuccess, let pixelBuffer = pb else { return nil }
+
+            let texDesc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm,
+                width: size,
+                height: size,
+                mipmapped: false
+            )
+            texDesc.usage = .shaderWrite
+            texDesc.storageMode = .shared
+
+            guard let texture = device.makeTexture(descriptor: texDesc, iosurface: surface, plane: 0) else { return nil }
+
+            pixelBuffers.append(pixelBuffer)
+            outputTextures.append(texture)
         }
     }
 
@@ -86,6 +82,10 @@ class YOLOPreprocessor {
     }
 
     func process(stabOutputTexture: MTLTexture) -> CVPixelBuffer? {
+        bufferIndex = (bufferIndex + 1) % pixelBuffers.count
+        let outputTexture = outputTextures[bufferIndex]
+        let pixelBuffer = pixelBuffers[bufferIndex]
+
         guard let cmdBuf = commandQueue.makeCommandBuffer(),
               let encoder = cmdBuf.makeComputeCommandEncoder() else { return nil }
 
@@ -102,36 +102,6 @@ class YOLOPreprocessor {
         cmdBuf.commit()
         cmdBuf.waitUntilCompleted()
 
-        return copyToNextPixelBuffer()
-    }
-
-    private func copyToNextPixelBuffer() -> CVPixelBuffer? {
-        guard !pixelBuffers.isEmpty else { return nil }
-        bufferIndex = (bufferIndex + 1) % pixelBuffers.count
-        let pb = pixelBuffers[bufferIndex]
-
-        let size = yoloSize
-        let srcRowBytes = size * 4
-
-        CVPixelBufferLockBaseAddress(pb, [])
-        defer { CVPixelBufferUnlockBaseAddress(pb, []) }
-
-        guard let dstBase = CVPixelBufferGetBaseAddress(pb) else { return nil }
-        let dstRowBytes = CVPixelBufferGetBytesPerRow(pb)
-        let srcBase = readbackBuffer.contents()
-
-        if dstRowBytes == srcRowBytes {
-            memcpy(dstBase, srcBase, srcRowBytes * size)
-        } else {
-            var srcPtr = srcBase
-            var dstPtr = dstBase
-            for _ in 0..<size {
-                memcpy(dstPtr, srcPtr, srcRowBytes)
-                srcPtr = srcPtr.advanced(by: srcRowBytes)
-                dstPtr = dstPtr.advanced(by: dstRowBytes)
-            }
-        }
-
-        return pb
+        return pixelBuffer
     }
 }
