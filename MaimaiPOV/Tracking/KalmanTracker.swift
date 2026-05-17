@@ -35,6 +35,15 @@ class KalmanTracker {
     var responsiveness: Float = 0.5
     var targetRatio: Float = Float(Config.trackTargetRatio)
 
+    var outputSmoothing: Float = 0.3
+
+    private var outputEmaCx: Float?
+    private var outputEmaCy: Float?
+    private var outputEmaW: Float?
+    private var outputEmaH: Float?
+
+    private let maxPDiag: Float = 500.0
+
     var qPos: Float = 5.0
     var qVel: Float = 1.0
     var rPos: Float = 10.0
@@ -164,7 +173,7 @@ class KalmanTracker {
             state = "idle"
         }
 
-        return TrackOutput(
+        return applyOutputSmoothing(TrackOutput(
             cx: smoothCx,
             cy: smoothCy,
             cropW: cropW,
@@ -175,7 +184,7 @@ class KalmanTracker {
             smoothH: smoothH,
             detected: detected,
             state: state
-        )
+        ))
     }
 
     func predictOnly() -> TrackOutput {
@@ -255,7 +264,7 @@ class KalmanTracker {
             state = "idle"
         }
 
-        return TrackOutput(
+        return applyOutputSmoothing(TrackOutput(
             cx: smoothCx,
             cy: smoothCy,
             cropW: cropW,
@@ -266,7 +275,7 @@ class KalmanTracker {
             smoothH: smoothH,
             detected: false,
             state: state
-        )
+        ))
     }
 
     func reset() {
@@ -286,6 +295,10 @@ class KalmanTracker {
         velocityVy = 0
         velocityVw = 0
         velocityVh = 0
+        outputEmaCx = nil
+        outputEmaCy = nil
+        outputEmaW = nil
+        outputEmaH = nil
     }
 
     func updateNoiseFromIntuitiveParams() {
@@ -362,6 +375,10 @@ class KalmanTracker {
         let FPt = matMul(F, P)
         P = matMul(FPt, transpose(F))
         P = matAdd(P, Q)
+
+        for i in 0..<n {
+            P[i][i] = min(P[i][i], maxPDiag)
+        }
 
         symmetrize(&P)
     }
@@ -545,6 +562,26 @@ class KalmanTracker {
                 result[i][j] = a[i][j + 4]
             }
         }
+        return result
+    }
+
+    private func applyOutputSmoothing(_ output: TrackOutput) -> TrackOutput {
+        let alpha = outputSmoothing
+        var result = output
+
+        if let prevCx = outputEmaCx, let prevCy = outputEmaCy,
+           let prevCropW = outputEmaW, let prevCropH = outputEmaH {
+            result.cx = alpha * output.cx + (1 - alpha) * prevCx
+            result.cy = alpha * output.cy + (1 - alpha) * prevCy
+            result.cropW = alpha * output.cropW + (1 - alpha) * prevCropW
+            result.cropH = alpha * output.cropH + (1 - alpha) * prevCropH
+        }
+
+        outputEmaCx = result.cx
+        outputEmaCy = result.cy
+        outputEmaW = result.cropW
+        outputEmaH = result.cropH
+
         return result
     }
 }
