@@ -30,21 +30,7 @@ class YOLODetector {
 
     private let model: best
     private var uniforms: YOLOPreprocessUniforms
-    private let yoloQueue = DispatchQueue(label: "com.maimai.yolo", qos: .userInitiated)
-    private var running = false
-    private let semaphore = DispatchSemaphore(value: 0)
     private let preprocessor: YOLOPreprocessor
-
-    private let device: MTLDevice
-    private let stagingCommandQueue: MTLCommandQueue
-    private let stagingTextures: [MTLTexture]
-    private var stagingWriteIndex: Int = 0
-    private var stagingReadIndex: Int = 0
-    private let stagingLock = NSLock()
-    private let frameLock = NSLock()
-    private var hasNewFrame = false
-
-    var onDetection: ((DetectionResult) -> Void)?
 
     var targetFPS: Double = Config.yoloTargetFPS
     private var frameSkipCounter: Int = 0
@@ -54,14 +40,10 @@ class YOLODetector {
 
     private var lastPixelBuffer: CVPixelBuffer?
     var previewPixelBuffer: CVPixelBuffer? {
-        stagingLock.lock()
-        let pb = lastPixelBuffer
-        stagingLock.unlock()
-        return pb
+        return lastPixelBuffer
     }
 
     init?(device: MTLDevice) {
-        self.device = device
         let config = MLModelConfiguration()
         config.computeUnits = .cpuAndNeuralEngine
         guard let m = try? best(configuration: config) else { return nil }
@@ -70,116 +52,33 @@ class YOLODetector {
 
         guard let prep = YOLOPreprocessor(device: device) else { return nil }
         self.preprocessor = prep
-
-        guard let queue = device.makeCommandQueue() else { return nil }
-        self.stagingCommandQueue = queue
-
-        var textures: [MTLTexture] = []
-        for _ in 0..<2 {
-            let desc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: .rgba8Unorm,
-                width: Config.stabWidth,
-                height: Config.stabHeight,
-                mipmapped: false
-            )
-            desc.usage = .shaderRead
-            desc.storageMode = .private
-            guard let tex = device.makeTexture(descriptor: desc) else { return nil }
-            textures.append(tex)
-        }
-        self.stagingTextures = textures
     }
 
-    func start() {
-        guard !running else { return }
-        running = true
-        yoloQueue.async { [weak self] in
-            self?.inferenceLoop()
-        }
-    }
-
-    func stop() {
-        running = false
-        semaphore.signal()
-    }
-
-    func enqueue(stabTexture: MTLTexture) {
+    func detect(stabTexture: MTLTexture) -> DetectionResult? {
         let skip = max(1, Int(round(60.0 / max(targetFPS, 1.0))))
         frameSkipCounter += 1
         if frameSkipCounter < skip {
-            return
+            return nil
         }
         frameSkipCounter = 0
 
-        let writeIdx = stagingWriteIndex
-        let targetTexture = stagingTextures[writeIdx]
-
-        guard let cmdBuf = stagingCommandQueue.makeCommandBuffer(),
-              let blit = cmdBuf.makeBlitCommandEncoder() else { return }
-
-        blit.copy(
-            from: stabTexture,
-            sourceSlice: 0,
-            sourceLevel: 0,
-            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-            sourceSize: MTLSize(width: stabTexture.width, height: stabTexture.height, depth: 1),
-            to: targetTexture,
-            destinationSlice: 0,
-            destinationLevel: 0,
-            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
-        )
-        blit.endEncoding()
-
-        cmdBuf.addCompletedHandler { [weak self] _ in
-            guard let self = self else { return }
-            self.stagingLock.lock()
-            self.stagingReadIndex = writeIdx
-            self.stagingLock.unlock()
-            self.frameLock.lock()
-            self.hasNewFrame = true
-            self.frameLock.unlock()
-            self.semaphore.signal()
+        let prepStart = CACurrentMediaTime()
+        guard let pixelBuffer = preprocessor.process(stabOutputTexture: stabTexture) else {
+            return nil
         }
-        cmdBuf.commit()
+        lastPixelBuffer = pixelBuffer
+        let prepElapsed = CACurrentMediaTime() - prepStart
 
-        stagingWriteIndex = (writeIdx + 1) % stagingTextures.count
+        let result = infer(pixelBuffer, preprocessMs: prepElapsed * 1000.0)
+        if result != nil {
+            updateActualFPS()
+        }
+        return result
     }
 
     func updatePadding(_ padding: Int) {
         preprocessor.updatePadding(padding)
         uniforms = YOLOPreprocessUniforms(padding: padding)
-    }
-
-    private func inferenceLoop() {
-        while running {
-            semaphore.wait()
-
-            frameLock.lock()
-            let hasFrame = hasNewFrame
-            hasNewFrame = false
-            frameLock.unlock()
-
-            if !hasFrame { continue }
-
-            autoreleasepool {
-                stagingLock.lock()
-                let readIdx = stagingReadIndex
-                stagingLock.unlock()
-
-                let stabTexture = stagingTextures[readIdx]
-
-                let prepStart = CACurrentMediaTime()
-                guard let pixelBuffer = preprocessor.process(stabOutputTexture: stabTexture) else { return }
-                lastPixelBuffer = pixelBuffer
-                let prepElapsed = CACurrentMediaTime() - prepStart
-
-                let result = infer(pixelBuffer, preprocessMs: prepElapsed * 1000.0)
-                if let r = result {
-                    updateActualFPS()
-                    onDetection?(r)
-                }
-            }
-        }
     }
 
     private func updateActualFPS() {

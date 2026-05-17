@@ -44,6 +44,10 @@ struct DebugOverlayView: View {
             Text("\(Int(debug.fps))fps")
                 .foregroundColor(debug.fps >= 55 ? .green : .orange)
 
+            Text(String(format: "%.1fms", debug.pipelineLagMs))
+                .foregroundColor(debug.pipelineLagMs < 10 ? .green :
+                                   debug.pipelineLagMs < 20 ? .yellow : .red)
+
             Button {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     showLog.toggle()
@@ -77,7 +81,6 @@ struct DebugOverlayView: View {
         VStack(alignment: .leading, spacing: 2) {
             sectionHeader("STAB")
             infoRow("Temp", String(format: "%.1f°C", debug.deviceTemperature))
-            infoRow("Lag", String(format: "%.1fms", debug.pipelineLagMs))
             infoRow("FOV", String(format: "%.0f°", debug.fov))
             infoRow("Dist", String(format: "%.2f", debug.distRatio))
             infoRow("Lens", debug.lensType)
