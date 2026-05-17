@@ -152,6 +152,10 @@ class LivePipelineManager: ObservableObject {
         if detector != nil {
             detector?.onDetection = { [weak self] result in
                 guard let self = self else { return }
+                self.pendingDetectionLock.lock()
+                self.pendingDetection = (result.detected, result.stabCx, result.stabCy, result.stabW, result.stabH)
+                self.pendingDetectionLock.unlock()
+
                 DispatchQueue.main.async {
                     self.debug.yoloDetected = result.detected
                     self.debug.yoloConfidence = result.confidence
@@ -172,10 +176,6 @@ class LivePipelineManager: ObservableObject {
                     self.debug.yoloBoxesInfo = "\(result.innerScreenBoxesCount)/\(result.allBoxesCount)"
                     self.debug.yoloTopBoxes = result.topBoxes
                     self.debug.yoloBestRank = result.bestBoxRank
-
-                    self.pendingDetectionLock.lock()
-                    self.pendingDetection = (result.detected, result.stabCx, result.stabCy, result.stabW, result.stabH)
-                    self.pendingDetectionLock.unlock()
 
                     if self.yoloPreviewEnabled {
                         yoloPreviewFrameCount += 1
