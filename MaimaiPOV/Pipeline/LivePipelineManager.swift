@@ -307,7 +307,9 @@ class LivePipelineManager: ObservableObject {
         MotionManager.shared.stopUpdates()
         stopFPSTimer()
         stopTemperatureTimer()
-        debug.stopFlushTimer()
+        DispatchQueue.main.async {
+            self.debug.stopFlushTimer()
+        }
     }
 
     private func startFPSTimer() {
