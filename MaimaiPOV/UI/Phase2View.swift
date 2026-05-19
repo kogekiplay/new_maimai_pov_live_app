@@ -44,7 +44,6 @@ struct Phase2View: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .background(FullScreenHelper())
         .preferredColorScheme(.dark)
         .background(Color.black)
         .onAppear {
@@ -135,7 +134,7 @@ struct Phase2View: View {
                                         rotationStarted = true
                                         gestureStartRoll = pipeline.roll
                                     }
-                                    pipeline.roll = clamp(gestureStartRoll + Float(angle.degrees), -45, 45)
+                                    pipeline.roll = clamp(gestureStartRoll - Float(angle.degrees), -45, 45)
                                 }
                                 .onEnded { _ in
                                     rotationStarted = false
@@ -743,16 +742,4 @@ private struct RoundedCorner: Shape {
         )
         return Path(p.cgPath)
     }
-}
-
-private struct FullScreenHelper: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> FullScreenViewController {
-        FullScreenViewController()
-    }
-    func updateUIViewController(_ uiViewController: FullScreenViewController, context: Context) {}
-}
-
-private class FullScreenViewController: UIViewController {
-    override var prefersStatusBarHidden: Bool { true }
-    override var prefersHomeIndicatorAutoHidden: Bool { true }
 }
