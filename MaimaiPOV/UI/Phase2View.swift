@@ -20,6 +20,7 @@ private enum ControlTab: String, CaseIterable {
 struct Phase2View: View {
     @StateObject private var pipeline = LivePipelineManager()
     @State private var selectedTab: ControlTab = .camera
+    @State private var panelExpanded: Bool = true
     @State private var advancedExpanded: Bool = false
     @State private var presets: [StreamPreset] = Config.streamPresets
     @State private var showAddPresetSheet = false
@@ -43,6 +44,7 @@ struct Phase2View: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+        .overlay(FullScreenHelper())
         .preferredColorScheme(.dark)
         .background(Color.black)
         .onAppear {
@@ -105,7 +107,7 @@ struct Phase2View: View {
                         .overlay(Text("Camera not authorized").foregroundColor(.gray))
                 }
 
-                if pipeline.stabEnabled {
+                if pipeline.stabEnabled, pipeline.previewEnabled {
                     Color.clear
                         .contentShape(Rectangle())
                         .gesture(
@@ -119,8 +121,8 @@ struct Phase2View: View {
                                     let dx = Float(value.translation.width)
                                     let dy = Float(value.translation.height)
                                     let sensitivity: Float = 0.3
-                                    pipeline.yaw = clamp(gestureStartYaw + dx * sensitivity, -90, 90)
-                                    pipeline.pitch = clamp(gestureStartPitch - dy * sensitivity, -90, 90)
+                                    pipeline.yaw = clamp(gestureStartYaw - dx * sensitivity, -90, 90)
+                                    pipeline.pitch = clamp(gestureStartPitch + dy * sensitivity, -90, 90)
                                 }
                                 .onEnded { _ in
                                     dragStarted = false
@@ -193,32 +195,54 @@ struct Phase2View: View {
 
     private var controlPanel: some View {
         VStack(spacing: 0) {
-            ScrollView(.vertical, showsIndicators: false) {
-                switch selectedTab {
-                case .camera: cameraTabContent
-                case .effects: effectsTabContent
-                case .stream: streamTabContent
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    panelExpanded.toggle()
                 }
+            } label: {
+                HStack {
+                    Text(panelExpanded ? selectedTab.rawValue : "Controls")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white)
+                    Spacer()
+                    Image(systemName: panelExpanded ? "chevron.down" : "chevron.up")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.gray.opacity(0.2))
             }
-            .frame(maxHeight: 240)
 
-            HStack {
-                ForEach(ControlTab.allCases, id: \.self) { tab in
-                    Button {
-                        selectedTab = tab
-                    } label: {
-                        VStack(spacing: 2) {
-                            Image(systemName: tab.icon)
-                            Text(tab.rawValue)
-                                .font(.system(size: 10))
-                        }
-                        .foregroundColor(selectedTab == tab ? .white : .gray)
-                        .frame(maxWidth: .infinity)
+            if panelExpanded {
+                ScrollView(.vertical, showsIndicators: false) {
+                    switch selectedTab {
+                    case .camera: cameraTabContent
+                    case .effects: effectsTabContent
+                    case .stream: streamTabContent
                     }
                 }
+                .frame(maxHeight: 240)
+
+                HStack {
+                    ForEach(ControlTab.allCases, id: \.self) { tab in
+                        Button {
+                            selectedTab = tab
+                        } label: {
+                            VStack(spacing: 2) {
+                                Image(systemName: tab.icon)
+                                Text(tab.rawValue)
+                                    .font(.system(size: 10))
+                            }
+                            .foregroundColor(selectedTab == tab ? .white : .gray)
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+                .background(Color.black.opacity(0.3))
             }
-            .padding(.vertical, 8)
-            .background(Color.black.opacity(0.3))
         }
         .background(.ultraThinMaterial)
         .cornerRadius(10, corners: [.topLeft, .topRight])
@@ -719,4 +743,16 @@ private struct RoundedCorner: Shape {
         )
         return Path(p.cgPath)
     }
+}
+
+private struct FullScreenHelper: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> FullScreenViewController {
+        FullScreenViewController()
+    }
+    func updateUIViewController(_ uiViewController: FullScreenViewController, context: Context) {}
+}
+
+private class FullScreenViewController: UIViewController {
+    override var prefersStatusBarHidden: Bool { true }
+    override var prefersHomeIndicatorAutoHidden: Bool { true }
 }
