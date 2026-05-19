@@ -265,4 +265,31 @@ enum Config {
     static let streamAudioBufferFrames: Int = 200
     static let maxReconnectAttempts: Int = 5
     static let maxReconnectDelaySeconds: Double = 16.0
+
+    static var streamPresets: [StreamPreset] {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: streamPresetsKey) else { return [] }
+            return (try? JSONDecoder().decode([StreamPreset].self, from: data)) ?? []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                UserDefaults.standard.set(data, forKey: streamPresetsKey)
+            }
+        }
+    }
+    private static let streamPresetsKey = "com.maimai.streamPresets"
+}
+
+struct StreamPreset: Codable, Identifiable {
+    let id: UUID
+    var name: String
+    var url: String
+    var streamKey: String
+
+    init(id: UUID = UUID(), name: String, url: String, streamKey: String) {
+        self.id = id
+        self.name = name
+        self.url = url
+        self.streamKey = streamKey
+    }
 }

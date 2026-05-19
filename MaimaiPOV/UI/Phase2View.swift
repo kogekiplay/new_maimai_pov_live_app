@@ -3,9 +3,34 @@ import AVFoundation
 import Metal
 import UIKit
 
+private enum ControlTab: String, CaseIterable {
+    case camera = "拍摄"
+    case effects = "效果"
+    case stream = "推流"
+
+    var icon: String {
+        switch self {
+        case .camera: return "camera"
+        case .effects: return "wand.and.stars"
+        case .stream: return "arrow.up.circle"
+        }
+    }
+}
+
 struct Phase2View: View {
     @StateObject private var pipeline = LivePipelineManager()
-    @State private var controlsExpanded: Bool = true
+    @State private var selectedTab: ControlTab = .camera
+    @State private var advancedExpanded: Bool = false
+    @State private var presets: [StreamPreset] = Config.streamPresets
+    @State private var showAddPresetSheet = false
+    @State private var newPresetName = ""
+    @State private var newPresetUrl = ""
+    @State private var newPresetKey = ""
+    @State private var gestureStartYaw: Float = 0
+    @State private var gestureStartPitch: Float = 0
+    @State private var gestureStartRoll: Float = 0
+    @State private var dragStarted = false
+    @State private var rotationStarted = false
     @AppStorage("rtmpUrl") private var rtmpUrl: String = ""
     @AppStorage("streamKey") private var streamKey: String = ""
 
@@ -14,8 +39,10 @@ struct Phase2View: View {
             previewSection
                 .frame(maxHeight: .infinity)
 
-            controlCard
+            controlPanel
         }
+        .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
         .preferredColorScheme(.dark)
         .background(Color.black)
         .onAppear {
@@ -38,12 +65,12 @@ struct Phase2View: View {
         .onChange(of: pipeline.pitch) { _ in pipeline.updatePitch() }
         .onChange(of: pipeline.roll) { _ in pipeline.updateRoll() }
         .onChange(of: pipeline.yoloPadding) { _ in pipeline.updateYoloPadding() }
-        .onChange(of: pipeline.yoloEnabled) { newValue in 
+        .onChange(of: pipeline.yoloEnabled) { newValue in
             Config.yoloEnabled = newValue
         }
         .onChange(of: pipeline.yoloPreviewEnabled) { _ in pipeline.updateYoloPreviewEnabled() }
         .onChange(of: pipeline.yoloTargetFPS) { _ in pipeline.updateYoloTargetFPS() }
-        .onChange(of: pipeline.previewEnabled) { newValue in 
+        .onChange(of: pipeline.previewEnabled) { newValue in
             Config.previewEnabled = newValue
         }
         .onChange(of: pipeline.trackTargetRatio) { _ in pipeline.updateTrackTargetRatio() }
@@ -62,19 +89,67 @@ struct Phase2View: View {
 
     private var previewSection: some View {
         ZStack(alignment: .topTrailing) {
-            if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
-                if let texture = pipeline.previewTexture {
-                    MetalView(device: pipeline.device, texture: texture, previewEnabled: pipeline.previewEnabled)
-                        .aspectRatio(pipeline.isCropActive ? 9.0 / 16.0 : 3.0 / 4.0, contentMode: .fit)
+            ZStack {
+                if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
+                    if let texture = pipeline.previewTexture {
+                        MetalView(device: pipeline.device, texture: texture, previewEnabled: pipeline.previewEnabled)
+                            .aspectRatio(pipeline.isCropActive ? 9.0 / 16.0 : 3.0 / 4.0, contentMode: .fit)
+                    }
+                } else if pipeline.camera.cameraAuthorized {
+                    CameraPreviewView(session: pipeline.camera.session)
+                        .aspectRatio(3.0 / 4.0, contentMode: .fit)
+                } else {
+                    Rectangle()
+                        .fill(Color.black)
+                        .aspectRatio(3.0 / 4.0, contentMode: .fit)
+                        .overlay(Text("Camera not authorized").foregroundColor(.gray))
                 }
-            } else if pipeline.camera.cameraAuthorized {
-                CameraPreviewView(session: pipeline.camera.session)
-                    .aspectRatio(3.0 / 4.0, contentMode: .fit)
-            } else {
-                Rectangle()
-                    .fill(Color.black)
-                    .aspectRatio(3.0 / 4.0, contentMode: .fit)
-                    .overlay(Text("Camera not authorized").foregroundColor(.gray))
+
+                if pipeline.stabEnabled {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 10)
+                                .onChanged { value in
+                                    if !dragStarted {
+                                        dragStarted = true
+                                        gestureStartYaw = pipeline.yaw
+                                        gestureStartPitch = pipeline.pitch
+                                    }
+                                    let dx = Float(value.translation.width)
+                                    let dy = Float(value.translation.height)
+                                    let sensitivity: Float = 0.3
+                                    pipeline.yaw = clamp(gestureStartYaw + dx * sensitivity, -90, 90)
+                                    pipeline.pitch = clamp(gestureStartPitch - dy * sensitivity, -90, 90)
+                                }
+                                .onEnded { _ in
+                                    dragStarted = false
+                                }
+                        )
+                        .simultaneousGesture(
+                            RotationGesture()
+                                .onChanged { angle in
+                                    if !rotationStarted {
+                                        rotationStarted = true
+                                        gestureStartRoll = pipeline.roll
+                                    }
+                                    pipeline.roll = clamp(gestureStartRoll + Float(angle.degrees), -45, 45)
+                                }
+                                .onEnded { _ in
+                                    rotationStarted = false
+                                }
+                        )
+                        .simultaneousGesture(
+                            TapGesture()
+                                .onEnded { _ in
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        pipeline.yaw = 0
+                                        pipeline.pitch = 0
+                                        pipeline.roll = 0
+                                    }
+                                }
+                        )
+                }
             }
 
             DebugOverlayView(debug: pipeline.debug)
@@ -95,7 +170,7 @@ struct Phase2View: View {
                     }
                 }
             }
-            
+
             if pipeline.yoloOverlayEnabled, pipeline.yoloEnabled {
                 VStack {
                     Spacer()
@@ -114,65 +189,175 @@ struct Phase2View: View {
         }
     }
 
-    // MARK: - Control Card
+    // MARK: - Control Panel
 
-    private var controlCard: some View {
+    private var controlPanel: some View {
         VStack(spacing: 0) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    controlsExpanded.toggle()
+            ScrollView(.vertical, showsIndicators: false) {
+                switch selectedTab {
+                case .camera: cameraTabContent
+                case .effects: effectsTabContent
+                case .stream: streamTabContent
                 }
-            } label: {
-                HStack {
-                    Text("Controls")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                    Spacer()
-                    Image(systemName: controlsExpanded ? "chevron.down" : "chevron.up")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.gray.opacity(0.2))
             }
+            .frame(maxHeight: 240)
 
-            if controlsExpanded {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 8) {
-                        lensPicker
-                        shutterRow
-                        isoRow
-                        focusRow
-                        stabilizerToggleRow
-                        fovRow
-                        distRatioRow
-                        yawPitchRollRow
-                        syncRow
-                        yoloToggleRow
-                        yoloPaddingRow
-                        yoloTargetFPSRow
-                        yoloOverlayToggleRow
-                        yoloOverlayScaleRow
-                        trackingSectionHeader
-                        trackTargetRatioRow
-                        trackRecenterSpeedRow
-                        liveStreamSectionHeader
-                        rtmpUrlRow
-                        streamKeyRow
-                        resolutionRow
-                        bitrateRow
-                        streamButtonRow
+            HStack {
+                ForEach(ControlTab.allCases, id: \.self) { tab in
+                    Button {
+                        selectedTab = tab
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: tab.icon)
+                            Text(tab.rawValue)
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(selectedTab == tab ? .white : .gray)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
                 }
-                .frame(maxHeight: 240)
             }
+            .padding(.vertical, 8)
+            .background(Color.black.opacity(0.3))
         }
         .background(.ultraThinMaterial)
         .cornerRadius(10, corners: [.topLeft, .topRight])
+    }
+
+    // MARK: - Camera Tab
+
+    private var cameraTabContent: some View {
+        VStack(spacing: 8) {
+            lensPicker
+            shutterRow
+            isoRow
+            focusRow
+            stabilizerToggleRow
+        }
+        .padding(12)
+    }
+
+    // MARK: - Effects Tab
+
+    private var effectsTabContent: some View {
+        VStack(spacing: 8) {
+            fovRow
+            distRatioRow
+            yoloToggleRow
+            yoloOverlayToggleRow
+            yoloOverlayScaleRow
+
+            Button {
+                withAnimation {
+                    advancedExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    Text("高级设置").font(.caption).foregroundColor(.gray)
+                    Spacer()
+                    Image(systemName: advancedExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2).foregroundColor(.gray)
+                }
+            }
+
+            if advancedExpanded {
+                VStack(spacing: 8) {
+                    syncRow
+                    yoloPaddingRow
+                    yoloTargetFPSRow
+                    trackTargetRatioRow
+                    trackRecenterSpeedRow
+                }
+            }
+        }
+        .padding(12)
+    }
+
+    // MARK: - Stream Tab
+
+    private var streamTabContent: some View {
+        VStack(spacing: 8) {
+            if !presets.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(presets) { preset in
+                            Button {
+                                rtmpUrl = preset.url
+                                streamKey = preset.streamKey
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(preset.name)
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                    Button {
+                                        presets.removeAll { $0.id == preset.id }
+                                        Config.streamPresets = presets
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            Button {
+                showAddPresetSheet = true
+            } label: {
+                HStack {
+                    Image(systemName: "plus.circle")
+                    Text("添加预设")
+                }
+                .font(.caption)
+            }
+            .sheet(isPresented: $showAddPresetSheet) {
+                NavigationView {
+                    Form {
+                        TextField("名称", text: $newPresetName)
+                        TextField("RTMP URL", text: $newPresetUrl)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        SecureField("Stream Key", text: $newPresetKey)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                    }
+                    .navigationTitle("添加预设")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("取消") { showAddPresetSheet = false }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("保存") {
+                                let preset = StreamPreset(name: newPresetName, url: newPresetUrl, streamKey: newPresetKey)
+                                presets.append(preset)
+                                Config.streamPresets = presets
+                                newPresetName = ""
+                                newPresetUrl = ""
+                                newPresetKey = ""
+                                showAddPresetSheet = false
+                            }
+                            .disabled(newPresetName.isEmpty || newPresetUrl.isEmpty)
+                        }
+                    }
+                }
+            }
+
+            rtmpUrlRow
+            streamKeyRow
+            resolutionRow
+            bitrateRow
+            streamButtonRow
+        }
+        .padding(12)
     }
 
     // MARK: - Control Rows
@@ -268,26 +453,6 @@ struct Phase2View: View {
         }
     }
 
-    private var yawPitchRollRow: some View {
-        VStack(spacing: 4) {
-            labeledRow("Yaw") {
-                Slider(value: Binding(get: { Double(pipeline.yaw) }, set: { pipeline.yaw = Float($0) }), in: -90...90)
-            } valueLabel: {
-                Text(String(format: "%.1f°", pipeline.yaw)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-            }
-            labeledRow("Pitch") {
-                Slider(value: Binding(get: { Double(pipeline.pitch) }, set: { pipeline.pitch = Float($0) }), in: -90...90)
-            } valueLabel: {
-                Text(String(format: "%.1f°", pipeline.pitch)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-            }
-            labeledRow("Roll") {
-                Slider(value: Binding(get: { Double(pipeline.roll) }, set: { pipeline.roll = Float($0) }), in: -45...45)
-            } valueLabel: {
-                Text(String(format: "%.1f°", pipeline.roll)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-            }
-        }
-    }
-
     private var syncRow: some View {
         Group {
             labeledRow("Sync") {
@@ -338,7 +503,7 @@ struct Phase2View: View {
             Text("\(Int(pipeline.yoloTargetFPS))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
-    
+
     private var yoloOverlayToggleRow: some View {
         HStack {
             Text("YOLOOverlay").font(.caption).frame(width: 80, alignment: .leading)
@@ -353,7 +518,7 @@ struct Phase2View: View {
                 .foregroundColor(pipeline.yoloOverlayEnabled ? .green : .red)
         }
     }
-    
+
     private var yoloOverlayScaleRow: some View {
         labeledRow("Scale") {
             Slider(value: $pipeline.yoloOverlayScale, in: 0.3...1.2, step: 0.1)
@@ -380,31 +545,6 @@ struct Phase2View: View {
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.trackRecenterSpeed)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
-    }
-
-    private var trackingSectionHeader: some View {
-        HStack {
-            Text("Tracking")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.white)
-            Spacer()
-        }
-        .padding(.top, 8)
-    }
-
-    private var liveStreamSectionHeader: some View {
-        HStack {
-            Text("Live Stream")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.white)
-            Spacer()
-            if pipeline.streamManager.isStreaming {
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: 8, height: 8)
-            }
-        }
-        .padding(.top, 8)
     }
 
     private var rtmpUrlRow: some View {
@@ -522,6 +662,10 @@ struct Phase2View: View {
     }
 
     // MARK: - Helpers
+
+    private func clamp(_ value: Float, _ min: Float, _ max: Float) -> Float {
+        Swift.min(Swift.max(value, min), max)
+    }
 
     private func labeledRow<C: View, V: View>(
         _ label: String,
