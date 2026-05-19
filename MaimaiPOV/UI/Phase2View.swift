@@ -44,7 +44,7 @@ struct Phase2View: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .overlay(FullScreenHelper())
+        .background(FullScreenHelper())
         .preferredColorScheme(.dark)
         .background(Color.black)
         .onAppear {
