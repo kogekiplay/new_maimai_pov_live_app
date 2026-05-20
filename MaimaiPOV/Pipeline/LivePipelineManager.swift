@@ -135,6 +135,7 @@ class LivePipelineManager: ObservableObject {
         self.cropRenderer = cropR
 
         self.overlayCompositor = OverlayCompositor(device: device)
+        self.overlayCompositor?.enabled = overlayEnabled
 
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,

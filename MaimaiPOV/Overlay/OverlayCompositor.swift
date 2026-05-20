@@ -7,7 +7,7 @@ class OverlayCompositor {
     private let uniformsBuffer: MTLBuffer
 
     private(set) var overlayTexture: MTLTexture?
-    var enabled: Bool = true
+    var enabled: Bool = false
     var posX: Float = 0.5
     var posY: Float = 0.5
     var scale: Float = 0.2
@@ -36,45 +36,79 @@ class OverlayCompositor {
 
     private func createTestTexture() {
         let size = 100
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: nil,
+        var pixelData = [UInt8](repeating: 0, count: size * size * 4)
+
+        for y in 0..<size {
+            for x in 0..<size {
+                let idx = (y * size + x) * 4
+                let cx = abs(x - size / 2)
+                let cy = abs(y - size / 2)
+                let isBorder = cx > 40 || cy > 40
+                if isBorder {
+                    pixelData[idx] = 0
+                    pixelData[idx + 1] = 0
+                    pixelData[idx + 2] = 0
+                    pixelData[idx + 3] = 0
+                } else {
+                    let isInner = cx < 15 && cy < 25
+                    if isInner {
+                        pixelData[idx] = 255
+                        pixelData[idx + 1] = 255
+                        pixelData[idx + 2] = 255
+                        pixelData[idx + 3] = 255
+                    } else {
+                        pixelData[idx] = 200
+                        pixelData[idx + 1] = 50
+                        pixelData[idx + 2] = 50
+                        pixelData[idx + 3] = 180
+                    }
+                }
+            }
+        }
+
+        let texDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
             width: size,
             height: size,
-            bitsPerComponent: 8,
-            bytesPerRow: size * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return }
-
-        context.setFillColor(UIColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 0.7).cgColor)
-        context.fill(CGRect(x: 0, y: 0, width: size, height: size))
-
-        context.setFillColor(UIColor.white.cgColor)
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.alignment = .center
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 48, weight: .bold),
-            .foregroundColor: UIColor.white,
-            .paragraphStyle: paragraphStyle
-        ]
-        let str = "M" as NSString
-        let strSize = str.size(withAttributes: attrs)
-        let strRect = CGRect(
-            x: (CGFloat(size) - strSize.width) / 2,
-            y: (CGFloat(size) - strSize.height) / 2,
-            width: strSize.width,
-            height: strSize.height
+            mipmapped: false
         )
-        str.draw(in: strRect, withAttributes: attrs)
+        texDesc.usage = .shaderRead
+        texDesc.storageMode = .shared
 
-        guard let cgImage = context.makeImage() else { return }
-        loadTextureFromCGImage(cgImage)
+        guard let texture = device.makeTexture(descriptor: texDesc) else { return }
+
+        texture.replace(
+            region: MTLRegion(origin: .init(x: 0, y: 0, z: 0),
+                              size: MTLSize(width: size, height: size, depth: 1)),
+            mipmapLevel: 0,
+            withBytes: pixelData,
+            bytesPerRow: size * 4
+        )
+
+        self.overlayTexture = texture
     }
 
-    private func loadTextureFromCGImage(_ cgImage: CGImage) {
+    func loadImage(_ uiImage: UIImage) {
+        guard let cgImage = uiImage.cgImage else { return }
+
         let width = cgImage.width
         let height = cgImage.height
+        let bytesPerRow = width * 4
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        var pixelData = [UInt8](repeating: 0, count: bytesPerRow * height)
+
+        guard let context = CGContext(
+            data: &pixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        ) else { return }
+
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         let texDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm,
@@ -83,30 +117,16 @@ class OverlayCompositor {
             mipmapped: false
         )
         texDesc.usage = .shaderRead
-        texDesc.storageMode = .private
+        texDesc.storageMode = .shared
 
         guard let texture = device.makeTexture(descriptor: texDesc) else { return }
 
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: colorSpace,
-            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
-        ) else { return }
-
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        guard let pixelData = context.data else { return }
         texture.replace(
             region: MTLRegion(origin: .init(x: 0, y: 0, z: 0),
                               size: MTLSize(width: width, height: height, depth: 1)),
             mipmapLevel: 0,
             withBytes: pixelData,
-            bytesPerRow: width * 4
+            bytesPerRow: bytesPerRow
         )
 
         self.overlayTexture = texture
