@@ -20,8 +20,8 @@ kernel void overlayBlend(
 {
     if (gid.x >= uint(u.outWidth) || gid.y >= uint(u.outHeight)) return;
 
-    float overlayPixelW = u.overlayWidth * u.scale;
-    float overlayPixelH = u.overlayHeight * u.scale;
+    float overlayPixelW = u.outWidth * u.scale;
+    float overlayPixelH = overlayPixelW * (u.overlayHeight / u.overlayWidth);
     float centerX = u.posX * u.outWidth;
     float centerY = u.posY * u.outHeight;
     float left = centerX - overlayPixelW / 2.0;
