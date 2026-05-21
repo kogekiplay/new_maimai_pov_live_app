@@ -291,6 +291,47 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: overlayEnabledKey) }
     }
 
+    static let defaultOverlayPosX: Float = 0.5
+    static var overlayPosX: Float {
+        get {
+            guard UserDefaults.standard.object(forKey: overlayPosXKey) != nil else {
+                return defaultOverlayPosX
+            }
+            return Float(UserDefaults.standard.double(forKey: overlayPosXKey))
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: overlayPosXKey) }
+    }
+    static let defaultOverlayPosY: Float = 0.5
+    static var overlayPosY: Float {
+        get {
+            guard UserDefaults.standard.object(forKey: overlayPosYKey) != nil else {
+                return defaultOverlayPosY
+            }
+            return Float(UserDefaults.standard.double(forKey: overlayPosYKey))
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: overlayPosYKey) }
+    }
+    static let defaultOverlayScale: Float = 0.2
+    static var overlayScale: Float {
+        get {
+            guard UserDefaults.standard.object(forKey: overlayScaleKey) != nil else {
+                return defaultOverlayScale
+            }
+            return Float(UserDefaults.standard.double(forKey: overlayScaleKey))
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: overlayScaleKey) }
+    }
+    static let defaultOverlayOpacity: Float = 1.0
+    static var overlayOpacity: Float {
+        get {
+            guard UserDefaults.standard.object(forKey: overlayOpacityKey) != nil else {
+                return defaultOverlayOpacity
+            }
+            return Float(UserDefaults.standard.double(forKey: overlayOpacityKey))
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: overlayOpacityKey) }
+    }
+
     // UserDefaults keys
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
@@ -319,6 +360,10 @@ enum Config {
     private static let smoothingMaxDeviationKey = "com.maimai.smoothingMaxDeviation"
     private static let smoothingCenterFloorKey = "com.maimai.smoothingCenterFloor"
     private static let overlayEnabledKey = "com.maimai.overlayEnabled"
+    private static let overlayPosXKey = "com.maimai.overlayPosX"
+    private static let overlayPosYKey = "com.maimai.overlayPosY"
+    private static let overlayScaleKey = "com.maimai.overlayScale"
+    private static let overlayOpacityKey = "com.maimai.overlayOpacity"
 
     // Video encoding
     static let videoBitrate: Int = 4_000_000

@@ -47,6 +47,10 @@ class LivePipelineManager: ObservableObject {
     @Published var currentFPS: Double = 0
 
     @Published var overlayEnabled: Bool = Config.overlayEnabled
+    @Published var overlayPosX: Float = Config.overlayPosX
+    @Published var overlayPosY: Float = Config.overlayPosY
+    @Published var overlayScale: Float = Config.overlayScale
+    @Published var overlayOpacity: Float = Config.overlayOpacity
 
     let camera = CameraCaptureManager()
     let debug = DebugInfoManager.shared
@@ -585,6 +589,23 @@ class LivePipelineManager: ObservableObject {
     @MainActor func updateOverlayEnabled() {
         Config.overlayEnabled = overlayEnabled
         overlayCompositor?.enabled = overlayEnabled
+    }
+
+    @MainActor func updateOverlayPosition() {
+        Config.overlayPosX = overlayPosX
+        Config.overlayPosY = overlayPosY
+        overlayCompositor?.posX = overlayPosX
+        overlayCompositor?.posY = overlayPosY
+    }
+
+    @MainActor func updateOverlayScale() {
+        Config.overlayScale = overlayScale
+        overlayCompositor?.scale = overlayScale
+    }
+
+    @MainActor func updateOverlayOpacity() {
+        Config.overlayOpacity = overlayOpacity
+        overlayCompositor?.opacity = overlayOpacity
     }
 
     private func startTemperatureTimer() {
