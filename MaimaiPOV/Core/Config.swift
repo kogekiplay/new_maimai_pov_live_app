@@ -331,6 +331,16 @@ enum Config {
         }
         set { UserDefaults.standard.set(Double(newValue), forKey: overlayOpacityKey) }
     }
+    static let defaultOverlayRotation: Float = 0.0
+    static var overlayRotation: Float {
+        get {
+            guard UserDefaults.standard.object(forKey: overlayRotationKey) != nil else {
+                return defaultOverlayRotation
+            }
+            return Float(UserDefaults.standard.double(forKey: overlayRotationKey))
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: overlayRotationKey) }
+    }
 
     // UserDefaults keys
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
@@ -364,6 +374,7 @@ enum Config {
     private static let overlayPosYKey = "com.maimai.overlayPosY"
     private static let overlayScaleKey = "com.maimai.overlayScale"
     private static let overlayOpacityKey = "com.maimai.overlayOpacity"
+    private static let overlayRotationKey = "com.maimai.overlayRotation"
 
     // Video encoding
     static let videoBitrate: Int = 4_000_000

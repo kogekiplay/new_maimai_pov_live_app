@@ -87,6 +87,7 @@ struct Phase2View: View {
         .onChange(of: pipeline.overlayPosY) { _ in pipeline.updateOverlayPosition() }
         .onChange(of: pipeline.overlayScale) { _ in pipeline.updateOverlayScale() }
         .onChange(of: pipeline.overlayOpacity) { _ in pipeline.updateOverlayOpacity() }
+        .onChange(of: pipeline.overlayRotation) { _ in pipeline.updateOverlayRotation() }
         .onChange(of: pipeline.streamManager.isStreaming) { streaming in
             if streaming {
                 pipeline.debug.isDetailVisible = false
@@ -286,6 +287,7 @@ struct Phase2View: View {
             overlayPosYRow
             overlayScaleRow
             overlayOpacityRow
+            overlayRotationRow
 
             Button {
                 withAnimation {
@@ -624,7 +626,7 @@ struct Phase2View: View {
 
     private var overlayScaleRow: some View {
         labeledRow("OScale") {
-            Slider(value: $pipeline.overlayScale, in: 0.05...1.5, step: 0.01)
+            Slider(value: $pipeline.overlayScale, in: 0.05...3.0, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayScale)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -636,6 +638,15 @@ struct Phase2View: View {
             Slider(value: $pipeline.overlayOpacity, in: 0...1, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayOpacity)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+        }
+        .disabled(!pipeline.overlayEnabled)
+    }
+
+    private var overlayRotationRow: some View {
+        labeledRow("ORot") {
+            Slider(value: $pipeline.overlayRotation, in: 0...360, step: 1)
+        } valueLabel: {
+            Text("\(Int(pipeline.overlayRotation))°").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
         .disabled(!pipeline.overlayEnabled)
     }

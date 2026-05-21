@@ -6,6 +6,7 @@ struct OverlayUniforms {
     float posY;
     float scale;
     float opacity;
+    float rotation;
     float overlayWidth;
     float overlayHeight;
     float outWidth;
@@ -24,11 +25,18 @@ kernel void overlayBlend(
     float overlayPixelH = overlayPixelW * (u.overlayHeight / u.overlayWidth);
     float centerX = u.posX * u.outWidth;
     float centerY = u.posY * u.outHeight;
-    float left = centerX - overlayPixelW / 2.0;
-    float top = centerY - overlayPixelH / 2.0;
 
-    float relX = (float(gid.x) - left) / overlayPixelW;
-    float relY = (float(gid.y) - top) / overlayPixelH;
+    float dx = float(gid.x) - centerX;
+    float dy = float(gid.y) - centerY;
+
+    float cosR = cos(u.rotation);
+    float sinR = sin(u.rotation);
+
+    float rotDx = dx * cosR + dy * sinR;
+    float rotDy = -dx * sinR + dy * cosR;
+
+    float relX = (rotDx + overlayPixelW / 2.0) / overlayPixelW;
+    float relY = (rotDy + overlayPixelH / 2.0) / overlayPixelH;
 
     if (relX < 0.0 || relX > 1.0 || relY < 0.0 || relY > 1.0) return;
 

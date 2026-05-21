@@ -12,6 +12,7 @@ class OverlayCompositor {
     var posY: Float = 0.5
     var scale: Float = 0.2
     var opacity: Float = 1.0
+    var rotation: Float = 0.0
 
     let outWidth = Config.outputWidth
     let outHeight = Config.outputHeight
@@ -166,6 +167,7 @@ class OverlayCompositor {
         uniforms.posY = posY
         uniforms.scale = scale
         uniforms.opacity = opacity
+        uniforms.rotation = rotation
         uniforms.overlayWidth = Float(overlayTex.width)
         uniforms.overlayHeight = Float(overlayTex.height)
         uniforms.outWidth = Float(outWidth)

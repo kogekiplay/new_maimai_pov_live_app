@@ -51,6 +51,7 @@ class LivePipelineManager: ObservableObject {
     @Published var overlayPosY: Float = Config.overlayPosY
     @Published var overlayScale: Float = Config.overlayScale
     @Published var overlayOpacity: Float = Config.overlayOpacity
+    @Published var overlayRotation: Float = Config.overlayRotation
 
     let camera = CameraCaptureManager()
     let debug = DebugInfoManager.shared
@@ -144,6 +145,7 @@ class LivePipelineManager: ObservableObject {
         self.overlayCompositor?.posY = overlayPosY
         self.overlayCompositor?.scale = overlayScale
         self.overlayCompositor?.opacity = overlayOpacity
+        self.overlayCompositor?.rotation = overlayRotation * .pi / 180.0
 
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
@@ -610,6 +612,11 @@ class LivePipelineManager: ObservableObject {
     @MainActor func updateOverlayOpacity() {
         Config.overlayOpacity = overlayOpacity
         overlayCompositor?.opacity = overlayOpacity
+    }
+
+    @MainActor func updateOverlayRotation() {
+        Config.overlayRotation = overlayRotation
+        overlayCompositor?.rotation = overlayRotation * .pi / 180.0
     }
 
     func loadOverlayImage(_ image: UIImage) {

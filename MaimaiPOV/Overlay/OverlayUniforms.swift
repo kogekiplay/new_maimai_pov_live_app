@@ -5,6 +5,7 @@ struct OverlayUniforms {
     var posY: Float = 0.5
     var scale: Float = 0.2
     var opacity: Float = 1.0
+    var rotation: Float = 0.0
     var overlayWidth: Float = 0
     var overlayHeight: Float = 0
     var outWidth: Float = Float(Config.outputWidth)
