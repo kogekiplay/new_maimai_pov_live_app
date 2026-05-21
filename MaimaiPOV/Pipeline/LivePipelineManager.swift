@@ -140,6 +140,10 @@ class LivePipelineManager: ObservableObject {
 
         self.overlayCompositor = OverlayCompositor(device: device)
         self.overlayCompositor?.enabled = overlayEnabled
+        self.overlayCompositor?.posX = overlayPosX
+        self.overlayCompositor?.posY = overlayPosY
+        self.overlayCompositor?.scale = overlayScale
+        self.overlayCompositor?.opacity = overlayOpacity
 
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
