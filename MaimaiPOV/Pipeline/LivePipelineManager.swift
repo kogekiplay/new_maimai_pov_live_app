@@ -612,6 +612,10 @@ class LivePipelineManager: ObservableObject {
         overlayCompositor?.opacity = overlayOpacity
     }
 
+    func loadOverlayImage(_ image: UIImage) {
+        overlayCompositor?.loadImage(image)
+    }
+
     private func startTemperatureTimer() {
         temperatureTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             self?.updateDeviceTemperature()

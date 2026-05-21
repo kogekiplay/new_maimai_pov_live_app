@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 import Metal
 import UIKit
+import PhotosUI
 
 private enum ControlTab: String, CaseIterable {
     case camera = "拍摄"
@@ -34,6 +35,8 @@ struct Phase2View: View {
     @State private var rotationStarted = false
     @AppStorage("rtmpUrl") private var rtmpUrl: String = ""
     @AppStorage("streamKey") private var streamKey: String = ""
+    @State private var showImagePicker = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -576,6 +579,24 @@ struct Phase2View: View {
         HStack {
             Text("Overlay").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.overlayEnabled).labelsHidden()
+            Spacer()
+            PhotosPicker(selection: $selectedPhotoItem,
+                         matching: .images,
+                         photoLibrary: .shared()) {
+                Image(systemName: "photo")
+                    .font(.caption)
+                    .foregroundColor(pipeline.overlayEnabled ? .cyan : .gray)
+            }
+            .disabled(!pipeline.overlayEnabled)
+            .onChange(of: selectedPhotoItem) { newItem in
+                guard let newItem = newItem else { return }
+                Task {
+                    if let data = try? await newItem.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        pipeline.loadOverlayImage(image)
+                    }
+                }
+            }
             Spacer()
             Text(pipeline.overlayEnabled ? "ON" : "OFF")
                 .font(.caption2)

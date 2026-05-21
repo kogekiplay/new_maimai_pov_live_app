@@ -18,6 +18,8 @@
 	<string>MaimaiPOV requires camera access for live streaming</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MaimaiPOV requires microphone access for ambient audio capture</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MaimaiPOV需要访问相册以选择叠加到直播画面的图片</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>
