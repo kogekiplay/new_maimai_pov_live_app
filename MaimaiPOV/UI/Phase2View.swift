@@ -606,7 +606,7 @@ struct Phase2View: View {
 
     private var overlayPosXRow: some View {
         labeledRow("OX") {
-            Slider(value: $pipeline.overlayPosX, in: 0...1, step: 0.01)
+            Slider(value: $pipeline.overlayPosX, in: -0.5...1.5, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayPosX)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -615,7 +615,7 @@ struct Phase2View: View {
 
     private var overlayPosYRow: some View {
         labeledRow("OY") {
-            Slider(value: $pipeline.overlayPosY, in: 0...1, step: 0.01)
+            Slider(value: $pipeline.overlayPosY, in: -0.5...1.5, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayPosY)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -624,7 +624,7 @@ struct Phase2View: View {
 
     private var overlayScaleRow: some View {
         labeledRow("OScale") {
-            Slider(value: $pipeline.overlayScale, in: 0.05...0.5, step: 0.01)
+            Slider(value: $pipeline.overlayScale, in: 0.05...1.5, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayScale)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }

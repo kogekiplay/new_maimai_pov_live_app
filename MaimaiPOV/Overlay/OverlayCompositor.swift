@@ -16,6 +16,11 @@ class OverlayCompositor {
     let outWidth = Config.outputWidth
     let outHeight = Config.outputHeight
 
+    private static let overlayImageURL: URL = {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return dir.appendingPathComponent("overlay_image.png")
+    }()
+
     init?(device: MTLDevice) {
         self.device = device
 
@@ -31,7 +36,18 @@ class OverlayCompositor {
             options: .storageModeShared
         )!
 
-        createTestTexture()
+        loadPersistedImage()
+    }
+
+    private func loadPersistedImage() {
+        let url = Self.overlayImageURL
+        guard FileManager.default.fileExists(atPath: url.path),
+              let data = try? Data(contentsOf: url),
+              let image = UIImage(data: data) else {
+            createTestTexture()
+            return
+        }
+        loadImageToTexture(image)
     }
 
     private func createTestTexture() {
@@ -57,9 +73,9 @@ class OverlayCompositor {
                         pixelData[idx + 2] = 255
                         pixelData[idx + 3] = 255
                     } else {
-                        pixelData[idx] = 200
+                        pixelData[idx] = 50
                         pixelData[idx + 1] = 50
-                        pixelData[idx + 2] = 50
+                        pixelData[idx + 2] = 200
                         pixelData[idx + 3] = 180
                     }
                 }
@@ -89,6 +105,11 @@ class OverlayCompositor {
     }
 
     func loadImage(_ uiImage: UIImage) {
+        loadImageToTexture(uiImage)
+        persistImage(uiImage)
+    }
+
+    private func loadImageToTexture(_ uiImage: UIImage) {
         guard let cgImage = uiImage.cgImage else { return }
 
         let width = cgImage.width
@@ -130,6 +151,11 @@ class OverlayCompositor {
         )
 
         self.overlayTexture = texture
+    }
+
+    private func persistImage(_ uiImage: UIImage) {
+        guard let data = uiImage.pngData() else { return }
+        try? data.write(to: Self.overlayImageURL)
     }
 
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
