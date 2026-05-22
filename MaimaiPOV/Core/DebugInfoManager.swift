@@ -4,7 +4,7 @@ import SwiftUI
 class DebugInfoManager: ObservableObject {
     static let shared = DebugInfoManager()
 
-    var isDetailVisible: Bool = true
+    var isDetailVisible: Bool = false
     var isStreaming: Bool = false
 
     var shouldThrottle: Bool {

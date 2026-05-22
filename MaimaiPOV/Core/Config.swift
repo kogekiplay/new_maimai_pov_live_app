@@ -142,7 +142,7 @@ enum Config {
         }
         set { UserDefaults.standard.set(newValue, forKey: acquireSpeedKey) }
     }
-    static let defaultConfidenceThreshold: Float = 0.6
+    static let defaultConfidenceThreshold: Float = 0.75
 
     static let defaultSmoothingEnabled: Bool = true
     static let defaultSmoothingBaseAlpha: Double = 0.3
