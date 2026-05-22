@@ -106,7 +106,7 @@ struct Phase2View: View {
                 if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
                     if let texture = pipeline.previewTexture {
                         MetalView(device: pipeline.device, texture: texture, previewEnabled: pipeline.previewEnabled)
-                            .aspectRatio(pipeline.isCropActive ? 9.0 / 16.0 : 3.0 / 4.0, contentMode: .fit)
+                            .aspectRatio(pipeline.isCropActive ? CGFloat(Config.outputWidth) / CGFloat(Config.outputHeight) : 3.0 / 4.0, contentMode: .fit)
                     }
                 } else if pipeline.camera.cameraAuthorized {
                     CameraPreviewView(session: pipeline.camera.session)
