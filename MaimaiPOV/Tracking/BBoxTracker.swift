@@ -31,7 +31,6 @@ class BBoxTracker {
     private let stabWidth = Float(Config.stabWidth)
     private let stabHeight = Float(Config.stabHeight)
     private let outputRatio: Float = Float(Config.outputWidth) / Float(Config.outputHeight)
-    private let acquireThreshold: Float = 5.0
 
     private var lastCx: Float
     private var lastCy: Float
@@ -51,6 +50,13 @@ class BBoxTracker {
     private var lastRawW: Float = 0
     private var lastRawH: Float = 0
     private var lastSmoothSize: Float = 0
+
+    private var acquireProgress: Float = 0
+    private var acquireStartCx: Float = 0
+    private var acquireStartCy: Float = 0
+    private var acquireStartCropW: Float = 0
+    private var acquireStartCropH: Float = 0
+    private var acquireStarted: Bool = false
 
     init() {
         lastCx = stabWidth / 2.0
@@ -103,23 +109,30 @@ class BBoxTracker {
             let cropH = desiredCropH
             let cropW = cropH * outputRatio
 
-            let targetCx = smoothCx
-            let targetCy = smoothCy
-            let targetCropW = cropW
-            let targetCropH = cropH
-
             if currentState == "recenter" || currentState == "grace" || currentState == "acquiring" || currentState == "idle" {
-                lastCx = smoothCx
-                lastCy = smoothCy
-                lastCropW += (targetCropW - lastCropW) * acquireSpeed
-                lastCropH += (targetCropH - lastCropH) * acquireSpeed
+                if !acquireStarted {
+                    acquireStartCx = lastCx
+                    acquireStartCy = lastCy
+                    acquireStartCropW = lastCropW
+                    acquireStartCropH = lastCropH
+                    acquireProgress = 0
+                    acquireStarted = true
+                }
 
-                let cropDiff = abs(targetCropH - lastCropH)
-                let cropThreshold = max(acquireThreshold, targetCropH * 0.02)
+                acquireProgress = min(1.0, acquireProgress + acquireSpeed * 0.2)
+                let t = smoothstep(acquireProgress)
 
-                if cropDiff < cropThreshold {
-                    lastCropW = targetCropW
-                    lastCropH = targetCropH
+                lastCx = acquireStartCx * (1.0 - t) + smoothCx * t
+                lastCy = acquireStartCy * (1.0 - t) + smoothCy * t
+                lastCropW = acquireStartCropW * (1.0 - t) + cropW * t
+                lastCropH = acquireStartCropH * (1.0 - t) + cropH * t
+
+                if acquireProgress >= 1.0 {
+                    acquireStarted = false
+                    lastCx = smoothCx
+                    lastCy = smoothCy
+                    lastCropW = cropW
+                    lastCropH = cropH
                     currentState = "tracking"
                 } else {
                     currentState = "acquiring"
@@ -141,6 +154,7 @@ class BBoxTracker {
                 )
             }
 
+            acquireStarted = false
             lastCx = smoothCx
             lastCy = smoothCy
             lastCropW = cropW
@@ -163,6 +177,7 @@ class BBoxTracker {
             )
         } else if wasDetected {
             smoothInitialized = false
+            acquireStarted = false
 
             let now = CACurrentMediaTime()
             if lastLostTime == 0 {
@@ -250,5 +265,11 @@ class BBoxTracker {
         currentState = "idle"
         smoothInitialized = false
         lastLostTime = 0
+        acquireStarted = false
+        acquireProgress = 0
+    }
+
+    private func smoothstep(_ t: Float) -> Float {
+        return t * t * (3.0 - 2.0 * t)
     }
 }
