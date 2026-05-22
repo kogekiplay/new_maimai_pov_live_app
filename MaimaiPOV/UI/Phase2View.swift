@@ -22,6 +22,7 @@ struct Phase2View: View {
     @StateObject private var pipeline = LivePipelineManager()
     @State private var selectedTab: ControlTab = .camera
     @State private var panelExpanded: Bool = true
+    @State private var previewOverride: Bool = false
     @State private var advancedExpanded: Bool = false
     @State private var presets: [StreamPreset] = Config.streamPresets
     @State private var showAddPresetSheet = false
@@ -198,13 +199,24 @@ struct Phase2View: View {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     panelExpanded.toggle()
+                    previewOverride = false
+                    pipeline.previewEnabled = panelExpanded
                 }
             } label: {
                 HStack {
-                    Text(panelExpanded ? selectedTab.rawValue : "Controls")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
+                    if panelExpanded {
+                        Text(selectedTab.rawValue)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                    } else {
+                        Circle()
+                            .fill(statusColor(pipeline.streamManager.streamStatus))
+                            .frame(width: 8, height: 8)
+                        Text(pipeline.streamManager.streamStatus)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(statusColor(pipeline.streamManager.streamStatus))
+                    }
                     Spacer()
                     Image(systemName: panelExpanded ? "chevron.down" : "chevron.up")
                         .font(.caption2)
@@ -256,6 +268,9 @@ struct Phase2View: View {
             lensPicker
             isoRow
             autoFocusRow
+            if !pipeline.autoFocusEnabled {
+                focusRow
+            }
             stabilizerToggleRow
         }
         .padding(12)
@@ -268,13 +283,17 @@ struct Phase2View: View {
             fovRow
             distRatioRow
             yoloToggleRow
-            yoloOverlayToggleRow
+            if pipeline.yoloEnabled {
+                yoloOverlayToggleRow
+            }
             overlayToggleRow
-            overlayPosXRow
-            overlayPosYRow
-            overlayScaleRow
-            overlayOpacityRow
-            overlayRotationRow
+            if pipeline.overlayEnabled {
+                overlayPosXRow
+                overlayPosYRow
+                overlayScaleRow
+                overlayOpacityRow
+                overlayRotationRow
+            }
 
             Button {
                 withAnimation {
@@ -299,9 +318,11 @@ struct Phase2View: View {
                     acquireSpeedRow
                     cropVerticalOffsetRow
                     smoothingToggleRow
-                    smoothingBaseAlphaRow
-                    smoothingDeviationRow
-                    smoothingCenterFloorRow
+                    if pipeline.smoothingEnabled {
+                        smoothingBaseAlphaRow
+                        smoothingDeviationRow
+                        smoothingCenterFloorRow
+                    }
                 }
             }
         }
@@ -428,13 +449,27 @@ struct Phase2View: View {
         }
     }
 
+    private var focusRow: some View {
+        labeledRow("Focus") {
+            Slider(value: $pipeline.focusValue, in: 0...1)
+        } valueLabel: {
+            Text(String(format: "%.2f", pipeline.focusValue)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+        }
+    }
+
     private var stabilizerToggleRow: some View {
         HStack {
             Text("Stabilizer").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.stabEnabled).labelsHidden()
             Spacer()
             Text("Preview").font(.caption2).foregroundColor(.gray)
-            Toggle("", isOn: $pipeline.previewEnabled).labelsHidden()
+            Toggle("", isOn: Binding(
+                get: { pipeline.previewEnabled },
+                set: { newValue in
+                    previewOverride = true
+                    pipeline.previewEnabled = newValue
+                }
+            )).labelsHidden()
             Spacer()
             Text("Lag: \(String(format: "%.1f", pipeline.lagMs))ms")
                 .font(.caption2).foregroundColor(.gray)
