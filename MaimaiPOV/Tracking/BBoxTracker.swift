@@ -27,7 +27,7 @@ class BBoxTracker {
 
     private let stabWidth = Float(Config.stabWidth)
     private let stabHeight = Float(Config.stabHeight)
-    private let outputRatio: Float = 9.0 / 16.0
+    private let outputRatio: Float = Float(Config.outputWidth) / Float(Config.outputHeight)
 
     private var lastCx: Float
     private var lastCy: Float

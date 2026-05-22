@@ -53,6 +53,8 @@ class LivePipelineManager: ObservableObject {
     @Published var overlayOpacity: Float = Config.overlayOpacity
     @Published var overlayRotation: Float = Config.overlayRotation
 
+    @Published var cropVerticalOffset: Float = Config.cropVerticalOffset
+
     let camera = CameraCaptureManager()
     let debug = DebugInfoManager.shared
     let device: MTLDevice = MTLCreateSystemDefaultDevice()!
@@ -284,9 +286,10 @@ class LivePipelineManager: ObservableObject {
                 } else {
                     let stabW = Float(Config.stabWidth)
                     let stabH = Float(Config.stabHeight)
+                    let outputRatio = Float(Config.outputWidth) / Float(Config.outputHeight)
                     track = BBoxTracker.TrackOutput(
                         cx: stabW / 2.0, cy: stabH / 2.0,
-                        cropW: stabH * (9.0 / 16.0), cropH: stabH,
+                        cropW: stabH * outputRatio, cropH: stabH,
                         detected: false, state: "nofallback"
                     )
                 }
@@ -436,7 +439,7 @@ class LivePipelineManager: ObservableObject {
                     self.currentFPS = Double(count)
                     self.debug.fps = Double(count)
                     self.debug.frameCount = count
-                    self.debug.streamInfo = "\(streamCount) bufs/s 720x1280"
+                    self.debug.streamInfo = "\(streamCount) bufs/s \(Config.outputWidth)x\(Config.outputHeight)"
                     self.debug.yoloActualFPS = self.yoloDetector?.actualFPS ?? 0
                 }
             }
@@ -617,6 +620,10 @@ class LivePipelineManager: ObservableObject {
     @MainActor func updateOverlayRotation() {
         Config.overlayRotation = overlayRotation
         overlayCompositor?.rotation = overlayRotation * .pi / 180.0
+    }
+
+    @MainActor func updateCropVerticalOffset() {
+        Config.cropVerticalOffset = cropVerticalOffset
     }
 
     func loadOverlayImage(_ image: UIImage) {

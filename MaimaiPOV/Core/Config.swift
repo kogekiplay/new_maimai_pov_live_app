@@ -56,7 +56,7 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: yoloTargetFPSKey) }
     }
     static let outputWidth  = 720
-    static let outputHeight = 1280
+    static let outputHeight = 1440
 
     // Camera settings
     static let defaultFocusValue: Double = 0.5
@@ -342,6 +342,17 @@ enum Config {
         set { UserDefaults.standard.set(Double(newValue), forKey: overlayRotationKey) }
     }
 
+    static let defaultCropVerticalOffset: Float = 0.0
+    static var cropVerticalOffset: Float {
+        get {
+            guard UserDefaults.standard.object(forKey: cropVerticalOffsetKey) != nil else {
+                return defaultCropVerticalOffset
+            }
+            return Float(UserDefaults.standard.double(forKey: cropVerticalOffsetKey))
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: cropVerticalOffsetKey) }
+    }
+
     // UserDefaults keys
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
@@ -375,6 +386,7 @@ enum Config {
     private static let overlayScaleKey = "com.maimai.overlayScale"
     private static let overlayOpacityKey = "com.maimai.overlayOpacity"
     private static let overlayRotationKey = "com.maimai.overlayRotation"
+    private static let cropVerticalOffsetKey = "com.maimai.cropVerticalOffset"
 
     // Video encoding
     static let videoBitrate: Int = 4_000_000
