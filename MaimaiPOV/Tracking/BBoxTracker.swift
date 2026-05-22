@@ -1,4 +1,5 @@
 import Foundation
+import QuartzCore
 
 class BBoxTracker {
 
@@ -18,6 +19,8 @@ class BBoxTracker {
 
     var targetRatio: Float = Float(Config.trackTargetRatio)
     var recenterSpeed: Float = Float(Config.defaultRecenterSpeed)
+    var recenterGraceMs: Float = Float(Config.defaultRecenterGraceMs)
+    var acquireSpeed: Float = Float(Config.defaultAcquireSpeed)
 
     var smoothingEnabled: Bool = Config.smoothingEnabled
     var smoothingBaseAlpha: Float = Float(Config.smoothingBaseAlpha)
@@ -28,6 +31,7 @@ class BBoxTracker {
     private let stabWidth = Float(Config.stabWidth)
     private let stabHeight = Float(Config.stabHeight)
     private let outputRatio: Float = Float(Config.outputWidth) / Float(Config.outputHeight)
+    private let acquireThreshold: Float = 5.0
 
     private var lastCx: Float
     private var lastCy: Float
@@ -35,6 +39,7 @@ class BBoxTracker {
     private var lastCropH: Float
     private var wasDetected: Bool = false
     private var currentState: String = "idle"
+    private var lastLostTime: Double = 0
 
     private var smoothCx: Float = 0
     private var smoothCy: Float = 0
@@ -56,6 +61,8 @@ class BBoxTracker {
 
     func update(detected: Bool, stabCx: Float, stabCy: Float, stabW: Float, stabH: Float) -> TrackOutput {
         if detected {
+            lastLostTime = 0
+
             let rawSize = (stabW + stabH) / 2.0
             let ratio = stabW / max(stabH, 0.001)
             lastAspectRatio = ratio
@@ -96,6 +103,44 @@ class BBoxTracker {
             let cropH = desiredCropH
             let cropW = cropH * outputRatio
 
+            let targetCx = smoothCx
+            let targetCy = smoothCy
+            let targetCropW = cropW
+            let targetCropH = cropH
+
+            if currentState == "recenter" || currentState == "grace" || currentState == "acquiring" || currentState == "idle" {
+                lastCx += (targetCx - lastCx) * acquireSpeed
+                lastCy += (targetCy - lastCy) * acquireSpeed
+                lastCropW += (targetCropW - lastCropW) * acquireSpeed
+                lastCropH += (targetCropH - lastCropH) * acquireSpeed
+
+                let dist = hypot(targetCx - lastCx, targetCy - lastCy)
+
+                if dist < acquireThreshold {
+                    smoothCx = lastCx
+                    smoothCy = lastCy
+                    smoothSize = lastCropH / (1.0 + targetRatio)
+                    currentState = "tracking"
+                } else {
+                    currentState = "acquiring"
+                }
+
+                wasDetected = true
+                return TrackOutput(
+                    cx: lastCx,
+                    cy: lastCy,
+                    cropW: lastCropW,
+                    cropH: lastCropH,
+                    detected: true,
+                    state: currentState,
+                    rawW: stabW,
+                    rawH: stabH,
+                    smoothSize: lastSmoothSize,
+                    trust: lastTrust,
+                    aspectRatio: ratio
+                )
+            }
+
             lastCx = smoothCx
             lastCy = smoothCy
             lastCropW = cropW
@@ -118,6 +163,30 @@ class BBoxTracker {
             )
         } else if wasDetected {
             smoothInitialized = false
+
+            let now = CACurrentMediaTime()
+            if lastLostTime == 0 {
+                lastLostTime = now
+            }
+
+            let elapsed = (now - lastLostTime) * 1000.0
+
+            if elapsed < Double(recenterGraceMs) {
+                currentState = "grace"
+                return TrackOutput(
+                    cx: lastCx,
+                    cy: lastCy,
+                    cropW: lastCropW,
+                    cropH: lastCropH,
+                    detected: false,
+                    state: currentState,
+                    rawW: lastRawW,
+                    rawH: lastRawH,
+                    smoothSize: lastSmoothSize,
+                    trust: lastTrust,
+                    aspectRatio: lastAspectRatio
+                )
+            }
 
             let centerCx = stabWidth / 2.0
             let centerCy = stabHeight / 2.0
@@ -180,5 +249,6 @@ class BBoxTracker {
         wasDetected = false
         currentState = "idle"
         smoothInitialized = false
+        lastLostTime = 0
     }
 }

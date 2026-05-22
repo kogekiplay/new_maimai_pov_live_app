@@ -122,6 +122,26 @@ enum Config {
         }
         set { UserDefaults.standard.set(newValue, forKey: trackRecenterSpeedKey) }
     }
+    static let defaultRecenterGraceMs: Double = 500.0
+    static var recenterGraceMs: Double {
+        get {
+            guard UserDefaults.standard.object(forKey: recenterGraceMsKey) != nil else {
+                return defaultRecenterGraceMs
+            }
+            return UserDefaults.standard.double(forKey: recenterGraceMsKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: recenterGraceMsKey) }
+    }
+    static let defaultAcquireSpeed: Float = 0.15
+    static var acquireSpeed: Double {
+        get {
+            guard UserDefaults.standard.object(forKey: acquireSpeedKey) != nil else {
+                return Double(defaultAcquireSpeed)
+            }
+            return UserDefaults.standard.double(forKey: acquireSpeedKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: acquireSpeedKey) }
+    }
     static let defaultConfidenceThreshold: Float = 0.6
 
     static let defaultSmoothingEnabled: Bool = true
@@ -375,6 +395,8 @@ enum Config {
     private static let yoloEnabledKey = "com.maimai.yoloEnabled"
     private static let trackTargetRatioKey = "com.maimai.trackTargetRatio"
     private static let trackRecenterSpeedKey = "com.maimai.trackRecenterSpeed"
+    private static let recenterGraceMsKey = "com.maimai.recenterGraceMs"
+    private static let acquireSpeedKey = "com.maimai.acquireSpeed"
     private static let smoothingEnabledKey = "com.maimai.smoothingEnabled"
     private static let smoothingBaseAlphaKey = "com.maimai.smoothingBaseAlpha"
     private static let smoothingMinDeviationKey = "com.maimai.smoothingMinDeviation"

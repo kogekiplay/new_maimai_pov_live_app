@@ -77,6 +77,8 @@ struct Phase2View: View {
         }
         .onChange(of: pipeline.trackTargetRatio) { _ in pipeline.updateTrackTargetRatio() }
         .onChange(of: pipeline.trackRecenterSpeed) { _ in pipeline.updateTrackRecenterSpeed() }
+        .onChange(of: pipeline.recenterGraceMs) { _ in pipeline.updateRecenterGraceMs() }
+        .onChange(of: pipeline.acquireSpeed) { _ in pipeline.updateAcquireSpeed() }
         .onChange(of: pipeline.smoothingEnabled) { _ in pipeline.updateSmoothingEnabled() }
         .onChange(of: pipeline.smoothingBaseAlpha) { _ in pipeline.updateSmoothingBaseAlpha() }
         .onChange(of: pipeline.smoothingMinDeviation) { _ in pipeline.updateSmoothingMinDeviation() }
@@ -309,6 +311,8 @@ struct Phase2View: View {
                     yoloTargetFPSRow
                     trackTargetRatioRow
                     trackRecenterSpeedRow
+                    recenterGraceMsRow
+                    acquireSpeedRow
                     cropVerticalOffsetRow
                     smoothingToggleRow
                     smoothingBaseAlphaRow
@@ -665,6 +669,22 @@ struct Phase2View: View {
             Slider(value: $pipeline.trackRecenterSpeed, in: 0.05...0.5, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.trackRecenterSpeed)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+        }
+    }
+
+    private var recenterGraceMsRow: some View {
+        labeledRow("Grace") {
+            Slider(value: $pipeline.recenterGraceMs, in: 0...2000, step: 50)
+        } valueLabel: {
+            Text("\(Int(pipeline.recenterGraceMs))ms").font(.caption).foregroundColor(.gray).frame(width: 50, alignment: .trailing)
+        }
+    }
+
+    private var acquireSpeedRow: some View {
+        labeledRow("Acquire") {
+            Slider(value: $pipeline.acquireSpeed, in: 0.05...0.5, step: 0.01)
+        } valueLabel: {
+            Text(String(format: "%.2f", pipeline.acquireSpeed)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 

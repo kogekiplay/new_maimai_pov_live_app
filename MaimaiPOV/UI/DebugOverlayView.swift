@@ -115,6 +115,8 @@ struct DebugOverlayView: View {
             sectionHeader("TRACK")
             infoRow("State", debug.trackState == "tracking" && debug.trackTrust < 1.0 ? "tracking*" : debug.trackState,
                     color: debug.trackState == "tracking" ? (debug.trackTrust < 1.0 ? .yellow : .green) :
+                           debug.trackState == "acquiring" ? .cyan :
+                           debug.trackState == "grace" ? .yellow :
                            debug.trackState == "recenter" ? .yellow : .orange)
             infoRow("Crop", String(format: "%.0f×%.0f @%.0f,%.0f",
                 debug.trackCropW, debug.trackCropH,

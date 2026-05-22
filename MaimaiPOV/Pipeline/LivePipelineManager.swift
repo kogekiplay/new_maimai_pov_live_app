@@ -37,6 +37,8 @@ class LivePipelineManager: ObservableObject {
 
     @Published var trackTargetRatio: Double = Config.trackTargetRatio
     @Published var trackRecenterSpeed: Double = Config.trackRecenterSpeed
+    @Published var recenterGraceMs: Double = Config.recenterGraceMs
+    @Published var acquireSpeed: Double = Config.acquireSpeed
 
     @Published var smoothingEnabled: Bool = Config.smoothingEnabled
     @Published var smoothingBaseAlpha: Double = Config.smoothingBaseAlpha
@@ -157,6 +159,8 @@ class LivePipelineManager: ObservableObject {
 
         bboxTracker.targetRatio = Float(trackTargetRatio)
         bboxTracker.recenterSpeed = Float(trackRecenterSpeed)
+        bboxTracker.recenterGraceMs = Float(recenterGraceMs)
+        bboxTracker.acquireSpeed = Float(acquireSpeed)
         bboxTracker.smoothingEnabled = smoothingEnabled
         bboxTracker.smoothingBaseAlpha = Float(smoothingBaseAlpha)
         bboxTracker.smoothingMinDeviation = Float(smoothingMinDeviation)
@@ -567,6 +571,16 @@ class LivePipelineManager: ObservableObject {
         Config.trackRecenterSpeed = trackRecenterSpeed
         bboxTracker.recenterSpeed = Float(trackRecenterSpeed)
         debug.trackRecenterSpeed = Float(trackRecenterSpeed)
+    }
+
+    @MainActor func updateRecenterGraceMs() {
+        Config.recenterGraceMs = recenterGraceMs
+        bboxTracker.recenterGraceMs = Float(recenterGraceMs)
+    }
+
+    @MainActor func updateAcquireSpeed() {
+        Config.acquireSpeed = acquireSpeed
+        bboxTracker.acquireSpeed = Float(acquireSpeed)
     }
 
     @MainActor func updateSmoothingEnabled() {
