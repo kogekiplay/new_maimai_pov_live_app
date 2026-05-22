@@ -109,17 +109,17 @@ class BBoxTracker {
             let targetCropH = cropH
 
             if currentState == "recenter" || currentState == "grace" || currentState == "acquiring" || currentState == "idle" {
-                lastCx += (targetCx - lastCx) * acquireSpeed
-                lastCy += (targetCy - lastCy) * acquireSpeed
+                lastCx = smoothCx
+                lastCy = smoothCy
                 lastCropW += (targetCropW - lastCropW) * acquireSpeed
                 lastCropH += (targetCropH - lastCropH) * acquireSpeed
 
-                let dist = hypot(targetCx - lastCx, targetCy - lastCy)
+                let cropDiff = abs(targetCropH - lastCropH)
+                let cropThreshold = max(acquireThreshold, targetCropH * 0.02)
 
-                if dist < acquireThreshold {
-                    smoothCx = lastCx
-                    smoothCy = lastCy
-                    smoothSize = lastCropH / (1.0 + targetRatio)
+                if cropDiff < cropThreshold {
+                    lastCropW = targetCropW
+                    lastCropH = targetCropH
                     currentState = "tracking"
                 } else {
                     currentState = "acquiring"
