@@ -129,6 +129,7 @@ struct DebugOverlayView: View {
             infoRow("Smooth", String(format: "%.0f", debug.trackSmoothSize))
             infoRow("Ratio", String(format: "%.2f", debug.trackTargetRatio))
             infoRow("Recenter", String(format: "%.2f", debug.trackRecenterSpeed))
+            infoRow("VOff", String(format: "%+.0fpx", debug.cropVerticalOffset))
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 

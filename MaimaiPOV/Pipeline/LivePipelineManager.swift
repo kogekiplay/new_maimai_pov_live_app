@@ -331,6 +331,8 @@ class LivePipelineManager: ObservableObject {
                     self.debug.stageFrameData(snapshot)
                 }
 
+                let offsetCy = track.cy + self.cropVerticalOffset
+
                 if let pool = self.ioSurfacePool,
                    let cr = self.cropRenderer,
                    let writeBuffer = pool.nextWriteBuffer() {
@@ -340,7 +342,7 @@ class LivePipelineManager: ObservableObject {
                           let encoder = cmdBuf.makeComputeCommandEncoder() else {
                         cr.process(
                             stabTexture: stab.outputTexture,
-                            cx: track.cx, cy: track.cy,
+                            cx: track.cx, cy: offsetCy,
                             cropW: track.cropW, cropH: track.cropH,
                             outputTexture: writeBuffer.texture
                         ) { [weak self] in
@@ -361,7 +363,7 @@ class LivePipelineManager: ObservableObject {
 
                     cr.encode(into: encoder,
                               stabTexture: stab.outputTexture,
-                              cx: track.cx, cy: track.cy,
+                              cx: track.cx, cy: offsetCy,
                               cropW: track.cropW, cropH: track.cropH,
                               outputTexture: writeBuffer.texture)
 
@@ -388,13 +390,15 @@ class LivePipelineManager: ObservableObject {
                     cmdBuf.commit()
                 } else if let cr = self.cropRenderer {
                     if let track = self.latestTrackOutput {
+                        let offsetCy = track.cy + self.cropVerticalOffset
                         cr.process(stabTexture: stab.outputTexture,
-                                   cx: track.cx, cy: track.cy,
+                                   cx: track.cx, cy: offsetCy,
                                    cropW: track.cropW, cropH: track.cropH)
                     } else {
                         let fb = cr.makeFallbackTrack()
+                        let offsetCy = fb.cy + self.cropVerticalOffset
                         cr.process(stabTexture: stab.outputTexture,
-                                   cx: fb.cx, cy: fb.cy,
+                                   cx: fb.cx, cy: offsetCy,
                                    cropW: fb.cropW, cropH: fb.cropH)
                     }
                     let pipelineLatencyMs = (CACurrentMediaTime() - pipelineEnterTime) * 1000.0
@@ -624,6 +628,7 @@ class LivePipelineManager: ObservableObject {
 
     @MainActor func updateCropVerticalOffset() {
         Config.cropVerticalOffset = cropVerticalOffset
+        debug.cropVerticalOffset = cropVerticalOffset
     }
 
     func loadOverlayImage(_ image: UIImage) {

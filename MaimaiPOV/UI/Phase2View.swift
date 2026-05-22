@@ -309,6 +309,7 @@ struct Phase2View: View {
                     yoloTargetFPSRow
                     trackTargetRatioRow
                     trackRecenterSpeedRow
+                    cropVerticalOffsetRow
                     smoothingToggleRow
                     smoothingBaseAlphaRow
                     smoothingDeviationRow
@@ -664,6 +665,17 @@ struct Phase2View: View {
             Slider(value: $pipeline.trackRecenterSpeed, in: 0.05...0.5, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.trackRecenterSpeed)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+        }
+    }
+
+    private var cropVerticalOffsetRow: some View {
+        labeledRow("VOffset") {
+            Slider(value: $pipeline.cropVerticalOffset, in: -500...500, step: 10)
+        } valueLabel: {
+            Text("\(Int(pipeline.cropVerticalOffset))px").font(.caption).foregroundColor(.gray).frame(width: 50, alignment: .trailing)
+        }
+        .onChange(of: pipeline.cropVerticalOffset) { _ in
+            pipeline.updateCropVerticalOffset()
         }
     }
 
