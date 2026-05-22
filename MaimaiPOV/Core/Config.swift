@@ -45,7 +45,7 @@ enum Config {
         }
         set { UserDefaults.standard.set(newValue, forKey: yoloOverlayScaleKey) }
     }
-    static let defaultYoloTargetFPS: Double = 20.0
+    static let defaultYoloTargetFPS: Double = 60.0
     static var yoloTargetFPS: Double {
         get {
             guard UserDefaults.standard.object(forKey: yoloTargetFPSKey) != nil else {
@@ -68,6 +68,16 @@ enum Config {
             return UserDefaults.standard.double(forKey: focusValueKey)
         }
         set { UserDefaults.standard.set(newValue, forKey: focusValueKey) }
+    }
+    static let defaultAutoFocusEnabled: Bool = false
+    static var autoFocusEnabled: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: autoFocusEnabledKey) != nil else {
+                return defaultAutoFocusEnabled
+            }
+            return UserDefaults.standard.bool(forKey: autoFocusEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: autoFocusEnabledKey) }
     }
     static let defaultShutterTimescale: Double = 244.0
     static var shutterTimescale: Double {
@@ -373,6 +383,15 @@ enum Config {
         set { UserDefaults.standard.set(Double(newValue), forKey: cropVerticalOffsetKey) }
     }
 
+    static let defaultStreamBitrate: Int = 4000
+    static var streamBitrate: Int {
+        get {
+            let v = UserDefaults.standard.integer(forKey: streamBitrateKey)
+            return v == 0 ? defaultStreamBitrate : v
+        }
+        set { UserDefaults.standard.set(newValue, forKey: streamBitrateKey) }
+    }
+
     // UserDefaults keys
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
@@ -409,6 +428,8 @@ enum Config {
     private static let overlayOpacityKey = "com.maimai.overlayOpacity"
     private static let overlayRotationKey = "com.maimai.overlayRotation"
     private static let cropVerticalOffsetKey = "com.maimai.cropVerticalOffset"
+    private static let autoFocusEnabledKey = "com.maimai.autoFocusEnabled"
+    private static let streamBitrateKey = "com.maimai.streamBitrate"
 
     // Video encoding
     static let videoBitrate: Int = 4_000_000

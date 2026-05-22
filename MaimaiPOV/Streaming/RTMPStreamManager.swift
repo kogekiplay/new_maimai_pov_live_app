@@ -20,7 +20,7 @@ class RTMPStreamManager: ObservableObject {
     @Published var isStreaming: Bool = false
     @Published var streamStatus: String = "Idle"
     @Published var streamResolution: StreamResolution = .r720p
-    @Published var videoBitrate: Int = Config.videoBitrate / 1000
+    @Published var videoBitrate: Int = Config.streamBitrate
 
     private struct AudioSyncEntry {
         let pcmBuffer: AVAudioPCMBuffer

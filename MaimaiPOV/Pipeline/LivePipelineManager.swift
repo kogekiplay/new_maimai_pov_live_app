@@ -10,6 +10,7 @@ import CoreImage
 
 class LivePipelineManager: ObservableObject {
     @Published var focusValue: Double = Config.focusValue
+    @Published var autoFocusEnabled: Bool = Config.autoFocusEnabled
     @Published var shutterTimescale: Double = Config.shutterTimescale
     @Published var isoValue: Double = Config.isoValue
     @Published var minISO: Double = 50.0
@@ -32,7 +33,6 @@ class LivePipelineManager: ObservableObject {
     @Published var yoloPadding: Double = Double(Config.yoloPadding)
     @Published var yoloPreviewEnabled: Bool = Config.yoloPreviewEnabled
     @Published var yoloOverlayEnabled: Bool = Config.yoloOverlayEnabled
-    @Published var yoloOverlayScale: Double = Config.yoloOverlayScale
     @Published var yoloTargetFPS: Double = Config.yoloTargetFPS
 
     @Published var trackTargetRatio: Double = Config.trackTargetRatio
@@ -548,17 +548,6 @@ class LivePipelineManager: ObservableObject {
     @MainActor func updateYoloOverlayEnabled() {
         Config.yoloOverlayEnabled = yoloOverlayEnabled
         debug.yoloOverlayEnabled = yoloOverlayEnabled
-    }
-    
-    @MainActor func updateYoloOverlayScale() {
-        Config.yoloOverlayScale = yoloOverlayScale
-        debug.yoloOverlayScale = yoloOverlayScale
-    }
-
-    @MainActor func updateYoloTargetFPS() {
-        Config.yoloTargetFPS = yoloTargetFPS
-        yoloDetector?.targetFPS = yoloTargetFPS
-        debug.yoloTargetFPS = yoloTargetFPS
     }
 
     @MainActor func updateTrackTargetRatio() {

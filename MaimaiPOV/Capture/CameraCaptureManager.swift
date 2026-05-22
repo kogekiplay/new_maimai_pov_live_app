@@ -292,6 +292,25 @@ class CameraCaptureManager: NSObject, ObservableObject {
         }
     }
 
+    func setAutoFocus(_ enabled: Bool) {
+        guard let device = currentDevice else { return }
+        do {
+            try device.lockForConfiguration()
+            if enabled {
+                if device.isFocusModeSupported(.continuousAutoFocus) {
+                    device.focusMode = .continuousAutoFocus
+                }
+            } else {
+                if device.isFocusModeSupported(.locked) {
+                    device.setFocusModeLocked(lensPosition: Float(Config.focusValue), completionHandler: nil)
+                }
+            }
+            device.unlockForConfiguration()
+        } catch {
+            print("CameraCaptureManager: Auto focus toggle failed: \(error)")
+        }
+    }
+
     func lockWhiteBalance() {
         guard let device = currentDevice else { return }
         do {

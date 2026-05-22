@@ -53,6 +53,10 @@ struct Phase2View: View {
         }
         .onChange(of: pipeline.selectedLens) { pipeline.handleLensChange($0) }
         .onChange(of: pipeline.focusValue) { _ in pipeline.applyExposure() }
+        .onChange(of: pipeline.autoFocusEnabled) { _ in
+            Config.autoFocusEnabled = pipeline.autoFocusEnabled
+            pipeline.camera.setAutoFocus(pipeline.autoFocusEnabled)
+        }
         .onChange(of: pipeline.shutterTimescale) { _ in pipeline.applyExposure() }
         .onChange(of: pipeline.isoValue) { _ in pipeline.applyExposure() }
         .onChange(of: pipeline.syncOffsetMs) { Config.syncOffsetMs = $0 }
@@ -70,8 +74,6 @@ struct Phase2View: View {
         .onChange(of: pipeline.yoloEnabled) { newValue in
             Config.yoloEnabled = newValue
         }
-        .onChange(of: pipeline.yoloPreviewEnabled) { _ in pipeline.updateYoloPreviewEnabled() }
-        .onChange(of: pipeline.yoloTargetFPS) { _ in pipeline.updateYoloTargetFPS() }
         .onChange(of: pipeline.previewEnabled) { newValue in
             Config.previewEnabled = newValue
         }
@@ -171,21 +173,6 @@ struct Phase2View: View {
                 .padding(.leading, 4)
                 .padding(.top, 4)
 
-            if pipeline.yoloEnabled, let img = pipeline.debug.yoloPreviewImage {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Image(uiImage: img)
-                            .resizable()
-                            .aspectRatio(1.0, contentMode: .fit)
-                            .frame(width: 100, height: 100)
-                            .border(Color.cyan, width: 1)
-                            .padding(4)
-                    }
-                }
-            }
-
             if pipeline.yoloOverlayEnabled, pipeline.yoloEnabled {
                 VStack {
                     Spacer()
@@ -267,9 +254,8 @@ struct Phase2View: View {
     private var cameraTabContent: some View {
         VStack(spacing: 8) {
             lensPicker
-            shutterRow
             isoRow
-            focusRow
+            autoFocusRow
             stabilizerToggleRow
         }
         .padding(12)
@@ -283,7 +269,6 @@ struct Phase2View: View {
             distRatioRow
             yoloToggleRow
             yoloOverlayToggleRow
-            yoloOverlayScaleRow
             overlayToggleRow
             overlayPosXRow
             overlayPosYRow
@@ -308,7 +293,6 @@ struct Phase2View: View {
                 VStack(spacing: 8) {
                     syncRow
                     yoloPaddingRow
-                    yoloTargetFPSRow
                     trackTargetRatioRow
                     trackRecenterSpeedRow
                     recenterGraceMsRow
@@ -422,56 +406,25 @@ struct Phase2View: View {
         .pickerStyle(.segmented)
     }
 
-    private var shutterRow: some View {
-        HStack {
-            Text("Shutter").font(.caption).frame(width: 55, alignment: .leading)
-            Spacer()
-            Button("1/244") {
-                pipeline.shutterTimescale = 244.0; pipeline.applyExposure()
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(pipeline.shutterTimescale == 244.0 ? .orange : .gray)
-            .controlSize(.small)
-            .disabled(pipeline.camera.exposureMode != .custom)
-
-            Button("1/122") {
-                pipeline.shutterTimescale = 122.0; pipeline.applyExposure()
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(pipeline.shutterTimescale == 122.0 ? .orange : .gray)
-            .controlSize(.small)
-            .disabled(pipeline.camera.exposureMode != .custom)
-
-            Spacer()
-            Button(pipeline.camera.exposureMode == .custom ? "M" : "A") {
-                pipeline.camera.exposureMode == .custom
-                    ? pipeline.camera.setAutoExposure()
-                    : pipeline.camera.setCustomExposure()
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(pipeline.camera.exposureMode == .custom ? .orange : .green)
-            .controlSize(.small)
-            .font(.caption2)
-        }
-    }
-
     private var isoRow: some View {
         labeledRow("ISO") {
             Slider(value: $pipeline.isoValue, in: pipeline.minISO...pipeline.maxISO, step: 1)
         } valueLabel: {
             Text("\(Int(pipeline.isoValue))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
-        .disabled(pipeline.camera.exposureMode != .custom)
         .onChange(of: pipeline.camera.isRunning) { running in
             if running { pipeline.updateISORange() }
         }
     }
 
-    private var focusRow: some View {
-        labeledRow("Focus") {
-            Slider(value: $pipeline.focusValue, in: 0...1)
-        } valueLabel: {
-            Text(String(format: "%.2f", pipeline.focusValue)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+    private var autoFocusRow: some View {
+        HStack {
+            Text("Focus").font(.caption).frame(width: 55, alignment: .leading)
+            Toggle("", isOn: $pipeline.autoFocusEnabled).labelsHidden()
+            Spacer()
+            Text(pipeline.autoFocusEnabled ? "AUTO" : "LOCK")
+                .font(.caption2)
+                .foregroundColor(pipeline.autoFocusEnabled ? .green : .orange)
         }
     }
 
@@ -524,15 +477,6 @@ struct Phase2View: View {
             Text("YOLO").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.yoloEnabled).labelsHidden()
             Spacer()
-            Button {
-                pipeline.yoloPreviewEnabled.toggle()
-                pipeline.updateYoloPreviewEnabled()
-            } label: {
-                Image(systemName: pipeline.yoloPreviewEnabled ? "eye.fill" : "eye.slash")
-                    .font(.caption)
-                    .foregroundColor(pipeline.yoloPreviewEnabled ? .cyan : .gray)
-            }
-            .disabled(!pipeline.yoloEnabled)
             Text(pipeline.yoloEnabled ? "ON" : "OFF")
                 .font(.caption2)
                 .foregroundColor(pipeline.yoloEnabled ? .green : .red)
@@ -544,14 +488,6 @@ struct Phase2View: View {
             Slider(value: $pipeline.yoloPadding, in: 0...100, step: 1)
         } valueLabel: {
             Text("\(Int(pipeline.yoloPadding))px").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
-    }
-
-    private var yoloTargetFPSRow: some View {
-        labeledRow("YFPS") {
-            Slider(value: $pipeline.yoloTargetFPS, in: 10...60, step: 1)
-        } valueLabel: {
-            Text("\(Int(pipeline.yoloTargetFPS))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 
@@ -567,18 +503,6 @@ struct Phase2View: View {
             Text(pipeline.yoloOverlayEnabled ? "ON" : "OFF")
                 .font(.caption2)
                 .foregroundColor(pipeline.yoloOverlayEnabled ? .green : .red)
-        }
-    }
-
-    private var yoloOverlayScaleRow: some View {
-        labeledRow("Scale") {
-            Slider(value: $pipeline.yoloOverlayScale, in: 0.3...1.2, step: 0.1)
-        } valueLabel: {
-            Text(String(format: "%.1fx", pipeline.yoloOverlayScale)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
-        .disabled(!pipeline.yoloOverlayEnabled)
-        .onChange(of: pipeline.yoloOverlayScale) { _ in
-            pipeline.updateYoloOverlayScale()
         }
     }
 
@@ -794,7 +718,7 @@ struct Phase2View: View {
         labeledRow("Bitrate") {
             Slider(value: Binding(
                 get: { Double(pipeline.streamManager.videoBitrate) },
-                set: { pipeline.streamManager.videoBitrate = Int($0) }
+                set: { pipeline.streamManager.videoBitrate = Int($0); Config.streamBitrate = Int($0) }
             ), in: 1000...10000, step: 500)
         } valueLabel: {
             Text("\(pipeline.streamManager.videoBitrate)kbps")
