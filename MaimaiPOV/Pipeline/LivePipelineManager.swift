@@ -1063,40 +1063,39 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         guard ci >= 0, ci < queue.count else { return }
 
         let displayData = Array(queue[ci...].prefix(3))
-        let group = DispatchGroup()
         var textures: [MTLTexture?] = Array(repeating: nil, count: displayData.count)
 
-        for i in 0..<displayData.count {
-            group.enter()
-            let songData = displayData[i]
+        func renderNext(index: Int) {
+            guard index < displayData.count else {
+                let cardDataList: [(texture: MTLTexture, data: SongCardData)] = zip(textures, displayData).compactMap { t, d in
+                    guard let t = t else { return nil }
+                    return (texture: t, data: d)
+                }
+                self.songCardCompositor?.updateAllCards(cardDataList: cardDataList)
+                DispatchQueue.main.async {
+                    self.debug.log("[插队] 卡片已刷新，显示\(cardDataList.count)张")
+                }
+                return
+            }
+
+            let songData = displayData[index]
+            let onRendered: (MTLTexture?) -> Void = { texture in
+                textures[index] = texture
+                renderNext(index: index + 1)
+            }
+
             if let musicId = songData.musicId {
                 CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
                     DispatchQueue.main.async {
-                        compositor.renderer?.renderCard(data: songData, coverBase64: base64) { texture in
-                            textures[i] = texture
-                            group.leave()
-                        }
+                        compositor.renderer?.renderCard(data: songData, coverBase64: base64, completion: onRendered)
                     }
                 }
             } else {
-                compositor.renderer?.renderCard(data: songData, coverBase64: nil) { texture in
-                    textures[i] = texture
-                    group.leave()
-                }
+                compositor.renderer?.renderCard(data: songData, coverBase64: nil, completion: onRendered)
             }
         }
 
-        group.notify(queue: .main) { [weak self] in
-            guard let self = self else { return }
-            let cardDataList: [(texture: MTLTexture, data: SongCardData)] = zip(textures, displayData).compactMap { t, d in
-                guard let t = t else { return nil }
-                return (texture: t, data: d)
-            }
-            self.songCardCompositor?.updateAllCards(cardDataList: cardDataList)
-            DispatchQueue.main.async {
-                self.debug.log("[插队] 卡片已刷新，显示\(cardDataList.count)张")
-            }
-        }
+        renderNext(index: 0)
     }
 
     private func renderAndAddCard(data: SongCardData, coverBase64: String?) {
