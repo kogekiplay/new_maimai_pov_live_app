@@ -8,7 +8,7 @@ import QuartzCore
 import UIKit
 import CoreImage
 
-class LivePipelineManager: ObservableObject {
+class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var focusValue: Double = Config.focusValue
     @Published var autoFocusEnabled: Bool = Config.autoFocusEnabled
     @Published var shutterTimescale: Double = Config.shutterTimescale
@@ -71,6 +71,7 @@ class LivePipelineManager: ObservableObject {
     var cropRenderer: CropRenderer?
     var overlayCompositor: OverlayCompositor?
     var songCardCompositor: SongCardCompositor?
+    let songCardManager = SongCardManager()
     var bboxTracker = BBoxTracker()
     var latestTrackOutput: BBoxTracker.TrackOutput?
 
@@ -156,6 +157,7 @@ class LivePipelineManager: ObservableObject {
 
         self.songCardCompositor = SongCardCompositor(device: device)
         self.songCardCompositor?.enabled = songCardEnabled
+        songCardManager.delegate = self
 
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
@@ -684,4 +686,25 @@ class LivePipelineManager: ObservableObject {
             self?.debug.deviceTemperature = 0.0
         }
     }
+
+    func onSongAdded(_ song: SongCardData) {}
+
+    func onSongRemoved(at index: Int) {}
+
+    func onCurrentSongChanged(_ song: SongCardData) {
+        var displayData: [SongCardData] = [song]
+        if let next = songCardManager.nextSong {
+            displayData.append(next)
+        }
+        if songCardManager.queue.count > 2 {
+            displayData.append(SongCardData(
+                songName: "\(songCardManager.queue.count - songCardManager.currentIndex - 1) songs",
+                artist: "in queue",
+                requester: nil
+            ))
+        }
+        songCardCompositor?.loadHTMLCards(data: displayData)
+    }
+
+    func onQueueUpdated(_ songs: [SongCardData]) {}
 }

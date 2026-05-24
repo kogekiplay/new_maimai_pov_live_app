@@ -593,6 +593,20 @@ struct Phase2View: View {
                 } label: {
                     Image(systemName: "doc.richtext").font(.caption2).foregroundColor(.orange)
                 }
+                Button {
+                    pipeline.songCardManager.addSong(SongCardData(
+                        songName: "Song \(pipeline.songCardManager.queue.count + 1)",
+                        artist: "Artist",
+                        requester: "User\(pipeline.songCardManager.queue.count + 1)"
+                    ))
+                } label: {
+                    Image(systemName: "plus").font(.caption2).foregroundColor(.green)
+                }
+                Button {
+                    pipeline.songCardManager.nextTrack()
+                } label: {
+                    Image(systemName: "forward.fill").font(.caption2).foregroundColor(.yellow)
+                }
             }
             Text(pipeline.songCardEnabled ? "ON" : "OFF")
                 .font(.caption2)
