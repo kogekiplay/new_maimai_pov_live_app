@@ -48,14 +48,18 @@ class SongCardCompositor {
         var pendingAnimations: [AnimationStep] = []
     }
 
-    static let slots: [CardSlot] = [
+    static let defaultSlots: [CardSlot] = [
         CardSlot(posX: 0.20, posY: 0.125, scale: 0.40),
         CardSlot(posX: 0.48, posY: 0.14, scale: 0.30),
         CardSlot(posX: 0.76, posY: 0.15, scale: 0.30)
     ]
 
-    static let offScreenRight = CardSlot(posX: 1.3, posY: 0.14, scale: 0.30)
-    static let offScreenLeft = CardSlot(posX: -0.3, posY: 0.125, scale: 0.40)
+    static let defaultOffScreenRight = CardSlot(posX: 1.3, posY: 0.14, scale: 0.30)
+    static let defaultOffScreenLeft = CardSlot(posX: -0.3, posY: 0.125, scale: 0.40)
+
+    var slots: [CardSlot] = defaultSlots
+    var offScreenRight: CardSlot = defaultOffScreenRight
+    var offScreenLeft: CardSlot = defaultOffScreenLeft
 
     var cards: [CardState] = []
     var enabled: Bool = false
@@ -144,6 +148,16 @@ class SongCardCompositor {
         }
     }
 
+    func repositionCards() {
+        for i in 0..<min(cards.count, slots.count) {
+            if !cards[i].isAnimating {
+                cards[i].currentPosX = slots[i].posX
+                cards[i].currentPosY = slots[i].posY
+                cards[i].currentScale = slots[i].scale
+            }
+        }
+    }
+
     func addCard(texture: MTLTexture, data: SongCardData?) {
         let visibleCount = cards.count
 
@@ -151,17 +165,17 @@ class SongCardCompositor {
             let card = CardState(
                 texture: texture,
                 data: data,
-                currentPosX: Self.offScreenRight.posX,
-                currentPosY: Self.offScreenRight.posY,
-                currentScale: Self.offScreenRight.scale,
+                currentPosX: offScreenRight.posX,
+                currentPosY: offScreenRight.posY,
+                currentScale: offScreenRight.scale,
                 currentOpacity: 0.0,
-                targetPosX: Self.slots[2].posX,
-                targetPosY: Self.slots[2].posY,
-                targetScale: Self.slots[2].scale,
+                targetPosX: slots[2].posX,
+                targetPosY: slots[2].posY,
+                targetScale: slots[2].scale,
                 targetOpacity: 1.0,
-                startPosX: Self.offScreenRight.posX,
-                startPosY: Self.offScreenRight.posY,
-                startScale: Self.offScreenRight.scale,
+                startPosX: offScreenRight.posX,
+                startPosY: offScreenRight.posY,
+                startScale: offScreenRight.scale,
                 startOpacity: 0.0,
                 isAnimating: true,
                 animStartTime: CACurrentMediaTime(),
@@ -169,27 +183,27 @@ class SongCardCompositor {
             )
             var newCard = card
             newCard.pendingAnimations = [
-                AnimationStep(targetPosX: Self.slots[1].posX, targetPosY: Self.slots[1].posY, targetScale: Self.slots[1].scale, targetOpacity: 1.0, duration: 0.3, delay: 0.1),
-                AnimationStep(targetPosX: Self.slots[0].posX, targetPosY: Self.slots[0].posY, targetScale: Self.slots[0].scale, targetOpacity: 1.0, duration: 0.35, delay: 0.1)
+                AnimationStep(targetPosX: slots[1].posX, targetPosY: slots[1].posY, targetScale: slots[1].scale, targetOpacity: 1.0, duration: 0.3, delay: 0.1),
+                AnimationStep(targetPosX: slots[0].posX, targetPosY: slots[0].posY, targetScale: slots[0].scale, targetOpacity: 1.0, duration: 0.35, delay: 0.1)
             ]
             cards.append(newCard)
-        } else if visibleCount < Self.slots.count {
+        } else if visibleCount < slots.count {
             let slotIndex = visibleCount
-            let slot = Self.slots[slotIndex]
+            let slot = slots[slotIndex]
             let card = CardState(
                 texture: texture,
                 data: data,
-                currentPosX: Self.offScreenRight.posX,
-                currentPosY: Self.offScreenRight.posY,
-                currentScale: Self.offScreenRight.scale,
+                currentPosX: offScreenRight.posX,
+                currentPosY: offScreenRight.posY,
+                currentScale: offScreenRight.scale,
                 currentOpacity: 0.0,
                 targetPosX: slot.posX,
                 targetPosY: slot.posY,
                 targetScale: slot.scale,
                 targetOpacity: 1.0,
-                startPosX: Self.offScreenRight.posX,
-                startPosY: Self.offScreenRight.posY,
-                startScale: Self.offScreenRight.scale,
+                startPosX: offScreenRight.posX,
+                startPosY: offScreenRight.posY,
+                startScale: offScreenRight.scale,
                 startOpacity: 0.0,
                 isAnimating: true,
                 animStartTime: CACurrentMediaTime(),
@@ -205,11 +219,11 @@ class SongCardCompositor {
         }
 
         if cards.count > 1 {
-            animateCardToSlot(index: 1, slot: Self.slots[0], duration: 0.4, delay: 0.05)
+            animateCardToSlot(index: 1, slot: slots[0], duration: 0.4, delay: 0.05)
         }
 
         if cards.count > 2 {
-            animateCardToSlot(index: 2, slot: Self.slots[1], duration: 0.4, delay: 0.1)
+            animateCardToSlot(index: 2, slot: slots[1], duration: 0.4, delay: 0.1)
         }
 
         if let texture = newCardTexture {
@@ -230,22 +244,22 @@ class SongCardCompositor {
             self.cards.removeAll()
 
             for (i, item) in cardDataList.enumerated() {
-                guard i < Self.slots.count else { break }
-                let slot = Self.slots[i]
+                guard i < self.slots.count else { break }
+                let slot = self.slots[i]
                 let card = CardState(
                     texture: item.texture,
                     data: item.data,
-                    currentPosX: Self.offScreenRight.posX,
-                    currentPosY: Self.offScreenRight.posY,
-                    currentScale: Self.offScreenRight.scale,
+                    currentPosX: self.offScreenRight.posX,
+                    currentPosY: self.offScreenRight.posY,
+                    currentScale: self.offScreenRight.scale,
                     currentOpacity: 0.0,
                     targetPosX: slot.posX,
                     targetPosY: slot.posY,
                     targetScale: slot.scale,
                     targetOpacity: 1.0,
-                    startPosX: Self.offScreenRight.posX,
-                    startPosY: Self.offScreenRight.posY,
-                    startScale: Self.offScreenRight.scale,
+                    startPosX: self.offScreenRight.posX,
+                    startPosY: self.offScreenRight.posY,
+                    startScale: self.offScreenRight.scale,
                     startOpacity: 0.0,
                     isAnimating: true,
                     animStartTime: CACurrentMediaTime() + Double(i) * 0.1,
@@ -290,9 +304,9 @@ class SongCardCompositor {
         cards[index].startScale = cards[index].currentScale
         cards[index].startOpacity = cards[index].currentOpacity
 
-        cards[index].targetPosX = Self.offScreenLeft.posX
-        cards[index].targetPosY = Self.offScreenLeft.posY
-        cards[index].targetScale = Self.offScreenLeft.scale
+        cards[index].targetPosX = offScreenLeft.posX
+        cards[index].targetPosY = offScreenLeft.posY
+        cards[index].targetScale = offScreenLeft.scale
         cards[index].targetOpacity = 0.0
 
         cards[index].isAnimating = true
@@ -303,22 +317,22 @@ class SongCardCompositor {
     }
 
     private func addCardFromRight(texture: MTLTexture, data: SongCardData?, targetSlot: Int, duration: Float = 0.4) {
-        let slot = targetSlot < Self.slots.count ? Self.slots[targetSlot] : Self.slots[2]
+        let slot = targetSlot < slots.count ? slots[targetSlot] : slots[2]
 
         let card = CardState(
             texture: texture,
             data: data,
-            currentPosX: Self.offScreenRight.posX,
-            currentPosY: Self.offScreenRight.posY,
-            currentScale: Self.offScreenRight.scale,
+            currentPosX: offScreenRight.posX,
+            currentPosY: offScreenRight.posY,
+            currentScale: offScreenRight.scale,
             currentOpacity: 0.0,
             targetPosX: slot.posX,
             targetPosY: slot.posY,
             targetScale: slot.scale,
             targetOpacity: 1.0,
-            startPosX: Self.offScreenRight.posX,
-            startPosY: Self.offScreenRight.posY,
-            startScale: Self.offScreenRight.scale,
+            startPosX: offScreenRight.posX,
+            startPosY: offScreenRight.posY,
+            startScale: offScreenRight.scale,
             startOpacity: 0.0,
             isAnimating: true,
             animStartTime: CACurrentMediaTime(),

@@ -57,6 +57,16 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     @Published var songCardEnabled: Bool = Config.songCardEnabled
 
+    @Published var slot0PosX: Float = SongCardCompositor.defaultSlots[0].posX
+    @Published var slot0PosY: Float = SongCardCompositor.defaultSlots[0].posY
+    @Published var slot0Scale: Float = SongCardCompositor.defaultSlots[0].scale
+    @Published var slot1PosX: Float = SongCardCompositor.defaultSlots[1].posX
+    @Published var slot1PosY: Float = SongCardCompositor.defaultSlots[1].posY
+    @Published var slot1Scale: Float = SongCardCompositor.defaultSlots[1].scale
+    @Published var slot2PosX: Float = SongCardCompositor.defaultSlots[2].posX
+    @Published var slot2PosY: Float = SongCardCompositor.defaultSlots[2].posY
+    @Published var slot2Scale: Float = SongCardCompositor.defaultSlots[2].scale
+
     @Published var cropVerticalOffset: Float = Config.cropVerticalOffset
 
     let camera = CameraCaptureManager()
@@ -647,6 +657,17 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         songCardCompositor?.enabled = songCardEnabled
     }
 
+    @MainActor func updateSongCardSlots() {
+        songCardCompositor?.slots = [
+            CardSlot(posX: slot0PosX, posY: slot0PosY, scale: slot0Scale),
+            CardSlot(posX: slot1PosX, posY: slot1PosY, scale: slot1Scale),
+            CardSlot(posX: slot2PosX, posY: slot2PosY, scale: slot2Scale)
+        ]
+        songCardCompositor?.offScreenRight = CardSlot(posX: 1.3, posY: slot1PosY, scale: slot1Scale)
+        songCardCompositor?.offScreenLeft = CardSlot(posX: -0.3, posY: slot0PosY, scale: slot0Scale)
+        songCardCompositor?.repositionCards()
+    }
+
     @MainActor func updateCropVerticalOffset() {
         Config.cropVerticalOffset = cropVerticalOffset
         debug.cropVerticalOffset = cropVerticalOffset
@@ -717,10 +738,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         songCardManager.addSong(song)
 
-        if compositor.cards.count < SongCardCompositor.slots.count {
+        if compositor.cards.count < compositor.slots.count {
             compositor.renderer?.renderCard(data: song) { [weak self] texture in
                 guard let self = self, let texture = texture else { return }
-                if self.songCardCompositor?.cards.count ?? 0 < SongCardCompositor.slots.count {
+                if self.songCardCompositor?.cards.count ?? 0 < self.songCardCompositor?.slots.count ?? 0 {
                     self.songCardCompositor?.addCard(texture: texture, data: song)
                 }
             }

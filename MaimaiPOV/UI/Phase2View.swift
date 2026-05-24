@@ -296,6 +296,9 @@ struct Phase2View: View {
                 overlayRotationRow
             }
             songCardToggleRow
+            if pipeline.songCardEnabled {
+                songCardSlotTuningSection
+            }
 
             Button {
                 withAnimation {
@@ -598,6 +601,37 @@ struct Phase2View: View {
             Text(pipeline.songCardEnabled ? "ON" : "OFF")
                 .font(.caption2)
                 .foregroundColor(pipeline.songCardEnabled ? .green : .red)
+        }
+    }
+
+    private var songCardSlotTuningSection: some View {
+        VStack(spacing: 4) {
+            slotTuningRow(label: "S0X", value: $pipeline.slot0PosX, range: 0.0...0.5, step: 0.01)
+            slotTuningRow(label: "S0Y", value: $pipeline.slot0PosY, range: 0.0...0.3, step: 0.005)
+            slotTuningRow(label: "S0S", value: $pipeline.slot0Scale, range: 0.1...0.6, step: 0.01)
+            slotTuningRow(label: "S1X", value: $pipeline.slot1PosX, range: 0.1...0.8, step: 0.01)
+            slotTuningRow(label: "S1Y", value: $pipeline.slot1PosY, range: 0.0...0.3, step: 0.005)
+            slotTuningRow(label: "S1S", value: $pipeline.slot1Scale, range: 0.1...0.5, step: 0.01)
+            slotTuningRow(label: "S2X", value: $pipeline.slot2PosX, range: 0.2...1.0, step: 0.01)
+            slotTuningRow(label: "S2Y", value: $pipeline.slot2PosY, range: 0.0...0.3, step: 0.005)
+            slotTuningRow(label: "S2S", value: $pipeline.slot2Scale, range: 0.1...0.5, step: 0.01)
+        }
+        .onChange(of: pipeline.slot0PosX) { _ in pipeline.updateSongCardSlots() }
+        .onChange(of: pipeline.slot0PosY) { _ in pipeline.updateSongCardSlots() }
+        .onChange(of: pipeline.slot0Scale) { _ in pipeline.updateSongCardSlots() }
+        .onChange(of: pipeline.slot1PosX) { _ in pipeline.updateSongCardSlots() }
+        .onChange(of: pipeline.slot1PosY) { _ in pipeline.updateSongCardSlots() }
+        .onChange(of: pipeline.slot1Scale) { _ in pipeline.updateSongCardSlots() }
+        .onChange(of: pipeline.slot2PosX) { _ in pipeline.updateSongCardSlots() }
+        .onChange(of: pipeline.slot2PosY) { _ in pipeline.updateSongCardSlots() }
+        .onChange(of: pipeline.slot2Scale) { _ in pipeline.updateSongCardSlots() }
+    }
+
+    private func slotTuningRow(label: String, value: Binding<Float>, range: ClosedRange<Float>, step: Float) -> some View {
+        HStack {
+            Text(label).font(.system(size: 9, design: .monospaced)).frame(width: 22, alignment: .leading)
+            Slider(value: value, in: range, step: step)
+            Text(String(format: "%.3f", value.wrappedValue)).font(.system(size: 9, design: .monospaced)).foregroundColor(.gray).frame(width: 38, alignment: .trailing)
         }
     }
 
