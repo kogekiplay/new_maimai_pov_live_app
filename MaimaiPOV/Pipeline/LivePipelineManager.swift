@@ -56,6 +56,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var overlayRotation: Float = Config.overlayRotation
 
     @Published var songCardEnabled: Bool = Config.songCardEnabled
+    @Published var songRequestTestMode: Bool = false
 
     @Published var slot0PosX: Float = 0.20
     @Published var slot0PosY: Float = 0.13
@@ -199,7 +200,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         case .songRequest(let query, let diffInput, let chartTypePreference):
             let uid = msg.authorName
 
-            guard giftPermissionManager.hasPermission(uid: uid) else {
+            guard songRequestTestMode || giftPermissionManager.hasPermission(uid: uid) else {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] \(msg.authorName) 无点歌权限")
                 }
@@ -233,12 +234,14 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 return
             }
 
-            let consumed = giftPermissionManager.consumePermission(uid: uid)
-            guard consumed else {
-                DispatchQueue.main.async {
-                    self.debug.log("[点歌] \(msg.authorName) 权限消耗失败")
+            if !songRequestTestMode {
+                let consumed = giftPermissionManager.consumePermission(uid: uid)
+                guard consumed else {
+                    DispatchQueue.main.async {
+                        self.debug.log("[点歌] \(msg.authorName) 权限消耗失败")
+                    }
+                    return
                 }
-                return
             }
 
             let diffName = songDatabase.difficultyDisplayName(noteResult.diffName)

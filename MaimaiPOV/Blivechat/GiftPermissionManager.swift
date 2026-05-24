@@ -64,6 +64,10 @@ class GiftPermissionManager: ObservableObject {
         updateActiveCount()
     }
 
+    func addTestPermission(uid: String, username: String) {
+        addPermission(uid: uid, username: username, source: .gift, chances: 99)
+    }
+
     private func addPermission(uid: String, username: String, source: PermissionSource, chances: Int) {
         if var existing = permissions[uid] {
             existing.remainingChances += chances
