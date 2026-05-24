@@ -1113,7 +1113,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 return (texture: t, data: d)
             }
             self.songCardCompositor?.updateAllCards(cardDataList: cardDataList)
-            self.debug.log("[插队] 卡片已刷新，显示\(cardDataList.count)张")
+            DispatchQueue.main.async {
+                self.debug.log("[插队] 卡片已刷新，显示\(cardDataList.count)张")
+            }
         }
     }
 
