@@ -905,10 +905,23 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         if let data = newData, let renderer = compositor.renderer {
-            renderer.renderCard(data: data) { [weak self] texture in
-                guard let self = self, let texture = texture else { return }
-                self.songCardCompositor?.switchToNext(newCardTexture: texture, newCardData: data)
-                self.songCardManager.switchToNext()
+            if let musicId = data.musicId {
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
+                    guard let self = self else { return }
+                    DispatchQueue.main.async {
+                        renderer.renderCard(data: data, coverBase64: base64) { [weak self] texture in
+                            guard let self = self, let texture = texture else { return }
+                            self.songCardCompositor?.switchToNext(newCardTexture: texture, newCardData: data)
+                            self.songCardManager.switchToNext()
+                        }
+                    }
+                }
+            } else {
+                renderer.renderCard(data: data, coverBase64: nil) { [weak self] texture in
+                    guard let self = self, let texture = texture else { return }
+                    self.songCardCompositor?.switchToNext(newCardTexture: texture, newCardData: data)
+                    self.songCardManager.switchToNext()
+                }
             }
         } else {
             songCardCompositor?.switchToNext()
