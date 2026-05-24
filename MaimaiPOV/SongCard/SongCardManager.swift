@@ -1,8 +1,6 @@
 import Foundation
 
 protocol SongCardDataProvider: AnyObject {
-    func onSongAdded(_ song: SongCardData)
-    func onSongRemoved(at index: Int)
     func onCurrentSongChanged(_ song: SongCardData)
     func onQueueUpdated(_ songs: [SongCardData])
 }
@@ -24,9 +22,14 @@ class SongCardManager: ObservableObject {
         return queue[nextIndex]
     }
 
+    var thirdSong: SongCardData? {
+        let thirdIndex = currentIndex + 2
+        guard thirdIndex < queue.count else { return nil }
+        return queue[thirdIndex]
+    }
+
     func addSong(_ song: SongCardData) {
         queue.append(song)
-        delegate?.onSongAdded(song)
         delegate?.onQueueUpdated(queue)
 
         if currentIndex < 0 {
@@ -35,10 +38,24 @@ class SongCardManager: ObservableObject {
         }
     }
 
+    func switchToNext() {
+        guard currentIndex + 1 < queue.count else { return }
+        currentIndex += 1
+        delegate?.onCurrentSongChanged(queue[currentIndex])
+    }
+
+    func updateQueue(_ songs: [SongCardData]) {
+        queue = songs
+        currentIndex = songs.isEmpty ? -1 : 0
+        delegate?.onQueueUpdated(queue)
+        if let first = songs.first {
+            delegate?.onCurrentSongChanged(first)
+        }
+    }
+
     func removeSong(at index: Int) {
         guard index >= 0, index < queue.count else { return }
         queue.remove(at: index)
-        delegate?.onSongRemoved(at: index)
         delegate?.onQueueUpdated(queue)
 
         if queue.isEmpty {
@@ -47,18 +64,6 @@ class SongCardManager: ObservableObject {
             currentIndex = max(0, currentIndex - 1)
             delegate?.onCurrentSongChanged(currentSong!)
         }
-    }
-
-    func nextTrack() {
-        guard currentIndex + 1 < queue.count else { return }
-        currentIndex += 1
-        delegate?.onCurrentSongChanged(queue[currentIndex])
-    }
-
-    func previousTrack() {
-        guard currentIndex > 0 else { return }
-        currentIndex -= 1
-        delegate?.onCurrentSongChanged(queue[currentIndex])
     }
 
     func clearQueue() {

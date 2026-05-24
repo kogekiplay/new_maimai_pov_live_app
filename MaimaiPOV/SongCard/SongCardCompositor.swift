@@ -105,6 +105,8 @@ class SongCardCompositor {
             guard cards[i].isAnimating else { continue }
 
             let elapsed = Float(currentTime - cards[i].animStartTime)
+            if elapsed < 0 { continue }
+
             let rawProgress = min(elapsed / cards[i].animDuration, 1.0)
             let eased = easeOutCubic(rawProgress)
 
@@ -142,7 +144,112 @@ class SongCardCompositor {
         }
     }
 
-    func animateCardToSlot(index: Int, slot: CardSlot, duration: Float = 0.4, delay: Float = 0.0) {
+    func addCard(texture: MTLTexture, data: SongCardData?) {
+        let visibleCount = cards.count
+
+        if visibleCount == 0 {
+            let card = CardState(
+                texture: texture,
+                data: data,
+                currentPosX: Self.offScreenRight.posX,
+                currentPosY: Self.offScreenRight.posY,
+                currentScale: Self.offScreenRight.scale,
+                currentOpacity: 1.0,
+                targetPosX: Self.slots[2].posX,
+                targetPosY: Self.slots[2].posY,
+                targetScale: Self.slots[2].scale,
+                targetOpacity: 1.0,
+                isAnimating: true,
+                animStartTime: CACurrentMediaTime(),
+                animDuration: 0.35
+            )
+            var newCard = card
+            newCard.pendingAnimations = [
+                AnimationStep(targetPosX: Self.slots[1].posX, targetPosY: Self.slots[1].posY, targetScale: Self.slots[1].scale, targetOpacity: 1.0, duration: 0.3, delay: 0.1),
+                AnimationStep(targetPosX: Self.slots[0].posX, targetPosY: Self.slots[0].posY, targetScale: Self.slots[0].scale, targetOpacity: 1.0, duration: 0.35, delay: 0.1)
+            ]
+            cards.append(newCard)
+        } else if visibleCount < Self.slots.count {
+            let slotIndex = visibleCount
+            let slot = Self.slots[slotIndex]
+            let card = CardState(
+                texture: texture,
+                data: data,
+                currentPosX: Self.offScreenRight.posX,
+                currentPosY: Self.offScreenRight.posY,
+                currentScale: Self.offScreenRight.scale,
+                currentOpacity: 1.0,
+                targetPosX: slot.posX,
+                targetPosY: slot.posY,
+                targetScale: slot.scale,
+                targetOpacity: 1.0,
+                isAnimating: true,
+                animStartTime: CACurrentMediaTime(),
+                animDuration: 0.4
+            )
+            cards.append(card)
+        }
+    }
+
+    func switchToNext(newCardTexture: MTLTexture? = nil, newCardData: SongCardData? = nil) {
+        if !cards.isEmpty {
+            animateCardOutLeft(index: 0, duration: 0.4)
+        }
+
+        if cards.count > 1 {
+            animateCardToSlot(index: 1, slot: Self.slots[0], duration: 0.4, delay: 0.05)
+        }
+
+        if cards.count > 2 {
+            animateCardToSlot(index: 2, slot: Self.slots[1], duration: 0.4, delay: 0.1)
+        }
+
+        if let texture = newCardTexture {
+            addCardFromRight(texture: texture, data: newCardData, targetSlot: 2, duration: 0.4)
+        }
+    }
+
+    func updateAllCards(cardDataList: [(texture: MTLTexture, data: SongCardData)]) {
+        for i in cards.indices {
+            animateCardOutLeft(index: i, duration: 0.3)
+        }
+
+        let delayBase = Float(cards.count) * 0.05 + 0.3
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double(delayBase)) { [weak self] in
+            guard let self = self else { return }
+            self.cards.removeAll()
+
+            for (i, item) in cardDataList.enumerated() {
+                guard i < Self.slots.count else { break }
+                let slot = Self.slots[i]
+                let card = CardState(
+                    texture: item.texture,
+                    data: item.data,
+                    currentPosX: Self.offScreenRight.posX,
+                    currentPosY: Self.offScreenRight.posY,
+                    currentScale: Self.offScreenRight.scale,
+                    currentOpacity: 1.0,
+                    targetPosX: slot.posX,
+                    targetPosY: slot.posY,
+                    targetScale: slot.scale,
+                    targetOpacity: 1.0,
+                    isAnimating: true,
+                    animStartTime: CACurrentMediaTime() + Double(i) * 0.1,
+                    animDuration: 0.4
+                )
+                self.cards.append(card)
+            }
+        }
+    }
+
+    func clearAll() {
+        for i in cards.indices {
+            animateCardOutLeft(index: i, duration: 0.3)
+        }
+    }
+
+    private func animateCardToSlot(index: Int, slot: CardSlot, duration: Float = 0.4, delay: Float = 0.0) {
         guard index >= 0, index < cards.count else { return }
 
         cards[index].startPosX = cards[index].currentPosX
@@ -161,7 +268,7 @@ class SongCardCompositor {
         cards[index].shouldRemoveAfterAnimation = false
     }
 
-    func animateCardOutLeft(index: Int, duration: Float = 0.4) {
+    private func animateCardOutLeft(index: Int, duration: Float = 0.4) {
         guard index >= 0, index < cards.count else { return }
 
         cards[index].startPosX = cards[index].currentPosX
@@ -180,7 +287,7 @@ class SongCardCompositor {
         cards[index].shouldRemoveAfterAnimation = true
     }
 
-    func addCardFromRight(texture: MTLTexture, data: SongCardData?, targetSlot: Int, duration: Float = 0.4) {
+    private func addCardFromRight(texture: MTLTexture, data: SongCardData?, targetSlot: Int, duration: Float = 0.4) {
         let slot = targetSlot < Self.slots.count ? Self.slots[targetSlot] : Self.slots[2]
 
         let card = CardState(
@@ -200,65 +307,6 @@ class SongCardCompositor {
         )
 
         cards.append(card)
-    }
-
-    func shiftCardsLeft(newCardTexture: MTLTexture? = nil, newCardData: SongCardData? = nil) {
-        if !cards.isEmpty {
-            animateCardOutLeft(index: 0, duration: 0.4)
-        }
-
-        if cards.count > 1 {
-            animateCardToSlot(index: 1, slot: Self.slots[0], duration: 0.4, delay: 0.05)
-        }
-
-        if cards.count > 2 {
-            animateCardToSlot(index: 2, slot: Self.slots[1], duration: 0.4, delay: 0.1)
-        }
-
-        if let texture = newCardTexture {
-            addCardFromRight(texture: texture, data: newCardData, targetSlot: 2, duration: 0.4)
-        }
-    }
-
-    func loadHTMLCards(data: [SongCardData]) {
-        guard let renderer = renderer else { return }
-
-        let group = DispatchGroup()
-        var textures: [MTLTexture?] = Array(repeating: nil, count: min(data.count, Self.slots.count))
-
-        for i in 0..<min(data.count, Self.slots.count) {
-            group.enter()
-            renderer.renderCard(data: data[i]) { texture in
-                textures[i] = texture
-                group.leave()
-            }
-        }
-
-        group.notify(queue: .main) { [weak self] in
-            guard let self = self else { return }
-            self.cards.removeAll()
-
-            for i in 0..<textures.count {
-                guard let texture = textures[i] else { continue }
-                let slot = Self.slots[i]
-                let card = CardState(
-                    texture: texture,
-                    data: i < data.count ? data[i] : nil,
-                    currentPosX: Self.offScreenRight.posX,
-                    currentPosY: slot.posY,
-                    currentScale: Self.offScreenRight.scale,
-                    currentOpacity: 1.0,
-                    targetPosX: slot.posX,
-                    targetPosY: slot.posY,
-                    targetScale: slot.scale,
-                    targetOpacity: 1.0,
-                    isAnimating: true,
-                    animStartTime: CACurrentMediaTime() + Double(i) * 0.1,
-                    animDuration: 0.4
-                )
-                self.cards.append(card)
-            }
-        }
     }
 
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {

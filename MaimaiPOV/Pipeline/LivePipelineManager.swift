@@ -674,27 +674,51 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
-    func onSongAdded(_ song: SongCardData) {}
-
-    func onSongRemoved(at index: Int) {}
-
     func onCurrentSongChanged(_ song: SongCardData) {
-        var displayData: [SongCardData] = [song]
-        if let next = songCardManager.nextSong {
-            displayData.append(next)
+        guard let compositor = songCardCompositor else { return }
+
+        if compositor.cards.isEmpty {
+            compositor.renderer?.renderCard(data: song) { [weak self] texture in
+                guard let self = self, let texture = texture else { return }
+                self.songCardCompositor?.addCard(texture: texture, data: song)
+            }
         }
-        let remaining = songCardManager.queue.count - songCardManager.currentIndex - 1
-        let thirdIndex = songCardManager.currentIndex + 2
-        if remaining > 1, thirdIndex < songCardManager.queue.count {
-            displayData.append(songCardManager.queue[thirdIndex])
-        }
-        songCardCompositor?.loadHTMLCards(data: displayData)
     }
 
-    func onQueueUpdated(_ songs: [SongCardData]) {}
-
-    func triggerSongCardShiftLeft() {
+    func onQueueUpdated(_ songs: [SongCardData]) {
         guard let compositor = songCardCompositor else { return }
+
+        if songs.isEmpty {
+            compositor.clearAll()
+            return
+        }
+
+        let displayData = Array(songs.prefix(3))
+        let group = DispatchGroup()
+        var textures: [MTLTexture?] = Array(repeating: nil, count: displayData.count)
+
+        for i in 0..<displayData.count {
+            group.enter()
+            compositor.renderer?.renderCard(data: displayData[i]) { texture in
+                textures[i] = texture
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            let cardDataList: [(texture: MTLTexture, data: SongCardData)] = zip(textures, displayData).compactMap { t, d in
+                guard let t = t else { return nil }
+                return (texture: t, data: d)
+            }
+            self.songCardCompositor?.updateAllCards(cardDataList: cardDataList)
+        }
+    }
+
+    func triggerSongCardSwitch() {
+        guard let compositor = songCardCompositor else { return }
+        guard songCardManager.currentIndex + 1 < songCardManager.queue.count else { return }
+
         let nextIndex = songCardManager.currentIndex + 1
         var newTexture: MTLTexture?
         var newData: SongCardData?
@@ -707,12 +731,36 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         if let data = newData, let renderer = compositor.renderer {
             renderer.renderCard(data: data) { [weak self] texture in
                 guard let self = self else { return }
-                self.songCardCompositor?.shiftCardsLeft(newCardTexture: texture, newCardData: data)
+                self.songCardCompositor?.switchToNext(newCardTexture: texture, newCardData: data)
+                self.songCardManager.switchToNext()
             }
         } else {
-            songCardCompositor?.shiftCardsLeft()
+            songCardCompositor?.switchToNext()
+            songCardManager.switchToNext()
+        }
+    }
+
+    func addSongToQueue(_ song: SongCardData) {
+        guard let compositor = songCardCompositor else { return }
+
+        let visibleCount = compositor.cards.count
+
+        compositor.renderer?.renderCard(data: song) { [weak self] texture in
+            guard let self = self, let texture = texture else { return }
+            if visibleCount < SongCardCompositor.slots.count {
+                self.songCardCompositor?.addCard(texture: texture, data: song)
+            }
         }
 
-        songCardManager.nextTrack()
+        songCardManager.addSong(song)
+    }
+
+    func updateSongQueue(_ songs: [SongCardData]) {
+        songCardManager.updateQueue(songs)
+    }
+
+    func clearSongQueue() {
+        songCardCompositor?.clearAll()
+        songCardManager.clearQueue()
     }
 }
