@@ -31,7 +31,7 @@ enum RoomKeyType: Int, Codable {
     case authCode = 2
 }
 
-enum ConnectionState {
+enum ConnectionState: Equatable {
     case disconnected
     case connecting
     case connected

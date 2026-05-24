@@ -151,31 +151,41 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             guard let self = self else { return }
             self.latestDanmaku = "\(msg.authorName): \(msg.content)"
             self.danmakuCount += 1
-            self.debug.log("[弹幕] \(msg.authorName): \(msg.content)")
+            DispatchQueue.main.async {
+                self.debug.log("[弹幕] \(msg.authorName): \(msg.content)")
+            }
         }
 
         blivechatClient.onGift = { [weak self] msg in
             guard let self = self else { return }
             self.giftPermissionManager.handleGift(msg)
             let coinType = msg.isPaidGift ? "付费" : "免费"
-            self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (\(coinType))")
+            DispatchQueue.main.async {
+                self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (\(coinType))")
+            }
         }
 
         blivechatClient.onSuperChat = { [weak self] msg in
             guard let self = self else { return }
             self.giftPermissionManager.handleSuperChat(msg)
-            self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
+            DispatchQueue.main.async {
+                self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
+            }
         }
 
         blivechatClient.onMember = { [weak self] msg in
             guard let self = self else { return }
             self.giftPermissionManager.handleMember(msg)
-            self.debug.log("[上舰] \(msg.authorName)")
+            DispatchQueue.main.async {
+                self.debug.log("[上舰] \(msg.authorName)")
+            }
         }
 
         blivechatClient.onError = { [weak self] error in
             guard let self = self else { return }
-            self.debug.log("[blivechat错误] code=\(error.code) \(error.message)")
+            DispatchQueue.main.async {
+                self.debug.log("[blivechat错误] code=\(error.code) \(error.message)")
+            }
         }
     }
 
