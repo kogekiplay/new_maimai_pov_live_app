@@ -49,13 +49,13 @@ class SongCardCompositor {
     }
 
     static let slots: [CardSlot] = [
-        CardSlot(posX: 0.20, posY: 0.115, scale: 0.30),
-        CardSlot(posX: 0.47, posY: 0.13, scale: 0.22),
-        CardSlot(posX: 0.72, posY: 0.14, scale: 0.18)
+        CardSlot(posX: 0.20, posY: 0.115, scale: 0.32),
+        CardSlot(posX: 0.47, posY: 0.13, scale: 0.24),
+        CardSlot(posX: 0.72, posY: 0.14, scale: 0.24)
     ]
 
-    static let offScreenRight = CardSlot(posX: 1.3, posY: 0.13, scale: 0.18)
-    static let offScreenLeft = CardSlot(posX: -0.3, posY: 0.115, scale: 0.30)
+    static let offScreenRight = CardSlot(posX: 1.3, posY: 0.13, scale: 0.24)
+    static let offScreenLeft = CardSlot(posX: -0.3, posY: 0.115, scale: 0.32)
 
     var cards: [CardState] = []
     var enabled: Bool = false
@@ -154,7 +154,7 @@ class SongCardCompositor {
                 currentPosX: Self.offScreenRight.posX,
                 currentPosY: Self.offScreenRight.posY,
                 currentScale: Self.offScreenRight.scale,
-                currentOpacity: 1.0,
+                currentOpacity: 0.0,
                 targetPosX: Self.slots[2].posX,
                 targetPosY: Self.slots[2].posY,
                 targetScale: Self.slots[2].scale,
@@ -178,7 +178,7 @@ class SongCardCompositor {
                 currentPosX: Self.offScreenRight.posX,
                 currentPosY: Self.offScreenRight.posY,
                 currentScale: Self.offScreenRight.scale,
-                currentOpacity: 1.0,
+                currentOpacity: 0.0,
                 targetPosX: slot.posX,
                 targetPosY: slot.posY,
                 targetScale: slot.scale,
@@ -210,13 +210,14 @@ class SongCardCompositor {
     }
 
     func updateAllCards(cardDataList: [(texture: MTLTexture, data: SongCardData)]) {
-        for i in cards.indices {
+        let oldCount = cards.count
+        for i in 0..<oldCount {
             animateCardOutLeft(index: i, duration: 0.3)
         }
 
-        let delayBase = Float(cards.count) * 0.05 + 0.3
+        let delayBase = Double(oldCount) * 0.05 + 0.35
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + Double(delayBase)) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delayBase) { [weak self] in
             guard let self = self else { return }
             self.cards.removeAll()
 
@@ -229,7 +230,7 @@ class SongCardCompositor {
                     currentPosX: Self.offScreenRight.posX,
                     currentPosY: Self.offScreenRight.posY,
                     currentScale: Self.offScreenRight.scale,
-                    currentOpacity: 1.0,
+                    currentOpacity: 0.0,
                     targetPosX: slot.posX,
                     targetPosY: slot.posY,
                     targetScale: slot.scale,
@@ -266,6 +267,7 @@ class SongCardCompositor {
         cards[index].animStartTime = CACurrentMediaTime() + Double(delay)
         cards[index].animDuration = duration
         cards[index].shouldRemoveAfterAnimation = false
+        cards[index].pendingAnimations.removeAll()
     }
 
     private func animateCardOutLeft(index: Int, duration: Float = 0.4) {
@@ -285,6 +287,7 @@ class SongCardCompositor {
         cards[index].animStartTime = CACurrentMediaTime()
         cards[index].animDuration = duration
         cards[index].shouldRemoveAfterAnimation = true
+        cards[index].pendingAnimations.removeAll()
     }
 
     private func addCardFromRight(texture: MTLTexture, data: SongCardData?, targetSlot: Int, duration: Float = 0.4) {
@@ -296,7 +299,7 @@ class SongCardCompositor {
             currentPosX: Self.offScreenRight.posX,
             currentPosY: Self.offScreenRight.posY,
             currentScale: Self.offScreenRight.scale,
-            currentOpacity: 1.0,
+            currentOpacity: 0.0,
             targetPosX: slot.posX,
             targetPosY: slot.posY,
             targetScale: slot.scale,
