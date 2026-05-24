@@ -155,6 +155,8 @@ class SongDatabase {
             return
         }
 
+        guard let songURL = songURL, let aliasURL = aliasURL else { return }
+
         do {
             let songData = try Data(contentsOf: songURL)
             let songListData = try JSONDecoder().decode(SongListData.self, from: songData)
