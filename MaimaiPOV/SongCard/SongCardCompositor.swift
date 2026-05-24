@@ -35,10 +35,10 @@ class SongCardCompositor {
         var targetScale: Float
         var targetOpacity: Float
 
-        var startPosX: Float = 0
-        var startPosY: Float = 0
-        var startScale: Float = 0
-        var startOpacity: Float = 1.0
+        var startPosX: Float
+        var startPosY: Float
+        var startScale: Float
+        var startOpacity: Float
 
         var isAnimating: Bool = false
         var animStartTime: CFTimeInterval = 0
@@ -49,13 +49,13 @@ class SongCardCompositor {
     }
 
     static let slots: [CardSlot] = [
-        CardSlot(posX: 0.20, posY: 0.115, scale: 0.32),
-        CardSlot(posX: 0.47, posY: 0.13, scale: 0.24),
-        CardSlot(posX: 0.72, posY: 0.14, scale: 0.24)
+        CardSlot(posX: 0.20, posY: 0.125, scale: 0.40),
+        CardSlot(posX: 0.48, posY: 0.14, scale: 0.30),
+        CardSlot(posX: 0.76, posY: 0.15, scale: 0.30)
     ]
 
-    static let offScreenRight = CardSlot(posX: 1.3, posY: 0.13, scale: 0.24)
-    static let offScreenLeft = CardSlot(posX: -0.3, posY: 0.115, scale: 0.32)
+    static let offScreenRight = CardSlot(posX: 1.3, posY: 0.14, scale: 0.30)
+    static let offScreenLeft = CardSlot(posX: -0.3, posY: 0.125, scale: 0.40)
 
     var cards: [CardState] = []
     var enabled: Bool = false
@@ -159,6 +159,10 @@ class SongCardCompositor {
                 targetPosY: Self.slots[2].posY,
                 targetScale: Self.slots[2].scale,
                 targetOpacity: 1.0,
+                startPosX: Self.offScreenRight.posX,
+                startPosY: Self.offScreenRight.posY,
+                startScale: Self.offScreenRight.scale,
+                startOpacity: 0.0,
                 isAnimating: true,
                 animStartTime: CACurrentMediaTime(),
                 animDuration: 0.35
@@ -183,6 +187,10 @@ class SongCardCompositor {
                 targetPosY: slot.posY,
                 targetScale: slot.scale,
                 targetOpacity: 1.0,
+                startPosX: Self.offScreenRight.posX,
+                startPosY: Self.offScreenRight.posY,
+                startScale: Self.offScreenRight.scale,
+                startOpacity: 0.0,
                 isAnimating: true,
                 animStartTime: CACurrentMediaTime(),
                 animDuration: 0.4
@@ -235,6 +243,10 @@ class SongCardCompositor {
                     targetPosY: slot.posY,
                     targetScale: slot.scale,
                     targetOpacity: 1.0,
+                    startPosX: Self.offScreenRight.posX,
+                    startPosY: Self.offScreenRight.posY,
+                    startScale: Self.offScreenRight.scale,
+                    startOpacity: 0.0,
                     isAnimating: true,
                     animStartTime: CACurrentMediaTime() + Double(i) * 0.1,
                     animDuration: 0.4
@@ -304,6 +316,10 @@ class SongCardCompositor {
             targetPosY: slot.posY,
             targetScale: slot.scale,
             targetOpacity: 1.0,
+            startPosX: Self.offScreenRight.posX,
+            startPosY: Self.offScreenRight.posY,
+            startScale: Self.offScreenRight.scale,
+            startOpacity: 0.0,
             isAnimating: true,
             animStartTime: CACurrentMediaTime(),
             animDuration: duration
