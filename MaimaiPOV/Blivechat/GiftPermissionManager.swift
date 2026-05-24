@@ -4,7 +4,7 @@ import Combine
 enum PermissionSource: String, Codable {
     case gift
     case superChat
-    case guard
+    case guardMember
 }
 
 struct GiftPermission: Identifiable {
@@ -70,7 +70,7 @@ class GiftPermissionManager: ObservableObject {
             uid: member.authorName,
             username: member.authorName,
             expiresAt: expiresAt,
-            source: .guard
+            source: .guardMember
         )
     }
 
