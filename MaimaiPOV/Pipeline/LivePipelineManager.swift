@@ -925,7 +925,14 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if let musicId = song.musicId {
                 CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
                     guard let self = self else { return }
-                    self.renderAndAddCard(data: song, coverBase64: base64)
+                    DispatchQueue.main.async {
+                        if base64 != nil {
+                            self.debug.log("[封面] musicId=\(musicId) 加载成功")
+                        } else {
+                            self.debug.log("[封面] musicId=\(musicId) 加载失败，使用占位图")
+                        }
+                        self.renderAndAddCard(data: song, coverBase64: base64)
+                    }
                 }
             } else {
                 renderAndAddCard(data: song, coverBase64: nil)
@@ -962,9 +969,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let songData = displayData[i]
             if let musicId = songData.musicId {
                 CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
-                    compositor.renderer?.renderCard(data: songData, coverBase64: base64) { texture in
-                        textures[i] = texture
-                        group.leave()
+                    DispatchQueue.main.async {
+                        compositor.renderer?.renderCard(data: songData, coverBase64: base64) { texture in
+                            textures[i] = texture
+                            group.leave()
+                        }
                     }
                 }
             } else {
