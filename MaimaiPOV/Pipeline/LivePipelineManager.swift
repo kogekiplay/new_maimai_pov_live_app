@@ -57,15 +57,15 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     @Published var songCardEnabled: Bool = Config.songCardEnabled
 
-    @Published var slot0PosX: Float = SongCardCompositor.defaultSlots[0].posX
-    @Published var slot0PosY: Float = SongCardCompositor.defaultSlots[0].posY
-    @Published var slot0Scale: Float = SongCardCompositor.defaultSlots[0].scale
-    @Published var slot1PosX: Float = SongCardCompositor.defaultSlots[1].posX
-    @Published var slot1PosY: Float = SongCardCompositor.defaultSlots[1].posY
-    @Published var slot1Scale: Float = SongCardCompositor.defaultSlots[1].scale
-    @Published var slot2PosX: Float = SongCardCompositor.defaultSlots[2].posX
-    @Published var slot2PosY: Float = SongCardCompositor.defaultSlots[2].posY
-    @Published var slot2Scale: Float = SongCardCompositor.defaultSlots[2].scale
+    @Published var slot0PosX: Float = 0.20
+    @Published var slot0PosY: Float = 0.13
+    @Published var slot0Scale: Float = 0.25
+    @Published var slot1PosX: Float = 0.51
+    @Published var slot1PosY: Float = 0.135
+    @Published var slot1Scale: Float = 0.23
+    @Published var slot2PosX: Float = 0.81
+    @Published var slot2PosY: Float = 0.135
+    @Published var slot2Scale: Float = 0.23
 
     @Published var cropVerticalOffset: Float = Config.cropVerticalOffset
 

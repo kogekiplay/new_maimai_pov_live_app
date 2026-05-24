@@ -49,13 +49,13 @@ class SongCardCompositor {
     }
 
     static let defaultSlots: [CardSlot] = [
-        CardSlot(posX: 0.20, posY: 0.125, scale: 0.40),
-        CardSlot(posX: 0.48, posY: 0.14, scale: 0.30),
-        CardSlot(posX: 0.76, posY: 0.15, scale: 0.30)
+        CardSlot(posX: 0.20, posY: 0.13, scale: 0.25),
+        CardSlot(posX: 0.51, posY: 0.135, scale: 0.23),
+        CardSlot(posX: 0.81, posY: 0.135, scale: 0.23)
     ]
 
-    static let defaultOffScreenRight = CardSlot(posX: 1.3, posY: 0.14, scale: 0.30)
-    static let defaultOffScreenLeft = CardSlot(posX: -0.3, posY: 0.125, scale: 0.40)
+    static let defaultOffScreenRight = CardSlot(posX: 1.3, posY: 0.135, scale: 0.23)
+    static let defaultOffScreenLeft = CardSlot(posX: -0.3, posY: 0.13, scale: 0.25)
 
     var slots: [CardSlot] = defaultSlots
     var offScreenRight: CardSlot = defaultOffScreenRight
