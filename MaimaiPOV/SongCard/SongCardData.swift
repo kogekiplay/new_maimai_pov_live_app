@@ -10,8 +10,9 @@ struct SongCardData: Codable, Identifiable {
     var requester: String?
     var musicId: Int?
     var chartType: String?
+    var isPriority: Bool
 
-    init(id: UUID = UUID(), songName: String, artist: String, difficulty: String? = nil, level: String? = nil, coverURL: String? = nil, requester: String? = nil, musicId: Int? = nil, chartType: String? = nil) {
+    init(id: UUID = UUID(), songName: String, artist: String, difficulty: String? = nil, level: String? = nil, coverURL: String? = nil, requester: String? = nil, musicId: Int? = nil, chartType: String? = nil, isPriority: Bool = false) {
         self.id = id
         self.songName = songName
         self.artist = artist
@@ -21,6 +22,7 @@ struct SongCardData: Codable, Identifiable {
         self.requester = requester
         self.musicId = musicId
         self.chartType = chartType
+        self.isPriority = isPriority
     }
 
     static func previewData() -> [SongCardData] {

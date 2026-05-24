@@ -521,6 +521,12 @@ struct Phase2View: View {
                         Text("+测试权限").font(.system(size: 9)).foregroundColor(.cyan)
                     }
                     .buttonStyle(.plain)
+                    Button(action: {
+                        pipeline.giftPermissionManager.addTestPriorityPermission(uid: "test_user", username: "测试用户")
+                    }) {
+                        Text("+测试插队").font(.system(size: 9)).foregroundColor(.orange)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Divider().background(Color.gray.opacity(0.3))

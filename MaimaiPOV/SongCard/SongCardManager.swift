@@ -38,6 +38,21 @@ class SongCardManager: ObservableObject {
         }
     }
 
+    func addSongAtNext(_ song: SongCardData) {
+        if currentIndex < 0 {
+            queue.append(song)
+            currentIndex = 0
+            delegate?.onCurrentSongChanged(song)
+        } else {
+            var insertIndex = currentIndex + 1
+            while insertIndex < queue.count && queue[insertIndex].isPriority {
+                insertIndex += 1
+            }
+            queue.insert(song, at: insertIndex)
+        }
+        delegate?.onQueueUpdated(queue)
+    }
+
     func switchToNext() {
         guard currentIndex + 1 < queue.count else { return }
         currentIndex += 1
