@@ -250,7 +250,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 }
                 usePriority = (consumed == .priority)
             } else {
-                usePriority = giftPermissionManager.hasPriorityPermission(uid: uid)
+                usePriority = giftPermissionManager.hasPriorityPermission(uid: "test_user")
             }
 
             let diffName = songDatabase.difficultyDisplayName(noteResult.diffName)
@@ -1070,6 +1070,50 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             } else {
                 renderAndAddCard(data: song, coverBase64: nil)
             }
+        } else {
+            refreshDisplayedCards()
+        }
+    }
+
+    private func refreshDisplayedCards() {
+        guard let compositor = songCardCompositor else { return }
+
+        let ci = songCardManager.currentIndex
+        let queue = songCardManager.queue
+        guard ci >= 0, ci < queue.count else { return }
+
+        let displayData = Array(queue[ci...].prefix(3))
+        let group = DispatchGroup()
+        var textures: [MTLTexture?] = Array(repeating: nil, count: displayData.count)
+
+        for i in 0..<displayData.count {
+            group.enter()
+            let songData = displayData[i]
+            if let musicId = songData.musicId {
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
+                    DispatchQueue.main.async {
+                        compositor.renderer?.renderCard(data: songData, coverBase64: base64) { texture in
+                            textures[i] = texture
+                            group.leave()
+                        }
+                    }
+                }
+            } else {
+                compositor.renderer?.renderCard(data: songData, coverBase64: nil) { texture in
+                    textures[i] = texture
+                    group.leave()
+                }
+            }
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            let cardDataList: [(texture: MTLTexture, data: SongCardData)] = zip(textures, displayData).compactMap { t, d in
+                guard let t = t else { return nil }
+                return (texture: t, data: d)
+            }
+            self.songCardCompositor?.updateAllCards(cardDataList: cardDataList)
+            self.debug.log("[插队] 卡片已刷新，显示\(cardDataList.count)张")
         }
     }
 
