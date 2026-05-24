@@ -6,7 +6,7 @@ class CoverImageLoader {
     private let memoryCache = NSCache<NSString, UIImage>()
     private let diskCacheDir: URL
 
-    private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/cover"
+    private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
     private let formats = ["webp", "png", "avif"]
 
     private let session: URLSession
@@ -23,6 +23,17 @@ class CoverImageLoader {
         if !FileManager.default.fileExists(atPath: diskCacheDir.path) {
             try? FileManager.default.createDirectory(at: diskCacheDir, withIntermediateDirectories: true)
         }
+    }
+
+    private func baseCoverId(from musicId: Int) -> Int {
+        if musicId >= 100000 { return musicId - 100000 }
+        if musicId >= 10000 { return musicId - 10000 }
+        return musicId
+    }
+
+    private func coverIdPart(from musicId: Int) -> String {
+        let baseId = baseCoverId(from: musicId)
+        return String(format: "%06d", baseId)
     }
 
     func loadCoverBase64(musicId: Int, completion: @escaping (String?) -> Void) {
@@ -48,7 +59,8 @@ class CoverImageLoader {
         }
 
         let format = formats[formatIndex]
-        let urlString = "\(cdnBase)/\(musicId).\(format)"
+        let idPart = coverIdPart(from: musicId)
+        let urlString = "\(cdnBase)/\(idPart).\(format)"
         guard let url = URL(string: urlString) else {
             tryFormat(musicId: musicId, formatIndex: formatIndex + 1, completion: completion)
             return
