@@ -577,7 +577,18 @@ struct Phase2View: View {
             Text("SongCard").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.songCardEnabled).labelsHidden()
             Spacer()
-            Spacer()
+            if pipeline.songCardEnabled {
+                Button {
+                    pipeline.triggerSongCardFadeIn()
+                } label: {
+                    Image(systemName: "eye").font(.caption2).foregroundColor(.cyan)
+                }
+                Button {
+                    pipeline.triggerSongCardSlideIn()
+                } label: {
+                    Image(systemName: "arrow.right").font(.caption2).foregroundColor(.cyan)
+                }
+            }
             Text(pipeline.songCardEnabled ? "ON" : "OFF")
                 .font(.caption2)
                 .foregroundColor(pipeline.songCardEnabled ? .green : .red)

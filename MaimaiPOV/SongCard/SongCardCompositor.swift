@@ -1,9 +1,20 @@
 import Metal
+import QuartzCore
 
 class SongCardCompositor {
     let device: MTLDevice
     private let pipelineState: MTLComputePipelineState
     private var uniformsBuffers: [MTLBuffer]
+
+    enum AnimationState: Int32 {
+        case idle = 0
+        case fadeIn = 1
+        case fadeOut = 2
+        case slideInLeft = 3
+        case slideOutLeft = 4
+        case slideInRight = 5
+        case slideOutRight = 6
+    }
 
     struct CardState {
         var texture: MTLTexture?
@@ -15,6 +26,10 @@ class SongCardCompositor {
         var slideOffsetY: Float = 0.0
         var animProgress: Float = 1.0
         var animType: Int32 = 0
+
+        var animState: AnimationState = .idle
+        var animStartTime: CFTimeInterval = 0
+        var animDuration: Float = 0.5
     }
 
     var cards: [CardState] = []
@@ -107,6 +122,130 @@ class SongCardCompositor {
         return texture
     }
 
+    func triggerFadeIn(index: Int, duration: Float = 0.5) {
+        guard index >= 0, index < cards.count else { return }
+        cards[index].animState = .fadeIn
+        cards[index].animStartTime = CACurrentMediaTime()
+        cards[index].animDuration = duration
+        cards[index].animProgress = 0.0
+        cards[index].animType = AnimationState.fadeIn.rawValue
+    }
+
+    func triggerFadeOut(index: Int, duration: Float = 0.5) {
+        guard index >= 0, index < cards.count else { return }
+        cards[index].animState = .fadeOut
+        cards[index].animStartTime = CACurrentMediaTime()
+        cards[index].animDuration = duration
+        cards[index].animProgress = 1.0
+        cards[index].animType = AnimationState.fadeOut.rawValue
+    }
+
+    func triggerSlideIn(index: Int, fromLeft: Bool = true, duration: Float = 0.5) {
+        guard index >= 0, index < cards.count else { return }
+        cards[index].animState = fromLeft ? .slideInLeft : .slideInRight
+        cards[index].animStartTime = CACurrentMediaTime()
+        cards[index].animDuration = duration
+        cards[index].animProgress = 0.0
+        cards[index].slideOffsetX = fromLeft ? -1.0 : 1.0
+        cards[index].animType = (fromLeft ? AnimationState.slideInLeft : AnimationState.slideInRight).rawValue
+    }
+
+    func triggerSlideOut(index: Int, toLeft: Bool = true, duration: Float = 0.5) {
+        guard index >= 0, index < cards.count else { return }
+        cards[index].animState = toLeft ? .slideOutLeft : .slideOutRight
+        cards[index].animStartTime = CACurrentMediaTime()
+        cards[index].animDuration = duration
+        cards[index].animProgress = 1.0
+        cards[index].slideOffsetX = 0.0
+        cards[index].animType = (toLeft ? AnimationState.slideOutLeft : AnimationState.slideOutRight).rawValue
+    }
+
+    func triggerAllFadeIn(duration: Float = 0.5) {
+        for i in 0..<cards.count {
+            triggerFadeIn(index: i, duration: duration + Float(i) * 0.15)
+        }
+    }
+
+    func triggerAllSlideIn(duration: Float = 0.5) {
+        for i in 0..<cards.count {
+            triggerSlideIn(index: i, fromLeft: true, duration: duration + Float(i) * 0.1)
+        }
+    }
+
+    private func easeOutCubic(_ t: Float) -> Float {
+        return 1.0 - pow(1.0 - t, 3.0)
+    }
+
+    func updateAnimations() {
+        let currentTime = CACurrentMediaTime()
+
+        for i in 0..<cards.count {
+            guard cards[i].animState != .idle else { continue }
+
+            let elapsed = Float(currentTime - cards[i].animStartTime)
+            let rawProgress = min(elapsed / cards[i].animDuration, 1.0)
+            let eased = easeOutCubic(rawProgress)
+
+            switch cards[i].animState {
+            case .fadeIn:
+                cards[i].animProgress = eased
+                if rawProgress >= 1.0 {
+                    cards[i].animState = .idle
+                    cards[i].animType = 0
+                }
+
+            case .fadeOut:
+                cards[i].animProgress = 1.0 - eased
+                if rawProgress >= 1.0 {
+                    cards[i].animState = .idle
+                    cards[i].animType = 0
+                    cards[i].animProgress = 0.0
+                }
+
+            case .slideInLeft:
+                cards[i].animProgress = eased
+                cards[i].slideOffsetX = (1.0 - eased) * -1.0
+                if rawProgress >= 1.0 {
+                    cards[i].animState = .idle
+                    cards[i].animType = 0
+                    cards[i].slideOffsetX = 0.0
+                }
+
+            case .slideInRight:
+                cards[i].animProgress = eased
+                cards[i].slideOffsetX = (1.0 - eased) * 1.0
+                if rawProgress >= 1.0 {
+                    cards[i].animState = .idle
+                    cards[i].animType = 0
+                    cards[i].slideOffsetX = 0.0
+                }
+
+            case .slideOutLeft:
+                cards[i].animProgress = 1.0 - eased
+                cards[i].slideOffsetX = eased * -1.0
+                if rawProgress >= 1.0 {
+                    cards[i].animState = .idle
+                    cards[i].animType = 0
+                    cards[i].animProgress = 0.0
+                    cards[i].slideOffsetX = -1.0
+                }
+
+            case .slideOutRight:
+                cards[i].animProgress = 1.0 - eased
+                cards[i].slideOffsetX = eased * 1.0
+                if rawProgress >= 1.0 {
+                    cards[i].animState = .idle
+                    cards[i].animType = 0
+                    cards[i].animProgress = 0.0
+                    cards[i].slideOffsetX = 1.0
+                }
+
+            default:
+                break
+            }
+        }
+    }
+
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
         guard enabled, !cards.isEmpty else { return }
 
@@ -117,6 +256,7 @@ class SongCardCompositor {
 
         for i in 0..<min(cards.count, Self.maxCards) {
             guard let cardTex = cards[i].texture else { continue }
+            if cards[i].animProgress < 0.001 && cards[i].animState == .idle { continue }
 
             var uniforms = SongCardUniforms()
             uniforms.posX = cards[i].posX

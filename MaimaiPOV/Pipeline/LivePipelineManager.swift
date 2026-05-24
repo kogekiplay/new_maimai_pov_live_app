@@ -383,6 +383,7 @@ class LivePipelineManager: ObservableObject {
                     }
 
                     if let songCard = self.songCardCompositor, songCard.enabled {
+                        songCard.updateAnimations()
                         songCard.encode(into: encoder, outputTexture: writeBuffer.texture)
                     }
 
@@ -642,6 +643,14 @@ class LivePipelineManager: ObservableObject {
     @MainActor func updateSongCardEnabled() {
         Config.songCardEnabled = songCardEnabled
         songCardCompositor?.enabled = songCardEnabled
+    }
+
+    func triggerSongCardFadeIn() {
+        songCardCompositor?.triggerAllFadeIn()
+    }
+
+    func triggerSongCardSlideIn() {
+        songCardCompositor?.triggerAllSlideIn()
     }
 
     @MainActor func updateCropVerticalOffset() {
