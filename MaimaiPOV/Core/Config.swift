@@ -383,6 +383,44 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: songCardEnabledKey) }
     }
 
+    static let defaultBlivechatServer: String = BlivechatServer.cn.rawValue
+    static var blivechatServer: String {
+        get { UserDefaults.standard.string(forKey: blivechatServerKey) ?? defaultBlivechatServer }
+        set { UserDefaults.standard.set(newValue, forKey: blivechatServerKey) }
+    }
+
+    static var blivechatIdentityCode: String {
+        get { UserDefaults.standard.string(forKey: blivechatIdentityCodeKey) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: blivechatIdentityCodeKey) }
+    }
+
+    static let defaultGiftDurationMinutes: Int = 30
+    static var giftDurationMinutes: Int {
+        get {
+            let v = UserDefaults.standard.integer(forKey: giftDurationMinutesKey)
+            return v == 0 ? defaultGiftDurationMinutes : v
+        }
+        set { UserDefaults.standard.set(newValue, forKey: giftDurationMinutesKey) }
+    }
+
+    static let defaultSuperChatDurationMinutes: Int = 60
+    static var superChatDurationMinutes: Int {
+        get {
+            let v = UserDefaults.standard.integer(forKey: superChatDurationMinutesKey)
+            return v == 0 ? defaultSuperChatDurationMinutes : v
+        }
+        set { UserDefaults.standard.set(newValue, forKey: superChatDurationMinutesKey) }
+    }
+
+    static let defaultGuardDurationMinutes: Int = 1440
+    static var guardDurationMinutes: Int {
+        get {
+            let v = UserDefaults.standard.integer(forKey: guardDurationMinutesKey)
+            return v == 0 ? defaultGuardDurationMinutes : v
+        }
+        set { UserDefaults.standard.set(newValue, forKey: guardDurationMinutesKey) }
+    }
+
     static let defaultCropVerticalOffset: Float = 0.0
     static var cropVerticalOffset: Float {
         get {
@@ -440,6 +478,11 @@ enum Config {
     private static let overlayRotationKey = "com.maimai.overlayRotation"
     private static let cropVerticalOffsetKey = "com.maimai.cropVerticalOffset"
     private static let songCardEnabledKey = "com.maimai.songCardEnabled"
+    private static let blivechatServerKey = "com.maimai.blivechatServer"
+    private static let blivechatIdentityCodeKey = "com.maimai.blivechatIdentityCode"
+    private static let giftDurationMinutesKey = "com.maimai.giftDurationMinutes"
+    private static let superChatDurationMinutesKey = "com.maimai.superChatDurationMinutes"
+    private static let guardDurationMinutesKey = "com.maimai.guardDurationMinutes"
     private static let autoFocusEnabledKey = "com.maimai.autoFocusEnabled"
     private static let streamBitrateKey = "com.maimai.streamBitrate"
 

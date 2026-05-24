@@ -69,6 +69,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     @Published var cropVerticalOffset: Float = Config.cropVerticalOffset
 
+    @Published var blivechatConnectionState: ConnectionState = .disconnected
+    @Published var blivechatServer: BlivechatServer = BlivechatServer(rawValue: Config.blivechatServer) ?? .cn
+    @Published var blivechatIdentityCode: String = Config.blivechatIdentityCode
+    @Published var latestDanmaku: String = ""
+    @Published var danmakuCount: Int = 0
+
     let camera = CameraCaptureManager()
     let debug = DebugInfoManager.shared
     let device: MTLDevice = MTLCreateSystemDefaultDevice()!
@@ -82,6 +88,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var overlayCompositor: OverlayCompositor?
     var songCardCompositor: SongCardCompositor?
     let songCardManager = SongCardManager()
+    let blivechatClient = BlivechatClient()
+    let giftPermissionManager = GiftPermissionManager()
     var bboxTracker = BBoxTracker()
     var latestTrackOutput: BBoxTracker.TrackOutput?
 
@@ -134,6 +142,76 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 self?.debug.isStreaming = streaming
             }
         }.store(in: &cancellables)
+
+        setupBlivechatCallbacks()
+    }
+
+    private func setupBlivechatCallbacks() {
+        blivechatClient.onDanmaku = { [weak self] msg in
+            guard let self = self else { return }
+            self.latestDanmaku = "\(msg.authorName): \(msg.content)"
+            self.danmakuCount += 1
+            self.debug.log("[弹幕] \(msg.authorName): \(msg.content)")
+        }
+
+        blivechatClient.onGift = { [weak self] msg in
+            guard let self = self else { return }
+            self.giftPermissionManager.handleGift(msg)
+            let coinType = msg.isPaidGift ? "付费" : "免费"
+            self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (\(coinType))")
+        }
+
+        blivechatClient.onSuperChat = { [weak self] msg in
+            guard let self = self else { return }
+            self.giftPermissionManager.handleSuperChat(msg)
+            self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
+        }
+
+        blivechatClient.onMember = { [weak self] msg in
+            guard let self = self else { return }
+            self.giftPermissionManager.handleMember(msg)
+            self.debug.log("[上舰] \(msg.authorName)")
+        }
+
+        blivechatClient.onError = { [weak self] error in
+            guard let self = self else { return }
+            self.debug.log("[blivechat错误] code=\(error.code) \(error.message)")
+        }
+    }
+
+    @MainActor func connectBlivechat() {
+        Config.blivechatServer = blivechatServer.rawValue
+        Config.blivechatIdentityCode = blivechatIdentityCode
+
+        giftPermissionManager.giftDurationMinutes = Config.giftDurationMinutes
+        giftPermissionManager.superChatDurationMinutes = Config.superChatDurationMinutes
+        giftPermissionManager.guardDurationMinutes = Config.guardDurationMinutes
+
+        blivechatClient.connect(
+            server: blivechatServer,
+            roomKeyType: .authCode,
+            roomKeyValue: blivechatIdentityCode
+        )
+
+        observeBlivechatState()
+    }
+
+    @MainActor func disconnectBlivechat() {
+        blivechatClient.disconnect()
+        blivechatConnectionState = .disconnected
+    }
+
+    private func observeBlivechatState() {
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            let state = self.blivechatClient.connectionState
+            if state != self.blivechatConnectionState {
+                self.blivechatConnectionState = state
+            }
+            if case .disconnected = state {
+                timer.invalidate()
+            }
+        }
     }
 
     @MainActor func start() {

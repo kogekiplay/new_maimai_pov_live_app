@@ -8,12 +8,14 @@ private enum ControlTab: String, CaseIterable {
     case camera = "拍摄"
     case effects = "效果"
     case stream = "推流"
+    case blivechat = "弹幕"
 
     var icon: String {
         switch self {
         case .camera: return "camera"
         case .effects: return "wand.and.stars"
         case .stream: return "arrow.up.circle"
+        case .blivechat: return "message.fill"
         }
     }
 }
@@ -234,6 +236,7 @@ struct Phase2View: View {
                     case .camera: cameraTabContent
                     case .effects: effectsTabContent
                     case .stream: streamTabContent
+                    case .blivechat: blivechatTabContent
                     }
                 }
                 .frame(maxHeight: 240)
@@ -419,6 +422,160 @@ struct Phase2View: View {
             streamButtonRow
         }
         .padding(12)
+    }
+
+    // MARK: - Blivechat Tab
+
+    private var blivechatTabContent: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("服务器").font(.caption).frame(width: 55, alignment: .leading)
+                Picker("", selection: $pipeline.blivechatServer) {
+                    ForEach(BlivechatServer.allCases) { server in
+                        Text(server.displayName).tag(server)
+                    }
+                }
+                .pickerStyle(.menu)
+                .disabled(isBlivechatConnected)
+            }
+
+            HStack {
+                Text("身份码").font(.caption).frame(width: 55, alignment: .leading)
+                TextField("输入身份码", text: $pipeline.blivechatIdentityCode)
+                    .font(.system(size: 11, design: .monospaced))
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .disabled(isBlivechatConnected)
+            }
+
+            HStack {
+                if isBlivechatConnected {
+                    Button {
+                        pipeline.disconnectBlivechat()
+                    } label: {
+                        HStack {
+                            Circle().fill(Color.red).frame(width: 8, height: 8)
+                            Text("断开").font(.caption).fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    .controlSize(.small)
+                } else {
+                    Button {
+                        pipeline.connectBlivechat()
+                    } label: {
+                        HStack {
+                            Image(systemName: "link").font(.caption)
+                            Text("连接").font(.caption).fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .controlSize(.small)
+                    .disabled(pipeline.blivechatIdentityCode.isEmpty)
+                }
+
+                Text(blivechatStateText)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(blivechatStateColor)
+                    .lineLimit(1)
+            }
+
+            if isBlivechatConnected {
+                Divider().background(Color.gray.opacity(0.3))
+
+                HStack {
+                    Text("弹幕").font(.caption).frame(width: 55, alignment: .leading)
+                    Text(pipeline.latestDanmaku)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.cyan)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer()
+                    Text("\(pipeline.danmakuCount)")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+
+                HStack {
+                    Text("权限用户").font(.caption).frame(width: 55, alignment: .leading)
+                    Text("\(pipeline.giftPermissionManager.activePermissions().count) 人")
+                        .font(.caption)
+                        .foregroundColor(.yellow)
+                    Spacer()
+                }
+
+                Divider().background(Color.gray.opacity(0.3))
+
+                VStack(spacing: 4) {
+                    HStack {
+                        Text("权限时长").font(.caption).foregroundColor(.gray)
+                        Spacer()
+                    }
+                    HStack {
+                        Text("礼物").font(.system(size: 10)).frame(width: 35, alignment: .leading)
+                        TextField("", value: Binding(
+                            get: { Config.giftDurationMinutes },
+                            set: { Config.giftDurationMinutes = $0 }
+                        ), format: .number)
+                        .font(.system(size: 10, design: .monospaced))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 50)
+                        Text("分钟").font(.system(size: 9)).foregroundColor(.gray)
+                        Spacer()
+                        Text("SC").font(.system(size: 10)).frame(width: 20, alignment: .leading)
+                        TextField("", value: Binding(
+                            get: { Config.superChatDurationMinutes },
+                            set: { Config.superChatDurationMinutes = $0 }
+                        ), format: .number)
+                        .font(.system(size: 10, design: .monospaced))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 50)
+                        Text("分钟").font(.system(size: 9)).foregroundColor(.gray)
+                    }
+                    HStack {
+                        Text("上舰").font(.system(size: 10)).frame(width: 35, alignment: .leading)
+                        TextField("", value: Binding(
+                            get: { Config.guardDurationMinutes },
+                            set: { Config.guardDurationMinutes = $0 }
+                        ), format: .number)
+                        .font(.system(size: 10, design: .monospaced))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 50)
+                        Text("分钟").font(.system(size: 9)).foregroundColor(.gray)
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .padding(12)
+    }
+
+    private var isBlivechatConnected: Bool {
+        if case .connected = pipeline.blivechatConnectionState { return true }
+        return false
+    }
+
+    private var blivechatStateText: String {
+        switch pipeline.blivechatConnectionState {
+        case .disconnected: return "未连接"
+        case .connecting: return "连接中..."
+        case .connected: return "已连接"
+        case .error(let msg): return "错误: \(msg)"
+        }
+    }
+
+    private var blivechatStateColor: Color {
+        switch pipeline.blivechatConnectionState {
+        case .disconnected: return .gray
+        case .connecting: return .yellow
+        case .connected: return .green
+        case .error: return .red
+        }
     }
 
     // MARK: - Control Rows
