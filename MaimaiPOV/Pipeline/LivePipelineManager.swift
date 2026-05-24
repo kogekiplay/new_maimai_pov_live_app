@@ -90,6 +90,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
     let giftPermissionManager = GiftPermissionManager()
+    let songDatabase = SongDatabase()
+    let danmakuParser = DanmakuParser()
     var bboxTracker = BBoxTracker()
     var latestTrackOutput: BBoxTracker.TrackOutput?
 
@@ -154,6 +156,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             DispatchQueue.main.async {
                 self.debug.log("[弹幕] \(msg.authorName): \(msg.content)")
             }
+            self.handleDanmakuForSongRequest(msg)
         }
 
         blivechatClient.onGift = { [weak self] msg in
@@ -189,13 +192,91 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
+    private func handleDanmakuForSongRequest(_ msg: DanmakuMessage) {
+        let result = danmakuParser.parse(msg.content)
+
+        switch result.type {
+        case .songRequest(let query, let diffInput, let chartTypePreference):
+            let uid = msg.authorName
+
+            guard giftPermissionManager.hasPermission(uid: uid) else {
+                DispatchQueue.main.async {
+                    self.debug.log("[点歌] \(msg.authorName) 无点歌权限")
+                }
+                return
+            }
+
+            let candidates = songDatabase.findCandidates(query: query)
+            if candidates.candidates.isEmpty {
+                DispatchQueue.main.async {
+                    self.debug.log("[点歌] 未找到歌曲: \"\(query)\"")
+                }
+                return
+            }
+
+            guard let song = songDatabase.pickByChartType(
+                candidates: candidates.candidates,
+                chartTypePreference: chartTypePreference,
+                diffInput: diffInput
+            ) else {
+                DispatchQueue.main.async {
+                    self.debug.log("[点歌] 候选\(candidates.candidates.count)首但无法选择")
+                }
+                return
+            }
+
+            let targetDiffNum = songDatabase.resolveDiffInput(diffInput)
+            guard let noteResult = songDatabase.findNote(song: song, targetDiffNum: targetDiffNum) else {
+                DispatchQueue.main.async {
+                    self.debug.log("[点歌] \(song.title) 没有可用难度")
+                }
+                return
+            }
+
+            let consumed = giftPermissionManager.consumePermission(uid: uid)
+            guard consumed else {
+                DispatchQueue.main.async {
+                    self.debug.log("[点歌] \(msg.authorName) 权限消耗失败")
+                }
+                return
+            }
+
+            let diffName = songDatabase.difficultyDisplayName(noteResult.diffName)
+            let ctDisplay = songDatabase.chartTypeDisplayName(song.chartType)
+            let levelStr = noteResult.levelValue.truncatingRemainder(dividingBy: 1) == 0
+                ? "\(Int(noteResult.levelValue))"
+                : "\(noteResult.levelValue)"
+
+            let coverURL: String? = nil
+
+            let cardData = SongCardData(
+                songName: song.title,
+                artist: song.artist ?? "",
+                difficulty: "\(diffName) \(ctDisplay)",
+                level: levelStr,
+                coverURL: coverURL,
+                requester: msg.authorName,
+                musicId: song.id,
+                chartType: song.chartType
+            )
+
+            DispatchQueue.main.async {
+                self.addSongToQueue(cardData)
+                self.debug.log("[点歌] ✅ \(msg.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(candidates.matchKind?.rawValue ?? "?")]")
+            }
+
+        case .notACommand:
+            break
+        }
+    }
+
     @MainActor func connectBlivechat() {
         Config.blivechatServer = blivechatServer.rawValue
         Config.blivechatIdentityCode = blivechatIdentityCode
 
-        giftPermissionManager.giftDurationMinutes = Config.giftDurationMinutes
-        giftPermissionManager.superChatDurationMinutes = Config.superChatDurationMinutes
-        giftPermissionManager.guardDurationMinutes = Config.guardDurationMinutes
+        if songDatabase.songCount == 0 {
+            songDatabase.loadFromBundle()
+        }
 
         blivechatClient.connect(
             server: blivechatServer,

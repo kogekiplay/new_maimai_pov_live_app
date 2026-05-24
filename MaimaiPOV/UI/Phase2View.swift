@@ -502,54 +502,14 @@ struct Phase2View: View {
                 }
 
                 HStack {
-                    Text("权限用户").font(.caption).frame(width: 55, alignment: .leading)
-                    Text("\(pipeline.giftPermissionManager.activePermissions().count) 人")
+                    Text("点歌权限").font(.caption).frame(width: 55, alignment: .leading)
+                    Text("\(pipeline.giftPermissionManager.activePermissionCount) 人")
                         .font(.caption)
                         .foregroundColor(.yellow)
                     Spacer()
                 }
 
                 Divider().background(Color.gray.opacity(0.3))
-
-                VStack(spacing: 4) {
-                    HStack {
-                        Text("权限时长").font(.caption).foregroundColor(.gray)
-                        Spacer()
-                    }
-                    HStack {
-                        Text("礼物").font(.system(size: 10)).frame(width: 35, alignment: .leading)
-                        TextField("", value: Binding(
-                            get: { Config.giftDurationMinutes },
-                            set: { Config.giftDurationMinutes = $0 }
-                        ), format: .number)
-                        .font(.system(size: 10, design: .monospaced))
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 50)
-                        Text("分钟").font(.system(size: 9)).foregroundColor(.gray)
-                        Spacer()
-                        Text("SC").font(.system(size: 10)).frame(width: 20, alignment: .leading)
-                        TextField("", value: Binding(
-                            get: { Config.superChatDurationMinutes },
-                            set: { Config.superChatDurationMinutes = $0 }
-                        ), format: .number)
-                        .font(.system(size: 10, design: .monospaced))
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 50)
-                        Text("分钟").font(.system(size: 9)).foregroundColor(.gray)
-                    }
-                    HStack {
-                        Text("上舰").font(.system(size: 10)).frame(width: 35, alignment: .leading)
-                        TextField("", value: Binding(
-                            get: { Config.guardDurationMinutes },
-                            set: { Config.guardDurationMinutes = $0 }
-                        ), format: .number)
-                        .font(.system(size: 10, design: .monospaced))
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 50)
-                        Text("分钟").font(.system(size: 9)).foregroundColor(.gray)
-                        Spacer()
-                    }
-                }
             }
         }
         .padding(12)
