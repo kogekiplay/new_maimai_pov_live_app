@@ -93,6 +93,7 @@ struct Phase2View: View {
         .onChange(of: pipeline.overlayScale) { _ in pipeline.updateOverlayScale() }
         .onChange(of: pipeline.overlayOpacity) { _ in pipeline.updateOverlayOpacity() }
         .onChange(of: pipeline.overlayRotation) { _ in pipeline.updateOverlayRotation() }
+        .onChange(of: pipeline.songCardEnabled) { _ in pipeline.updateSongCardEnabled() }
         .onChange(of: pipeline.streamManager.isStreaming) { streaming in
             if streaming {
                 pipeline.debug.isDetailVisible = false
@@ -294,6 +295,7 @@ struct Phase2View: View {
                 overlayOpacityRow
                 overlayRotationRow
             }
+            songCardToggleRow
 
             Button {
                 withAnimation {
@@ -567,6 +569,18 @@ struct Phase2View: View {
             Text(pipeline.overlayEnabled ? "ON" : "OFF")
                 .font(.caption2)
                 .foregroundColor(pipeline.overlayEnabled ? .green : .red)
+        }
+    }
+
+    private var songCardToggleRow: some View {
+        HStack {
+            Text("SongCard").font(.caption).frame(width: 55, alignment: .leading)
+            Toggle("", isOn: $pipeline.songCardEnabled).labelsHidden()
+            Spacer()
+            Spacer()
+            Text(pipeline.songCardEnabled ? "ON" : "OFF")
+                .font(.caption2)
+                .foregroundColor(pipeline.songCardEnabled ? .green : .red)
         }
     }
 

@@ -372,6 +372,17 @@ enum Config {
         set { UserDefaults.standard.set(Double(newValue), forKey: overlayRotationKey) }
     }
 
+    static let defaultSongCardEnabled: Bool = false
+    static var songCardEnabled: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: songCardEnabledKey) != nil else {
+                return defaultSongCardEnabled
+            }
+            return UserDefaults.standard.bool(forKey: songCardEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: songCardEnabledKey) }
+    }
+
     static let defaultCropVerticalOffset: Float = 0.0
     static var cropVerticalOffset: Float {
         get {
@@ -428,6 +439,7 @@ enum Config {
     private static let overlayOpacityKey = "com.maimai.overlayOpacity"
     private static let overlayRotationKey = "com.maimai.overlayRotation"
     private static let cropVerticalOffsetKey = "com.maimai.cropVerticalOffset"
+    private static let songCardEnabledKey = "com.maimai.songCardEnabled"
     private static let autoFocusEnabledKey = "com.maimai.autoFocusEnabled"
     private static let streamBitrateKey = "com.maimai.streamBitrate"
 

@@ -55,6 +55,8 @@ class LivePipelineManager: ObservableObject {
     @Published var overlayOpacity: Float = Config.overlayOpacity
     @Published var overlayRotation: Float = Config.overlayRotation
 
+    @Published var songCardEnabled: Bool = Config.songCardEnabled
+
     @Published var cropVerticalOffset: Float = Config.cropVerticalOffset
 
     let camera = CameraCaptureManager()
@@ -68,6 +70,7 @@ class LivePipelineManager: ObservableObject {
     var yoloDetector: YOLODetector?
     var cropRenderer: CropRenderer?
     var overlayCompositor: OverlayCompositor?
+    var songCardCompositor: SongCardCompositor?
     var bboxTracker = BBoxTracker()
     var latestTrackOutput: BBoxTracker.TrackOutput?
 
@@ -150,6 +153,9 @@ class LivePipelineManager: ObservableObject {
         self.overlayCompositor?.scale = overlayScale
         self.overlayCompositor?.opacity = overlayOpacity
         self.overlayCompositor?.rotation = overlayRotation * .pi / 180.0
+
+        self.songCardCompositor = SongCardCompositor(device: device)
+        self.songCardCompositor?.enabled = songCardEnabled
 
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
@@ -374,6 +380,10 @@ class LivePipelineManager: ObservableObject {
                     if let overlay = self.overlayCompositor,
                        overlay.enabled, overlay.overlayTexture != nil {
                         overlay.encode(into: encoder, outputTexture: writeBuffer.texture)
+                    }
+
+                    if let songCard = self.songCardCompositor, songCard.enabled {
+                        songCard.encode(into: encoder, outputTexture: writeBuffer.texture)
                     }
 
                     encoder.endEncoding()
@@ -627,6 +637,11 @@ class LivePipelineManager: ObservableObject {
     @MainActor func updateOverlayRotation() {
         Config.overlayRotation = overlayRotation
         overlayCompositor?.rotation = overlayRotation * .pi / 180.0
+    }
+
+    @MainActor func updateSongCardEnabled() {
+        Config.songCardEnabled = songCardEnabled
+        songCardCompositor?.enabled = songCardEnabled
     }
 
     @MainActor func updateCropVerticalOffset() {
