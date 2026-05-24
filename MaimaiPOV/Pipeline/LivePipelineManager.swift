@@ -259,7 +259,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let cardData = SongCardData(
                 songName: song.title,
                 artist: song.artist ?? "",
-                difficulty: "\(diffName) \(ctDisplay)",
+                difficulty: diffName,
                 level: levelStr,
                 coverURL: coverURL,
                 requester: msg.authorName,
@@ -922,11 +922,23 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         songCardManager.addSong(song)
 
         if compositor.cards.count < compositor.slots.count {
-            compositor.renderer?.renderCard(data: song) { [weak self] texture in
-                guard let self = self, let texture = texture else { return }
-                if self.songCardCompositor?.cards.count ?? 0 < self.songCardCompositor?.slots.count ?? 0 {
-                    self.songCardCompositor?.addCard(texture: texture, data: song)
+            if let musicId = song.musicId {
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
+                    guard let self = self else { return }
+                    self.renderAndAddCard(data: song, coverBase64: base64)
                 }
+            } else {
+                renderAndAddCard(data: song, coverBase64: nil)
+            }
+        }
+    }
+
+    private func renderAndAddCard(data: SongCardData, coverBase64: String?) {
+        guard let compositor = songCardCompositor else { return }
+        compositor.renderer?.renderCard(data: data, coverBase64: coverBase64) { [weak self] texture in
+            guard let self = self, let texture = texture else { return }
+            if self.songCardCompositor?.cards.count ?? 0 < self.songCardCompositor?.slots.count ?? 0 {
+                self.songCardCompositor?.addCard(texture: texture, data: data)
             }
         }
     }
@@ -947,9 +959,19 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         for i in 0..<displayData.count {
             group.enter()
-            compositor.renderer?.renderCard(data: displayData[i]) { texture in
-                textures[i] = texture
-                group.leave()
+            let songData = displayData[i]
+            if let musicId = songData.musicId {
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
+                    compositor.renderer?.renderCard(data: songData, coverBase64: base64) { texture in
+                        textures[i] = texture
+                        group.leave()
+                    }
+                }
+            } else {
+                compositor.renderer?.renderCard(data: songData, coverBase64: nil) { texture in
+                    textures[i] = texture
+                    group.leave()
+                }
             }
         }
 

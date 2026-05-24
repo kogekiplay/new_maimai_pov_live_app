@@ -21,8 +21,8 @@ class SongCardRenderer {
         webView.scrollView.isScrollEnabled = false
     }
 
-    func renderCard(data: SongCardData, completion: @escaping (MTLTexture?) -> Void) {
-        let html = SongCardTemplate.render(data: data)
+    func renderCard(data: SongCardData, coverBase64: String? = nil, completion: @escaping (MTLTexture?) -> Void) {
+        let html = SongCardTemplate.render(data: data, coverBase64: coverBase64)
         renderHTML(html, completion: completion)
     }
 
