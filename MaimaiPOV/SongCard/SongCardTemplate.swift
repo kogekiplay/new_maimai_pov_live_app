@@ -5,13 +5,14 @@ struct SongCardTemplate {
 <!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=240, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: transparent;
     font-family: -apple-system, sans-serif;
-    width: 200px;
-    height: 300px;
+    width: 240px;
+    height: 360px;
     overflow: hidden;
   }
   .card {
@@ -23,12 +24,12 @@ struct SongCardTemplate {
     align-items: center;
     gap: 8px;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    width: 200px;
-    height: 300px;
+    width: 240px;
+    height: 360px;
   }
   .cover {
-    width: 160px;
-    height: 160px;
+    width: 200px;
+    height: 200px;
     border-radius: 12px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     flex-shrink: 0;
@@ -44,27 +45,27 @@ struct SongCardTemplate {
   }
   .song-name {
     color: white;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: bold;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 170px;
+    max-width: 210px;
   }
   .difficulty {
     color: #ff6b6b;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
   }
   .level {
     color: #ffd93d;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
   }
   .requester {
     color: rgba(255, 255, 255, 0.4);
-    font-size: 11px;
+    font-size: 12px;
   }
 </style>
 </head>

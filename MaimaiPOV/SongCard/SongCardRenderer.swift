@@ -8,7 +8,7 @@ class SongCardRenderer {
     let cardWidth: Int
     let cardHeight: Int
 
-    init(device: MTLDevice, cardWidth: Int = 200, cardHeight: Int = 300) {
+    init(device: MTLDevice, cardWidth: Int = 240, cardHeight: Int = 360) {
         self.device = device
         self.cardWidth = cardWidth
         self.cardHeight = cardHeight
