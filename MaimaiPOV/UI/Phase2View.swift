@@ -588,6 +588,11 @@ struct Phase2View: View {
                 } label: {
                     Image(systemName: "arrow.right").font(.caption2).foregroundColor(.cyan)
                 }
+                Button {
+                    pipeline.loadSongCardHTML()
+                } label: {
+                    Image(systemName: "doc.richtext").font(.caption2).foregroundColor(.orange)
+                }
             }
             Text(pipeline.songCardEnabled ? "ON" : "OFF")
                 .font(.caption2)

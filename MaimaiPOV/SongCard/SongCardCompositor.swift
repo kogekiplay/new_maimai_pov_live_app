@@ -34,6 +34,9 @@ class SongCardCompositor {
 
     var cards: [CardState] = []
     var enabled: Bool = false
+    var useHTMLCards: Bool = false
+
+    private var renderer: SongCardRenderer?
 
     let outWidth = Config.outputWidth
     let outHeight = Config.outputHeight
@@ -60,6 +63,7 @@ class SongCardCompositor {
         }
 
         createTestCards()
+        self.renderer = SongCardRenderer(device: device)
     }
 
     private func createTestCards() {
@@ -169,6 +173,45 @@ class SongCardCompositor {
     func triggerAllSlideIn(duration: Float = 0.5) {
         for i in 0..<cards.count {
             triggerSlideIn(index: i, fromLeft: true, duration: duration + Float(i) * 0.1)
+        }
+    }
+
+    func loadHTMLCards(data: [SongCardData]) {
+        guard let renderer = renderer else { return }
+        useHTMLCards = true
+
+        let group = DispatchGroup()
+        var newCards: [CardState?] = Array(repeating: nil, count: min(data.count, Self.maxCards))
+
+        for i in 0..<min(data.count, Self.maxCards) {
+            group.enter()
+            renderer.renderCard(data: data[i]) { [weak self] texture in
+                guard let self = self else { group.leave(); return }
+                if let texture = texture {
+                    let posY: Float
+                    let scale: Float
+                    switch i {
+                    case 0: posY = 0.12; scale = 0.42
+                    case 1: posY = 0.22; scale = 0.38
+                    default: posY = 0.88; scale = 0.32
+                    }
+                    newCards[i] = CardState(
+                        texture: texture,
+                        posX: 0.22,
+                        posY: posY,
+                        scale: scale,
+                        opacity: 1.0,
+                        animProgress: 0.0
+                    )
+                }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            self.cards = newCards.compactMap { $0 }
+            self.triggerAllFadeIn()
         }
     }
 
