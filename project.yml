@@ -41,6 +41,10 @@ targets:
         settings:
           base:
             CODE_GEN: class
+      - path: MaimaiPOV/SongRequest/song_list.json
+        buildPhase: resources
+      - path: MaimaiPOV/SongRequest/alias_list.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.maimai.MaimaiPOV

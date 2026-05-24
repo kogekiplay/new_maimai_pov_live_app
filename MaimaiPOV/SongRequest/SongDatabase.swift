@@ -122,11 +122,36 @@ class SongDatabase {
     ]
 
     var songCount: Int { songList.count }
+    var lastError: String?
 
     func loadFromBundle() {
-        guard let songURL = Bundle.main.url(forResource: "song_list", withExtension: "json"),
-              let aliasURL = Bundle.main.url(forResource: "alias_list", withExtension: "json") else {
-            print("[SongDatabase] ERROR: song_list.json or alias_list.json not found in bundle")
+        var songURL: URL?
+        var aliasURL: URL?
+
+        songURL = Bundle.main.url(forResource: "song_list", withExtension: "json")
+        aliasURL = Bundle.main.url(forResource: "alias_list", withExtension: "json")
+
+        if songURL == nil {
+            songURL = Bundle.main.url(forResource: "song_list", withExtension: "json", subdirectory: "SongRequest")
+        }
+        if aliasURL == nil {
+            aliasURL = Bundle.main.url(forResource: "alias_list", withExtension: "json", subdirectory: "SongRequest")
+        }
+
+        if songURL == nil || aliasURL == nil {
+            let songFound = songURL != nil
+            let aliasFound = aliasURL != nil
+            lastError = "JSON not found in bundle (song=\(songFound), alias=\(aliasFound))"
+            print("[SongDatabase] ERROR: \(lastError!)")
+
+            if let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) {
+                print("[SongDatabase] Available .json files in bundle root:")
+                for url in urls { print("  - \(url.lastPathComponent)") }
+            }
+            if let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "SongRequest") {
+                print("[SongDatabase] Available .json files in SongRequest subdirectory:")
+                for url in urls { print("  - \(url.lastPathComponent)") }
+            }
             return
         }
 

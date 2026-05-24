@@ -200,6 +200,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         case .songRequest(let query, let diffInput, let chartTypePreference):
             let uid = msg.authorName
 
+            DispatchQueue.main.async {
+                self.debug.log("[点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
+            }
+
             guard songRequestTestMode || giftPermissionManager.hasPermission(uid: uid) else {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] \(msg.authorName) 无点歌权限")
@@ -279,6 +283,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         if songDatabase.songCount == 0 {
             songDatabase.loadFromBundle()
+            if songDatabase.songCount == 0 {
+                debug.log("[曲库] ❌ 加载失败: \(songDatabase.lastError ?? "unknown")")
+            } else {
+                debug.log("[曲库] 加载完成: \(songDatabase.songCount) 首歌曲")
+            }
+        } else {
+            debug.log("[曲库] 已加载: \(songDatabase.songCount) 首歌曲")
         }
 
         blivechatClient.connect(
