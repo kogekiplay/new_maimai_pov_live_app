@@ -57,6 +57,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     @Published var songCardEnabled: Bool = Config.songCardEnabled
     @Published var songRequestTestMode: Bool = false
+    @Published var songRequestTestPriorityMode: Bool = false
 
     @Published var slot0PosX: Float = 0.20
     @Published var slot0PosY: Float = 0.13
@@ -250,7 +251,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 }
                 usePriority = (consumed == .priority)
             } else {
-                usePriority = giftPermissionManager.hasPriorityPermission(uid: "test_user")
+                usePriority = songRequestTestPriorityMode
             }
 
             let diffName = songDatabase.difficultyDisplayName(noteResult.diffName)
@@ -1050,29 +1051,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func addSongAtNextToQueue(_ song: SongCardData) {
-        guard let compositor = songCardCompositor else { return }
-
         songCardManager.addSongAtNext(song)
-
-        if compositor.cards.count < compositor.slots.count {
-            if let musicId = song.musicId {
-                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
-                    guard let self = self else { return }
-                    DispatchQueue.main.async {
-                        if base64 != nil {
-                            self.debug.log("[封面] musicId=\(musicId) 加载成功")
-                        } else {
-                            self.debug.log("[封面] musicId=\(musicId) 加载失败，使用占位图")
-                        }
-                        self.renderAndAddCard(data: song, coverBase64: base64)
-                    }
-                }
-            } else {
-                renderAndAddCard(data: song, coverBase64: nil)
-            }
-        } else {
-            refreshDisplayedCards()
-        }
+        refreshDisplayedCards()
     }
 
     private func refreshDisplayedCards() {

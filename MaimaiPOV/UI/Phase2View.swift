@@ -515,18 +515,16 @@ struct Phase2View: View {
                         .labelsHidden()
                         .scaleEffect(0.7)
                     Spacer()
-                    Button(action: {
-                        pipeline.giftPermissionManager.addTestPermission(uid: "test_user", username: "测试用户")
-                    }) {
-                        Text("+测试权限").font(.system(size: 9)).foregroundColor(.cyan)
+                }
+
+                if pipeline.songRequestTestMode {
+                    HStack {
+                        Text("插队测试").font(.caption).frame(width: 55, alignment: .leading)
+                        Toggle("", isOn: $pipeline.songRequestTestPriorityMode)
+                            .labelsHidden()
+                            .scaleEffect(0.7)
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
-                    Button(action: {
-                        pipeline.giftPermissionManager.addTestPriorityPermission(uid: "test_user", username: "测试用户")
-                    }) {
-                        Text("+测试插队").font(.system(size: 9)).foregroundColor(.orange)
-                    }
-                    .buttonStyle(.plain)
                 }
 
                 Divider().background(Color.gray.opacity(0.3))
