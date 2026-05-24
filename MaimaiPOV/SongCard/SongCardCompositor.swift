@@ -1,42 +1,56 @@
 import Metal
 import QuartzCore
 
+struct CardSlot {
+    var posX: Float
+    var posY: Float
+    var scale: Float
+}
+
 class SongCardCompositor {
     let device: MTLDevice
     private let pipelineState: MTLComputePipelineState
     private var uniformsBuffers: [MTLBuffer]
 
-    enum AnimationState: Int32 {
-        case idle = 0
-        case fadeIn = 1
-        case fadeOut = 2
-        case slideInLeft = 3
-        case slideOutLeft = 4
-        case slideInRight = 5
-        case slideOutRight = 6
-    }
-
     struct CardState {
         var texture: MTLTexture?
-        var posX: Float
-        var posY: Float
-        var scale: Float
-        var opacity: Float
-        var slideOffsetX: Float = 0.0
-        var slideOffsetY: Float = 0.0
-        var animProgress: Float = 1.0
-        var animType: Int32 = 0
+        var data: SongCardData?
 
-        var animState: AnimationState = .idle
+        var currentPosX: Float
+        var currentPosY: Float
+        var currentScale: Float
+        var currentOpacity: Float
+
+        var targetPosX: Float
+        var targetPosY: Float
+        var targetScale: Float
+        var targetOpacity: Float
+
+        var startPosX: Float = 0
+        var startPosY: Float = 0
+        var startScale: Float = 0
+        var startOpacity: Float = 1.0
+
+        var isAnimating: Bool = false
         var animStartTime: CFTimeInterval = 0
-        var animDuration: Float = 0.5
+        var animDuration: Float = 0.4
+
+        var shouldRemoveAfterAnimation: Bool = false
     }
+
+    static let slots: [CardSlot] = [
+        CardSlot(posX: 0.17, posY: 0.10, scale: 0.22),
+        CardSlot(posX: 0.42, posY: 0.12, scale: 0.17),
+        CardSlot(posX: 0.67, posY: 0.14, scale: 0.14)
+    ]
+
+    static let offScreenRight = CardSlot(posX: 1.3, posY: 0.12, scale: 0.14)
+    static let offScreenLeft = CardSlot(posX: -0.3, posY: 0.10, scale: 0.22)
 
     var cards: [CardState] = []
     var enabled: Bool = false
-    var useHTMLCards: Bool = false
 
-    private var renderer: SongCardRenderer?
+    var renderer: SongCardRenderer?
 
     let outWidth = Config.outputWidth
     let outHeight = Config.outputHeight
@@ -67,22 +81,33 @@ class SongCardCompositor {
     }
 
     private func createTestCards() {
-        guard let tex1 = createTestTexture(width: 300, height: 120, b: 200, g: 80, r: 50, a: 200),
-              let tex2 = createTestTexture(width: 280, height: 100, b: 50, g: 180, r: 60, a: 180),
-              let tex3 = createTestTexture(width: 240, height: 80, b: 30, g: 130, r: 220, a: 180) else {
+        guard let tex1 = createTestTexture(width: 200, height: 300, b: 200, g: 80, r: 50, a: 200),
+              let tex2 = createTestTexture(width: 200, height: 300, b: 50, g: 180, r: 60, a: 180),
+              let tex3 = createTestTexture(width: 200, height: 300, b: 30, g: 130, r: 220, a: 180) else {
             return
         }
 
         cards = [
-            CardState(texture: tex1, posX: 0.22, posY: 0.12, scale: 0.42, opacity: 1.0),
-            CardState(texture: tex2, posX: 0.22, posY: 0.22, scale: 0.38, opacity: 1.0),
-            CardState(texture: tex3, posX: 0.18, posY: 0.88, scale: 0.32, opacity: 1.0)
+            CardState(texture: tex1, data: nil,
+                      currentPosX: Self.slots[0].posX, currentPosY: Self.slots[0].posY,
+                      currentScale: Self.slots[0].scale, currentOpacity: 1.0,
+                      targetPosX: Self.slots[0].posX, targetPosY: Self.slots[0].posY,
+                      targetScale: Self.slots[0].scale, targetOpacity: 1.0),
+            CardState(texture: tex2, data: nil,
+                      currentPosX: Self.slots[1].posX, currentPosY: Self.slots[1].posY,
+                      currentScale: Self.slots[1].scale, currentOpacity: 1.0,
+                      targetPosX: Self.slots[1].posX, targetPosY: Self.slots[1].posY,
+                      targetScale: Self.slots[1].scale, targetOpacity: 1.0),
+            CardState(texture: tex3, data: nil,
+                      currentPosX: Self.slots[2].posX, currentPosY: Self.slots[2].posY,
+                      currentScale: Self.slots[2].scale, currentOpacity: 1.0,
+                      targetPosX: Self.slots[2].posX, targetPosY: Self.slots[2].posY,
+                      targetScale: Self.slots[2].scale, targetOpacity: 1.0)
         ]
     }
 
     private func createTestTexture(width: Int, height: Int, b: UInt8, g: UInt8, r: UInt8, a: UInt8) -> MTLTexture? {
         var pixelData = [UInt8](repeating: 0, count: width * height * 4)
-
         let border = max(4, min(width, height) / 15)
 
         for y in 0..<height {
@@ -126,166 +151,198 @@ class SongCardCompositor {
         return texture
     }
 
-    func triggerFadeIn(index: Int, duration: Float = 0.5) {
-        guard index >= 0, index < cards.count else { return }
-        cards[index].animState = .fadeIn
-        cards[index].animStartTime = CACurrentMediaTime()
-        cards[index].animDuration = duration
-        cards[index].animProgress = 0.0
-        cards[index].animType = AnimationState.fadeIn.rawValue
+    private func easeOutCubic(_ t: Float) -> Float {
+        return 1.0 - pow(1.0 - t, 3.0)
     }
 
-    func triggerFadeOut(index: Int, duration: Float = 0.5) {
-        guard index >= 0, index < cards.count else { return }
-        cards[index].animState = .fadeOut
-        cards[index].animStartTime = CACurrentMediaTime()
-        cards[index].animDuration = duration
-        cards[index].animProgress = 1.0
-        cards[index].animType = AnimationState.fadeOut.rawValue
+    private func lerp(_ a: Float, _ b: Float, _ t: Float) -> Float {
+        return a + (b - a) * t
     }
 
-    func triggerSlideIn(index: Int, fromLeft: Bool = true, duration: Float = 0.5) {
-        guard index >= 0, index < cards.count else { return }
-        cards[index].animState = fromLeft ? .slideInLeft : .slideInRight
-        cards[index].animStartTime = CACurrentMediaTime()
-        cards[index].animDuration = duration
-        cards[index].animProgress = 0.0
-        cards[index].slideOffsetX = fromLeft ? -1.0 : 1.0
-        cards[index].animType = (fromLeft ? AnimationState.slideInLeft : AnimationState.slideInRight).rawValue
-    }
+    func updateAnimations() {
+        let currentTime = CACurrentMediaTime()
+        var indicesToRemove: [Int] = []
 
-    func triggerSlideOut(index: Int, toLeft: Bool = true, duration: Float = 0.5) {
-        guard index >= 0, index < cards.count else { return }
-        cards[index].animState = toLeft ? .slideOutLeft : .slideOutRight
-        cards[index].animStartTime = CACurrentMediaTime()
-        cards[index].animDuration = duration
-        cards[index].animProgress = 1.0
-        cards[index].slideOffsetX = 0.0
-        cards[index].animType = (toLeft ? AnimationState.slideOutLeft : AnimationState.slideOutRight).rawValue
-    }
-
-    func triggerAllFadeIn(duration: Float = 0.5) {
         for i in 0..<cards.count {
-            triggerFadeIn(index: i, duration: duration + Float(i) * 0.15)
+            guard cards[i].isAnimating else { continue }
+
+            let elapsed = Float(currentTime - cards[i].animStartTime)
+            let rawProgress = min(elapsed / cards[i].animDuration, 1.0)
+            let eased = easeOutCubic(rawProgress)
+
+            cards[i].currentPosX = lerp(cards[i].startPosX, cards[i].targetPosX, eased)
+            cards[i].currentPosY = lerp(cards[i].startPosY, cards[i].targetPosY, eased)
+            cards[i].currentScale = lerp(cards[i].startScale, cards[i].targetScale, eased)
+            cards[i].currentOpacity = lerp(cards[i].startOpacity, cards[i].targetOpacity, eased)
+
+            if rawProgress >= 1.0 {
+                cards[i].isAnimating = false
+                if cards[i].shouldRemoveAfterAnimation {
+                    indicesToRemove.append(i)
+                }
+            }
+        }
+
+        if !indicesToRemove.isEmpty {
+            for i in indicesToRemove.reversed() {
+                cards.remove(at: i)
+            }
         }
     }
 
-    func triggerAllSlideIn(duration: Float = 0.5) {
-        for i in 0..<cards.count {
-            triggerSlideIn(index: i, fromLeft: true, duration: duration + Float(i) * 0.1)
+    func animateCardToSlot(index: Int, slot: CardSlot, duration: Float = 0.4, delay: Float = 0.0) {
+        guard index >= 0, index < cards.count else { return }
+
+        cards[index].startPosX = cards[index].currentPosX
+        cards[index].startPosY = cards[index].currentPosY
+        cards[index].startScale = cards[index].currentScale
+        cards[index].startOpacity = cards[index].currentOpacity
+
+        cards[index].targetPosX = slot.posX
+        cards[index].targetPosY = slot.posY
+        cards[index].targetScale = slot.scale
+        cards[index].targetOpacity = 1.0
+
+        cards[index].isAnimating = true
+        cards[index].animStartTime = CACurrentMediaTime() + Double(delay)
+        cards[index].animDuration = duration
+        cards[index].shouldRemoveAfterAnimation = false
+    }
+
+    func animateCardOutLeft(index: Int, duration: Float = 0.4) {
+        guard index >= 0, index < cards.count else { return }
+
+        cards[index].startPosX = cards[index].currentPosX
+        cards[index].startPosY = cards[index].currentPosY
+        cards[index].startScale = cards[index].currentScale
+        cards[index].startOpacity = cards[index].currentOpacity
+
+        cards[index].targetPosX = Self.offScreenLeft.posX
+        cards[index].targetPosY = Self.offScreenLeft.posY
+        cards[index].targetScale = Self.offScreenLeft.scale
+        cards[index].targetOpacity = 0.0
+
+        cards[index].isAnimating = true
+        cards[index].animStartTime = CACurrentMediaTime()
+        cards[index].animDuration = duration
+        cards[index].shouldRemoveAfterAnimation = true
+    }
+
+    func addCardFromRight(texture: MTLTexture, data: SongCardData?, targetSlot: Int, duration: Float = 0.4) {
+        let slot = targetSlot < Self.slots.count ? Self.slots[targetSlot] : Self.slots[2]
+
+        let card = CardState(
+            texture: texture,
+            data: data,
+            currentPosX: Self.offScreenRight.posX,
+            currentPosY: Self.offScreenRight.posY,
+            currentScale: Self.offScreenRight.scale,
+            currentOpacity: 1.0,
+            targetPosX: slot.posX,
+            targetPosY: slot.posY,
+            targetScale: slot.scale,
+            targetOpacity: 1.0,
+            isAnimating: true,
+            animStartTime: CACurrentMediaTime(),
+            animDuration: duration
+        )
+
+        cards.append(card)
+    }
+
+    func shiftCardsLeft(newCardTexture: MTLTexture? = nil, newCardData: SongCardData? = nil) {
+        if !cards.isEmpty {
+            animateCardOutLeft(index: 0, duration: 0.4)
+        }
+
+        if cards.count > 1 {
+            animateCardToSlot(index: 1, slot: Self.slots[0], duration: 0.4, delay: 0.05)
+        }
+
+        if cards.count > 2 {
+            animateCardToSlot(index: 2, slot: Self.slots[1], duration: 0.4, delay: 0.1)
+        }
+
+        if let texture = newCardTexture {
+            addCardFromRight(texture: texture, data: newCardData, targetSlot: 2, duration: 0.4)
         }
     }
 
     func loadHTMLCards(data: [SongCardData]) {
         guard let renderer = renderer else { return }
-        useHTMLCards = true
 
         let group = DispatchGroup()
-        var newCards: [CardState?] = Array(repeating: nil, count: min(data.count, Self.maxCards))
+        var textures: [MTLTexture?] = Array(repeating: nil, count: min(data.count, Self.slots.count))
 
-        for i in 0..<min(data.count, Self.maxCards) {
+        for i in 0..<min(data.count, Self.slots.count) {
             group.enter()
-            renderer.renderCard(data: data[i]) { [weak self] texture in
-                guard let self = self else { group.leave(); return }
-                if let texture = texture {
-                    let posY: Float
-                    let scale: Float
-                    switch i {
-                    case 0: posY = 0.12; scale = 0.42
-                    case 1: posY = 0.22; scale = 0.38
-                    default: posY = 0.88; scale = 0.32
-                    }
-                    newCards[i] = CardState(
-                        texture: texture,
-                        posX: 0.22,
-                        posY: posY,
-                        scale: scale,
-                        opacity: 1.0,
-                        animProgress: 0.0
-                    )
-                }
+            renderer.renderCard(data: data[i]) { texture in
+                textures[i] = texture
                 group.leave()
             }
         }
 
         group.notify(queue: .main) { [weak self] in
             guard let self = self else { return }
-            self.cards = newCards.compactMap { $0 }
-            self.triggerAllFadeIn()
+            self.cards.removeAll()
+
+            for i in 0..<textures.count {
+                guard let texture = textures[i] else { continue }
+                let slot = Self.slots[i]
+                let card = CardState(
+                    texture: texture,
+                    data: i < data.count ? data[i] : nil,
+                    currentPosX: Self.offScreenRight.posX,
+                    currentPosY: slot.posY,
+                    currentScale: Self.offScreenRight.scale,
+                    currentOpacity: 1.0,
+                    targetPosX: slot.posX,
+                    targetPosY: slot.posY,
+                    targetScale: slot.scale,
+                    targetOpacity: 1.0,
+                    isAnimating: true,
+                    animStartTime: CACurrentMediaTime() + Double(i) * 0.1,
+                    animDuration: 0.4
+                )
+                self.cards.append(card)
+            }
         }
     }
 
-    private func easeOutCubic(_ t: Float) -> Float {
-        return 1.0 - pow(1.0 - t, 3.0)
+    func triggerAllFadeIn() {
+        for i in cards.indices {
+            cards[i].startPosX = cards[i].currentPosX
+            cards[i].startPosY = cards[i].currentPosY
+            cards[i].startScale = cards[i].currentScale
+            cards[i].startOpacity = 0.0
+
+            cards[i].targetPosX = Self.slots[min(i, Self.slots.count - 1)].posX
+            cards[i].targetPosY = Self.slots[min(i, Self.slots.count - 1)].posY
+            cards[i].targetScale = Self.slots[min(i, Self.slots.count - 1)].scale
+            cards[i].targetOpacity = 1.0
+
+            cards[i].isAnimating = true
+            cards[i].animStartTime = CACurrentMediaTime() + Double(i) * 0.15
+            cards[i].animDuration = 0.5
+        }
     }
 
-    func updateAnimations() {
-        let currentTime = CACurrentMediaTime()
+    func triggerAllSlideIn() {
+        for i in cards.indices {
+            let slot = Self.slots[min(i, Self.slots.count - 1)]
+            cards[i].startPosX = Self.offScreenRight.posX
+            cards[i].startPosY = cards[i].currentPosY
+            cards[i].startScale = Self.offScreenRight.scale
+            cards[i].startOpacity = cards[i].currentOpacity
 
-        for i in 0..<cards.count {
-            guard cards[i].animState != .idle else { continue }
+            cards[i].targetPosX = slot.posX
+            cards[i].targetPosY = slot.posY
+            cards[i].targetScale = slot.scale
+            cards[i].targetOpacity = 1.0
 
-            let elapsed = Float(currentTime - cards[i].animStartTime)
-            let rawProgress = min(elapsed / cards[i].animDuration, 1.0)
-            let eased = easeOutCubic(rawProgress)
-
-            switch cards[i].animState {
-            case .fadeIn:
-                cards[i].animProgress = eased
-                if rawProgress >= 1.0 {
-                    cards[i].animState = .idle
-                    cards[i].animType = 0
-                }
-
-            case .fadeOut:
-                cards[i].animProgress = 1.0 - eased
-                if rawProgress >= 1.0 {
-                    cards[i].animState = .idle
-                    cards[i].animType = 0
-                    cards[i].animProgress = 0.0
-                }
-
-            case .slideInLeft:
-                cards[i].animProgress = eased
-                cards[i].slideOffsetX = (1.0 - eased) * -1.0
-                if rawProgress >= 1.0 {
-                    cards[i].animState = .idle
-                    cards[i].animType = 0
-                    cards[i].slideOffsetX = 0.0
-                }
-
-            case .slideInRight:
-                cards[i].animProgress = eased
-                cards[i].slideOffsetX = (1.0 - eased) * 1.0
-                if rawProgress >= 1.0 {
-                    cards[i].animState = .idle
-                    cards[i].animType = 0
-                    cards[i].slideOffsetX = 0.0
-                }
-
-            case .slideOutLeft:
-                cards[i].animProgress = 1.0 - eased
-                cards[i].slideOffsetX = eased * -1.0
-                if rawProgress >= 1.0 {
-                    cards[i].animState = .idle
-                    cards[i].animType = 0
-                    cards[i].animProgress = 0.0
-                    cards[i].slideOffsetX = -1.0
-                }
-
-            case .slideOutRight:
-                cards[i].animProgress = 1.0 - eased
-                cards[i].slideOffsetX = eased * 1.0
-                if rawProgress >= 1.0 {
-                    cards[i].animState = .idle
-                    cards[i].animType = 0
-                    cards[i].animProgress = 0.0
-                    cards[i].slideOffsetX = 1.0
-                }
-
-            default:
-                break
-            }
+            cards[i].isAnimating = true
+            cards[i].animStartTime = CACurrentMediaTime() + Double(i) * 0.1
+            cards[i].animDuration = 0.4
         }
     }
 
@@ -299,21 +356,21 @@ class SongCardCompositor {
 
         for i in 0..<min(cards.count, Self.maxCards) {
             guard let cardTex = cards[i].texture else { continue }
-            if cards[i].animProgress < 0.001 && cards[i].animState == .idle { continue }
+            if cards[i].currentOpacity < 0.001 && !cards[i].isAnimating { continue }
 
             var uniforms = SongCardUniforms()
-            uniforms.posX = cards[i].posX
-            uniforms.posY = cards[i].posY
-            uniforms.scale = cards[i].scale
-            uniforms.opacity = cards[i].opacity
-            uniforms.slideOffsetX = cards[i].slideOffsetX
-            uniforms.slideOffsetY = cards[i].slideOffsetY
+            uniforms.posX = cards[i].currentPosX
+            uniforms.posY = cards[i].currentPosY
+            uniforms.scale = cards[i].currentScale
+            uniforms.opacity = cards[i].currentOpacity
+            uniforms.slideOffsetX = 0.0
+            uniforms.slideOffsetY = 0.0
             uniforms.cardWidth = Float(cardTex.width)
             uniforms.cardHeight = Float(cardTex.height)
             uniforms.outWidth = Float(outWidth)
             uniforms.outHeight = Float(outHeight)
-            uniforms.animProgress = cards[i].animProgress
-            uniforms.animType = cards[i].animType
+            uniforms.animProgress = 1.0
+            uniforms.animType = 0
 
             memcpy(uniformsBuffers[i].contents(), &uniforms, MemoryLayout<SongCardUniforms>.stride)
 

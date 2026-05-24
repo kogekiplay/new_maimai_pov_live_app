@@ -597,13 +597,15 @@ struct Phase2View: View {
                     pipeline.songCardManager.addSong(SongCardData(
                         songName: "Song \(pipeline.songCardManager.queue.count + 1)",
                         artist: "Artist",
+                        difficulty: ["BASIC", "ADVANCED", "EXPERT", "MASTER"][pipeline.songCardManager.queue.count % 4],
+                        level: "\(7 + pipeline.songCardManager.queue.count)",
                         requester: "User\(pipeline.songCardManager.queue.count + 1)"
                     ))
                 } label: {
                     Image(systemName: "plus").font(.caption2).foregroundColor(.green)
                 }
                 Button {
-                    pipeline.songCardManager.nextTrack()
+                    pipeline.triggerSongCardShiftLeft()
                 } label: {
                     Image(systemName: "forward.fill").font(.caption2).foregroundColor(.yellow)
                 }

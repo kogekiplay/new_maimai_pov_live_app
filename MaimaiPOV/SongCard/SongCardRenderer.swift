@@ -5,10 +5,10 @@ import Metal
 class SongCardRenderer {
     private let webView: WKWebView
     private let device: MTLDevice
-    private let cardWidth: Int
-    private let cardHeight: Int
+    let cardWidth: Int
+    let cardHeight: Int
 
-    init(device: MTLDevice, cardWidth: Int = 400, cardHeight: Int = 120) {
+    init(device: MTLDevice, cardWidth: Int = 200, cardHeight: Int = 300) {
         self.device = device
         self.cardWidth = cardWidth
         self.cardHeight = cardHeight

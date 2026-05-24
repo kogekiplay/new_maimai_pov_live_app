@@ -696,15 +696,36 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         if let next = songCardManager.nextSong {
             displayData.append(next)
         }
-        if songCardManager.queue.count > 2 {
-            displayData.append(SongCardData(
-                songName: "\(songCardManager.queue.count - songCardManager.currentIndex - 1) songs",
-                artist: "in queue",
-                requester: nil
-            ))
+        let remaining = songCardManager.queue.count - songCardManager.currentIndex - 1
+        let thirdIndex = songCardManager.currentIndex + 2
+        if remaining > 1, thirdIndex < songCardManager.queue.count {
+            displayData.append(songCardManager.queue[thirdIndex])
         }
         songCardCompositor?.loadHTMLCards(data: displayData)
     }
 
     func onQueueUpdated(_ songs: [SongCardData]) {}
+
+    func triggerSongCardShiftLeft() {
+        guard let compositor = songCardCompositor else { return }
+        let nextIndex = songCardManager.currentIndex + 1
+        var newTexture: MTLTexture?
+        var newData: SongCardData?
+
+        if nextIndex + 2 < songCardManager.queue.count {
+            let thirdSong = songCardManager.queue[nextIndex + 2]
+            newData = thirdSong
+        }
+
+        if let data = newData, let renderer = compositor.renderer {
+            renderer.renderCard(data: data) { [weak self] texture in
+                guard let self = self else { return }
+                self.songCardCompositor?.shiftCardsLeft(newCardTexture: texture, newCardData: data)
+            }
+        } else {
+            songCardCompositor?.shiftCardsLeft()
+        }
+
+        songCardManager.nextTrack()
+    }
 }
