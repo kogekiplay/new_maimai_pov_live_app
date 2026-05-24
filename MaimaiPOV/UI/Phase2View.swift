@@ -579,21 +579,6 @@ struct Phase2View: View {
             Spacer()
             if pipeline.songCardEnabled {
                 Button {
-                    pipeline.triggerSongCardFadeIn()
-                } label: {
-                    Image(systemName: "eye").font(.caption2).foregroundColor(.cyan)
-                }
-                Button {
-                    pipeline.triggerSongCardSlideIn()
-                } label: {
-                    Image(systemName: "arrow.right").font(.caption2).foregroundColor(.cyan)
-                }
-                Button {
-                    pipeline.loadSongCardHTML()
-                } label: {
-                    Image(systemName: "doc.richtext").font(.caption2).foregroundColor(.orange)
-                }
-                Button {
                     pipeline.songCardManager.addSong(SongCardData(
                         songName: "Song \(pipeline.songCardManager.queue.count + 1)",
                         artist: "Artist",

@@ -6,14 +6,10 @@ struct SongCardUniforms {
     float posY;
     float scale;
     float opacity;
-    float slideOffsetX;
-    float slideOffsetY;
     float cardWidth;
     float cardHeight;
     float outWidth;
     float outHeight;
-    float animProgress;
-    int animType;
 };
 
 kernel void songCardBlend(
@@ -26,8 +22,8 @@ kernel void songCardBlend(
 
     float cardPixelW = u.outWidth * u.scale;
     float cardPixelH = cardPixelW * (u.cardHeight / u.cardWidth);
-    float centerX = u.posX * u.outWidth + u.slideOffsetX * u.outWidth;
-    float centerY = u.posY * u.outHeight + u.slideOffsetY * u.outHeight;
+    float centerX = u.posX * u.outWidth;
+    float centerY = u.posY * u.outHeight;
     float left = centerX - cardPixelW / 2.0;
     float top = centerY - cardPixelH / 2.0;
 
@@ -39,7 +35,7 @@ kernel void songCardBlend(
     constexpr sampler s(coord::normalized, address::clamp_to_edge, filter::linear);
     float4 card = cardTexture.sample(s, float2(relX, relY));
 
-    float alpha = card.a * u.opacity * u.animProgress;
+    float alpha = card.a * u.opacity;
     if (alpha < 0.001) return;
 
     float4 background = outputTexture.read(gid);

@@ -647,19 +647,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         songCardCompositor?.enabled = songCardEnabled
     }
 
-    func triggerSongCardFadeIn() {
-        songCardCompositor?.triggerAllFadeIn()
-    }
-
-    func triggerSongCardSlideIn() {
-        songCardCompositor?.triggerAllSlideIn()
-    }
-
-    func loadSongCardHTML() {
-        let data = SongCardData.previewData()
-        songCardCompositor?.loadHTMLCards(data: data)
-    }
-
     @MainActor func updateCropVerticalOffset() {
         Config.cropVerticalOffset = cropVerticalOffset
         debug.cropVerticalOffset = cropVerticalOffset

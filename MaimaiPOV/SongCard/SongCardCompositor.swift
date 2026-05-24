@@ -7,6 +7,15 @@ struct CardSlot {
     var scale: Float
 }
 
+struct AnimationStep {
+    let targetPosX: Float
+    let targetPosY: Float
+    let targetScale: Float
+    let targetOpacity: Float
+    let duration: Float
+    let delay: Float
+}
+
 class SongCardCompositor {
     let device: MTLDevice
     private let pipelineState: MTLComputePipelineState
@@ -36,16 +45,17 @@ class SongCardCompositor {
         var animDuration: Float = 0.4
 
         var shouldRemoveAfterAnimation: Bool = false
+        var pendingAnimations: [AnimationStep] = []
     }
 
     static let slots: [CardSlot] = [
-        CardSlot(posX: 0.17, posY: 0.10, scale: 0.22),
-        CardSlot(posX: 0.42, posY: 0.12, scale: 0.17),
-        CardSlot(posX: 0.67, posY: 0.14, scale: 0.14)
+        CardSlot(posX: 0.20, posY: 0.115, scale: 0.30),
+        CardSlot(posX: 0.47, posY: 0.13, scale: 0.22),
+        CardSlot(posX: 0.72, posY: 0.14, scale: 0.18)
     ]
 
-    static let offScreenRight = CardSlot(posX: 1.3, posY: 0.12, scale: 0.14)
-    static let offScreenLeft = CardSlot(posX: -0.3, posY: 0.10, scale: 0.22)
+    static let offScreenRight = CardSlot(posX: 1.3, posY: 0.13, scale: 0.18)
+    static let offScreenLeft = CardSlot(posX: -0.3, posY: 0.115, scale: 0.30)
 
     var cards: [CardState] = []
     var enabled: Bool = false
@@ -76,79 +86,7 @@ class SongCardCompositor {
             self.uniformsBuffers.append(buffer)
         }
 
-        createTestCards()
         self.renderer = SongCardRenderer(device: device)
-    }
-
-    private func createTestCards() {
-        guard let tex1 = createTestTexture(width: 200, height: 300, b: 200, g: 80, r: 50, a: 200),
-              let tex2 = createTestTexture(width: 200, height: 300, b: 50, g: 180, r: 60, a: 180),
-              let tex3 = createTestTexture(width: 200, height: 300, b: 30, g: 130, r: 220, a: 180) else {
-            return
-        }
-
-        cards = [
-            CardState(texture: tex1, data: nil,
-                      currentPosX: Self.slots[0].posX, currentPosY: Self.slots[0].posY,
-                      currentScale: Self.slots[0].scale, currentOpacity: 1.0,
-                      targetPosX: Self.slots[0].posX, targetPosY: Self.slots[0].posY,
-                      targetScale: Self.slots[0].scale, targetOpacity: 1.0),
-            CardState(texture: tex2, data: nil,
-                      currentPosX: Self.slots[1].posX, currentPosY: Self.slots[1].posY,
-                      currentScale: Self.slots[1].scale, currentOpacity: 1.0,
-                      targetPosX: Self.slots[1].posX, targetPosY: Self.slots[1].posY,
-                      targetScale: Self.slots[1].scale, targetOpacity: 1.0),
-            CardState(texture: tex3, data: nil,
-                      currentPosX: Self.slots[2].posX, currentPosY: Self.slots[2].posY,
-                      currentScale: Self.slots[2].scale, currentOpacity: 1.0,
-                      targetPosX: Self.slots[2].posX, targetPosY: Self.slots[2].posY,
-                      targetScale: Self.slots[2].scale, targetOpacity: 1.0)
-        ]
-    }
-
-    private func createTestTexture(width: Int, height: Int, b: UInt8, g: UInt8, r: UInt8, a: UInt8) -> MTLTexture? {
-        var pixelData = [UInt8](repeating: 0, count: width * height * 4)
-        let border = max(4, min(width, height) / 15)
-
-        for y in 0..<height {
-            for x in 0..<width {
-                let idx = (y * width + x) * 4
-                let isBorder = x < border || x >= width - border || y < border || y >= height - border
-
-                if isBorder {
-                    pixelData[idx] = 255
-                    pixelData[idx + 1] = 255
-                    pixelData[idx + 2] = 255
-                    pixelData[idx + 3] = 220
-                } else {
-                    pixelData[idx] = b
-                    pixelData[idx + 1] = g
-                    pixelData[idx + 2] = r
-                    pixelData[idx + 3] = a
-                }
-            }
-        }
-
-        let texDesc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: width,
-            height: height,
-            mipmapped: false
-        )
-        texDesc.usage = .shaderRead
-        texDesc.storageMode = .shared
-
-        guard let texture = device.makeTexture(descriptor: texDesc) else { return nil }
-
-        texture.replace(
-            region: MTLRegion(origin: .init(x: 0, y: 0, z: 0),
-                              size: MTLSize(width: width, height: height, depth: 1)),
-            mipmapLevel: 0,
-            withBytes: pixelData,
-            bytesPerRow: width * 4
-        )
-
-        return texture
     }
 
     private func easeOutCubic(_ t: Float) -> Float {
@@ -177,7 +115,21 @@ class SongCardCompositor {
 
             if rawProgress >= 1.0 {
                 cards[i].isAnimating = false
-                if cards[i].shouldRemoveAfterAnimation {
+
+                if !cards[i].pendingAnimations.isEmpty {
+                    let next = cards[i].pendingAnimations.removeFirst()
+                    cards[i].startPosX = cards[i].currentPosX
+                    cards[i].startPosY = cards[i].currentPosY
+                    cards[i].startScale = cards[i].currentScale
+                    cards[i].startOpacity = cards[i].currentOpacity
+                    cards[i].targetPosX = next.targetPosX
+                    cards[i].targetPosY = next.targetPosY
+                    cards[i].targetScale = next.targetScale
+                    cards[i].targetOpacity = next.targetOpacity
+                    cards[i].animDuration = next.duration
+                    cards[i].animStartTime = CACurrentMediaTime() + Double(next.delay)
+                    cards[i].isAnimating = true
+                } else if cards[i].shouldRemoveAfterAnimation {
                     indicesToRemove.append(i)
                 }
             }
@@ -309,43 +261,6 @@ class SongCardCompositor {
         }
     }
 
-    func triggerAllFadeIn() {
-        for i in cards.indices {
-            cards[i].startPosX = cards[i].currentPosX
-            cards[i].startPosY = cards[i].currentPosY
-            cards[i].startScale = cards[i].currentScale
-            cards[i].startOpacity = 0.0
-
-            cards[i].targetPosX = Self.slots[min(i, Self.slots.count - 1)].posX
-            cards[i].targetPosY = Self.slots[min(i, Self.slots.count - 1)].posY
-            cards[i].targetScale = Self.slots[min(i, Self.slots.count - 1)].scale
-            cards[i].targetOpacity = 1.0
-
-            cards[i].isAnimating = true
-            cards[i].animStartTime = CACurrentMediaTime() + Double(i) * 0.15
-            cards[i].animDuration = 0.5
-        }
-    }
-
-    func triggerAllSlideIn() {
-        for i in cards.indices {
-            let slot = Self.slots[min(i, Self.slots.count - 1)]
-            cards[i].startPosX = Self.offScreenRight.posX
-            cards[i].startPosY = cards[i].currentPosY
-            cards[i].startScale = Self.offScreenRight.scale
-            cards[i].startOpacity = cards[i].currentOpacity
-
-            cards[i].targetPosX = slot.posX
-            cards[i].targetPosY = slot.posY
-            cards[i].targetScale = slot.scale
-            cards[i].targetOpacity = 1.0
-
-            cards[i].isAnimating = true
-            cards[i].animStartTime = CACurrentMediaTime() + Double(i) * 0.1
-            cards[i].animDuration = 0.4
-        }
-    }
-
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
         guard enabled, !cards.isEmpty else { return }
 
@@ -363,14 +278,10 @@ class SongCardCompositor {
             uniforms.posY = cards[i].currentPosY
             uniforms.scale = cards[i].currentScale
             uniforms.opacity = cards[i].currentOpacity
-            uniforms.slideOffsetX = 0.0
-            uniforms.slideOffsetY = 0.0
             uniforms.cardWidth = Float(cardTex.width)
             uniforms.cardHeight = Float(cardTex.height)
             uniforms.outWidth = Float(outWidth)
             uniforms.outHeight = Float(outHeight)
-            uniforms.animProgress = 1.0
-            uniforms.animType = 0
 
             memcpy(uniformsBuffers[i].contents(), &uniforms, MemoryLayout<SongCardUniforms>.stride)
 
