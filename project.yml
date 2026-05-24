@@ -35,16 +35,17 @@ targets:
           - "**/*.pt"
           - "**/*.zip"
           - "Tracking/Models/convert_coreml.py"
+          - "SongRequest/song_list.json"
+          - "SongRequest/alias_list.json"
       - path: MaimaiPOV/Tracking/Models/best.mlpackage
         buildPhase: sources
         type: folder
         settings:
           base:
             CODE_GEN: class
-      - path: MaimaiPOV/SongRequest/song_list.json
+      - path: MaimaiPOV/SongRequest
         buildPhase: resources
-      - path: MaimaiPOV/SongRequest/alias_list.json
-        buildPhase: resources
+        type: folder
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.maimai.MaimaiPOV

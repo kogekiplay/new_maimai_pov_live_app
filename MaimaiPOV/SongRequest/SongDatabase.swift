@@ -128,30 +128,30 @@ class SongDatabase {
         var songURL: URL?
         var aliasURL: URL?
 
-        songURL = Bundle.main.url(forResource: "song_list", withExtension: "json")
-        aliasURL = Bundle.main.url(forResource: "alias_list", withExtension: "json")
-
-        if songURL == nil {
-            songURL = Bundle.main.url(forResource: "song_list", withExtension: "json", subdirectory: "SongRequest")
-        }
-        if aliasURL == nil {
-            aliasURL = Bundle.main.url(forResource: "alias_list", withExtension: "json", subdirectory: "SongRequest")
+        let searchPaths: [String?] = [nil, "SongRequest", "MaimaiPOV/SongRequest", "MaimaiPOV"]
+        for subDir in searchPaths {
+            if songURL == nil {
+                songURL = Bundle.main.url(forResource: "song_list", withExtension: "json", subdirectory: subDir)
+            }
+            if aliasURL == nil {
+                aliasURL = Bundle.main.url(forResource: "alias_list", withExtension: "json", subdirectory: subDir)
+            }
+            if songURL != nil && aliasURL != nil { break }
         }
 
         if songURL == nil || aliasURL == nil {
-            let songFound = songURL != nil
-            let aliasFound = aliasURL != nil
-            lastError = "JSON not found in bundle (song=\(songFound), alias=\(aliasFound))"
-            print("[SongDatabase] ERROR: \(lastError!)")
-
+            var allJsonFiles: [String] = []
             if let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) {
-                print("[SongDatabase] Available .json files in bundle root:")
-                for url in urls { print("  - \(url.lastPathComponent)") }
+                allJsonFiles.append(contentsOf: urls.map { "root/\($0.lastPathComponent)" })
             }
-            if let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "SongRequest") {
-                print("[SongDatabase] Available .json files in SongRequest subdirectory:")
-                for url in urls { print("  - \(url.lastPathComponent)") }
+            for subDir in ["SongRequest", "MaimaiPOV", "MaimaiPOV/SongRequest"] {
+                if let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: subDir) {
+                    allJsonFiles.append(contentsOf: urls.map { "\(subDir)/\($0.lastPathComponent)" })
+                }
             }
+            let bundlePath = Bundle.main.bundlePath
+            lastError = "JSON not found (song=\(songURL != nil), alias=\(aliasURL != nil)) jsons=[\(allJsonFiles.joined(separator: ","))] bundle=\(bundlePath)"
+            print("[SongDatabase] ERROR: \(lastError!)")
             return
         }
 
@@ -175,6 +175,7 @@ class SongDatabase {
             let utageCount = songList.filter { $0.chartType == "utage" }.count
             print("[SongDatabase] Loaded \(songList.count) songs (std=\(stdCount) dx=\(dxCount) utage=\(utageCount)) byTitle=\(byTitle.count) byAlias=\(byAlias.count)")
         } catch {
+            lastError = "JSON decode error: \(error.localizedDescription)"
             print("[SongDatabase] ERROR loading data: \(error)")
         }
     }
