@@ -33,8 +33,42 @@ struct Song: Codable {
     }
 }
 
+enum DifficultyValue: Codable, Equatable {
+    case intValue(Int)
+    case stringValue(String)
+
+    var isUtage: Bool {
+        if case .stringValue(let v) = self { return v == "utage" }
+        return false
+    }
+
+    var intVal: Int? {
+        if case .intValue(let v) = self { return v }
+        return nil
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let intValue = try? container.decode(Int.self) {
+            self = .intValue(intValue)
+        } else if let stringValue = try? container.decode(String.self) {
+            self = .stringValue(stringValue)
+        } else {
+            self = .intValue(0)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .intValue(let v): try container.encode(v)
+        case .stringValue(let v): try container.encode(v)
+        }
+    }
+}
+
 struct SongNote: Codable {
-    let difficulty: Int
+    let difficulty: DifficultyValue
     let level: String
     let levelValue: Double
     let noteDesigner: String?
@@ -310,19 +344,24 @@ class SongDatabase {
         guard !song.notes.isEmpty else { return nil }
 
         if song.chartType == "utage" || (targetDiffNum as? String) == "utage" {
-            guard let idx = song.notes.firstIndex(where: { $0.isEnable }) else { return nil }
+            guard let idx = song.notes.firstIndex(where: { $0.isEnable && $0.difficulty.isUtage }) else {
+                guard let idx = song.notes.firstIndex(where: { $0.isEnable }) else { return nil }
+                let n = song.notes[idx]
+                return NoteResult(diffName: "utage", level: n.levelValue, levelValue: n.levelValue, noteIndex: idx)
+            }
             let n = song.notes[idx]
             return NoteResult(diffName: "utage", level: n.levelValue, levelValue: n.levelValue, noteIndex: idx)
         }
 
         if targetDiffNum == nil {
             for i in stride(from: 4, through: 0, by: -1) {
-                if let n = song.notes[safe: i], n.isEnable {
+                if let n = song.notes.first(where: { $0.difficulty.intVal == i && $0.isEnable }) {
+                    let idx = song.notes.firstIndex(where: { $0.difficulty.intVal == i && $0.isEnable })!
                     return NoteResult(
                         diffName: diffNumToName[i] ?? "master",
                         level: n.levelValue,
                         levelValue: n.levelValue,
-                        noteIndex: i
+                        noteIndex: idx
                     )
                 }
             }
@@ -332,12 +371,13 @@ class SongDatabase {
         guard let diffNum = targetDiffNum as? Int, diffNum >= 0, diffNum <= 4 else { return nil }
 
         for i in stride(from: diffNum, through: 0, by: -1) {
-            if let n = song.notes[safe: i], n.isEnable {
+            if let n = song.notes.first(where: { $0.difficulty.intVal == i && $0.isEnable }) {
+                let idx = song.notes.firstIndex(where: { $0.difficulty.intVal == i && $0.isEnable })!
                 return NoteResult(
                     diffName: diffNumToName[i] ?? "master",
                     level: n.levelValue,
                     levelValue: n.levelValue,
-                    noteIndex: i
+                    noteIndex: idx
                 )
             }
         }
