@@ -15,121 +15,153 @@ struct SongCardTemplate {
     height: 360px;
     overflow: hidden;
   }
-  .card {
-    background: rgba(0, 0, 0, 0.80);
-    border-radius: 16px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+  .card-container {
     width: 240px;
-    height: 360px;
+  }
+  .card {
+    width: 240px;
     position: relative;
+    border-radius: 18px;
+    padding: 4px;
+    overflow: visible;
+  }
+  .card-body {
+    background: #111;
+    border-radius: 14px;
     overflow: hidden;
+    position: relative;
   }
-  .diff-bar {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 6px;
-    border-radius: 16px 0 0 16px;
+  .diff-basic { background: linear-gradient(135deg, #22bb5b, #18a04a); }
+  .diff-advanced { background: linear-gradient(135deg, #fb9c2c, #e08520); }
+  .diff-expert { background: linear-gradient(135deg, #f64861, #d93d53); }
+  .diff-master { background: linear-gradient(135deg, #9e45e0, #8538c4); }
+  .diff-remaster { background: linear-gradient(135deg, #dbaaff, #f6b2ff, #dbaaff); }
+  .diff-utage { background: linear-gradient(135deg, #ff69b4, #e0559d); }
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 3px 6px 0;
+    position: relative;
+    z-index: 2;
   }
-  .diff-basic { background: #22bb5b; }
-  .diff-advanced { background: #fb9c2c; }
-  .diff-expert { background: #f64861; }
-  .diff-master { background: #9e45e0; }
-  .diff-remaster { background: linear-gradient(180deg, #dbaaff 0%, #f6b2ff 50%, #dbaaff 100%); }
-  .diff-utage { background: #ff69b4; }
+  .difficulty-badge {
+    font-size: 25px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: 1.5px;
+    line-height: 1;
+    -webkit-text-stroke: 1.2px rgba(0,0,0,0.5);
+    paint-order: stroke fill;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.7), 0 0 16px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+  }
+  .level-badge {
+    color: white;
+    line-height: 1;
+    transform: translateY(-2px);
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    -webkit-text-stroke: 0.8px rgba(0,0,0,0.4);
+    paint-order: stroke fill;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.65), 0 0 14px rgba(0,0,0,0.25);
+  }
+  .level-lv { font-size: 14px; font-weight: 800; }
+  .level-num { font-size: 25px; font-weight: 900; }
+  .level-dec { font-size: 18px; font-weight: 700; }
+  .cover-area {
+    padding: 0 6px 2px;
+    position: relative;
+    z-index: 1;
+  }
   .cover-wrapper {
-    width: 200px;
-    height: 200px;
-    border-radius: 12px;
-    flex-shrink: 0;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
     overflow: hidden;
-    position: relative;
+    border: 2px solid rgba(255,255,255,0.08);
   }
   .cover {
-    width: 200px;
-    height: 200px;
-    border-radius: 12px;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
+    display: block;
   }
   .cover-placeholder {
-    width: 200px;
-    height: 200px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-  .info {
-    flex: 1;
     width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  }
+  .info-bar {
+    padding: 5px 8px 7px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 0 8px;
+    gap: 4px;
   }
   .song-name {
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
+    color: #fff;
+    font-size: 25px;
+    font-weight: 800;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 210px;
+    letter-spacing: 0.5px;
   }
-  .badges {
+  .meta-row {
     display: flex;
-    gap: 6px;
+    justify-content: center;
     align-items: center;
+    gap: 6px;
   }
-  .badge {
+  .chart-badge {
     font-size: 11px;
-    font-weight: bold;
-    padding: 2px 8px;
+    font-weight: 800;
+    padding: 2px 7px;
     border-radius: 4px;
     color: white;
+    letter-spacing: 0.8px;
+    flex-shrink: 0;
   }
-  .badge-diff { background: rgba(255,255,255,0.15); }
-  .badge-chart { background: rgba(255,255,255,0.1); }
-  .badge-chart-dx { background: rgba(255,80,80,0.6); }
-  .badge-chart-utage { background: rgba(255,105,180,0.6); }
-  .level {
+  .chart-standard { background: rgba(255,255,255,0.12); }
+  .chart-dx { background: rgba(255,80,80,0.55); }
+  .chart-utage { background: rgba(255,105,180,0.55); }
+  .requester-label {
     color: #ffd93d;
-    font-size: 14px;
-    font-weight: bold;
-  }
-  .requester {
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 11px;
+    font-size: 20px;
+    font-weight: 800;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="diff-bar {{DIFF_CLASS}}"></div>
-    {{COVER_HTML}}
-    <div class="info">
-      <div class="song-name">{{SONG_NAME}}</div>
-      <div class="badges">
-        <span class="badge badge-diff">{{DIFFICULTY}}</span>
-        <span class="badge {{CHART_CLASS}}">{{CHART_TYPE}}</span>
+<div class="card-container">
+  <div class="card {{DIFF_CLASS}}">
+    <div class="card-body">
+      <div class="header-bar">
+        <span class="difficulty-badge">{{DIFFICULTY}}</span>
+        <span class="level-badge"><span class="level-lv">LV</span><span class="level-num">{{LEVEL_INT}}</span><span class="level-dec">{{LEVEL_DEC}}</span></span>
       </div>
-      <div class="level">Lv. {{LEVEL}}</div>
-      <div class="requester">点歌: {{REQUESTER}}</div>
+      <div class="cover-area">
+        {{COVER_HTML}}
+      </div>
+      <div class="info-bar">
+        <div class="song-name">{{SONG_NAME}}</div>
+        <div class="meta-row">
+          <span class="chart-badge {{CHART_CLASS}}">{{CHART_TYPE}}</span>
+          <span class="requester-label">{{REQUESTER}}</span>
+        </div>
+      </div>
     </div>
   </div>
+</div>
 </body>
 </html>
 """
 
     static func render(data: SongCardData, coverBase64: String? = nil) -> String {
-        let diffClass = diffBarClass(data.difficulty)
+        let diffClass = diffClass(data.difficulty)
         let chartClass = chartBadgeClass(data.chartType)
         let chartType = chartTypeDisplay(data.chartType)
 
@@ -148,20 +180,31 @@ struct SongCardTemplate {
             """
         }
 
+        let (levelInt, levelDec) = splitLevel(data.level ?? "")
+        let requesterText = data.requester.map { "by \($0)" } ?? ""
+
         return defaultHTML
-            .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName)
-            .replacingOccurrences(of: "{{ARTIST}}", with: data.artist)
-            .replacingOccurrences(of: "{{DIFFICULTY}}", with: data.difficulty ?? "")
-            .replacingOccurrences(of: "{{LEVEL}}", with: data.level ?? "")
-            .replacingOccurrences(of: "{{REQUESTER}}", with: data.requester ?? "")
-            .replacingOccurrences(of: "{{COVER_URL}}", with: data.coverURL ?? "")
             .replacingOccurrences(of: "{{DIFF_CLASS}}", with: diffClass)
+            .replacingOccurrences(of: "{{DIFFICULTY}}", with: data.difficulty ?? "")
+            .replacingOccurrences(of: "{{LEVEL_INT}}", with: levelInt)
+            .replacingOccurrences(of: "{{LEVEL_DEC}}", with: levelDec)
+            .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName)
             .replacingOccurrences(of: "{{CHART_CLASS}}", with: chartClass)
             .replacingOccurrences(of: "{{CHART_TYPE}}", with: chartType)
+            .replacingOccurrences(of: "{{REQUESTER}}", with: requesterText)
             .replacingOccurrences(of: "{{COVER_HTML}}", with: coverHTML)
+            .replacingOccurrences(of: "{{ARTIST}}", with: data.artist)
+            .replacingOccurrences(of: "{{COVER_URL}}", with: data.coverURL ?? "")
     }
 
-    private static func diffBarClass(_ difficulty: String?) -> String {
+    private static func splitLevel(_ level: String) -> (intPart: String, decPart: String) {
+        let parts = level.split(separator: ".", maxSplits: 1)
+        let intPart = parts.first.map(String.init) ?? "0"
+        let decPart = parts.count > 1 ? ".\(parts[1])" : ""
+        return (intPart, decPart)
+    }
+
+    private static func diffClass(_ difficulty: String?) -> String {
         guard let diff = difficulty?.lowercased() else { return "diff-master" }
         if diff.contains("basic") { return "diff-basic" }
         if diff.contains("advanced") { return "diff-advanced" }
@@ -173,9 +216,9 @@ struct SongCardTemplate {
 
     private static func chartBadgeClass(_ chartType: String?) -> String {
         switch chartType {
-        case "dx": return "badge badge-chart-dx"
-        case "utage": return "badge badge-chart-utage"
-        default: return "badge badge-chart"
+        case "dx": return "chart-dx"
+        case "utage": return "chart-utage"
+        default: return "chart-standard"
         }
     }
 
