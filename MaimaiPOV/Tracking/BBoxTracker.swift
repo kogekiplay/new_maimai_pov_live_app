@@ -30,7 +30,7 @@ class BBoxTracker {
 
     private let stabWidth = Float(Config.stabWidth)
     private let stabHeight = Float(Config.stabHeight)
-    private let outputRatio: Float = Float(Config.outputWidth) / Float(Config.outputHeight)
+    private let cropRatio: Float = Config.gameAreaRatio
 
     private var lastCx: Float
     private var lastCy: Float
@@ -61,8 +61,10 @@ class BBoxTracker {
     init() {
         lastCx = stabWidth / 2.0
         lastCy = stabHeight / 2.0
-        lastCropW = stabHeight * outputRatio
-        lastCropH = stabHeight
+        let maxCropW = min(stabWidth, stabHeight * cropRatio)
+        let maxCropH = maxCropW / cropRatio
+        lastCropW = maxCropW
+        lastCropH = maxCropH
     }
 
     func update(detected: Bool, stabCx: Float, stabCy: Float, stabW: Float, stabH: Float) -> TrackOutput {
@@ -104,10 +106,14 @@ class BBoxTracker {
 
             lastSmoothSize = smoothSize
 
-            let baseH = max(smoothSize, smoothSize / outputRatio)
+            let baseH = max(smoothSize, smoothSize / cropRatio)
             let desiredCropH = baseH * (1.0 + targetRatio)
-            let cropH = desiredCropH
-            let cropW = cropH * outputRatio
+            var cropH = desiredCropH
+            var cropW = cropH * cropRatio
+            if cropW > stabWidth {
+                cropW = stabWidth
+                cropH = cropW / cropRatio
+            }
 
             if currentState == "recenter" || currentState == "grace" || currentState == "acquiring" || currentState == "idle" {
                 if !acquireStarted {
@@ -205,8 +211,8 @@ class BBoxTracker {
 
             let centerCx = stabWidth / 2.0
             let centerCy = stabHeight / 2.0
-            let fullCropH = stabHeight
-            let fullCropW = stabHeight * outputRatio
+            let fullCropW = min(stabWidth, stabHeight * cropRatio)
+            let fullCropH = fullCropW / cropRatio
 
             lastCx += (centerCx - lastCx) * recenterSpeed
             lastCy += (centerCy - lastCy) * recenterSpeed
@@ -229,11 +235,13 @@ class BBoxTracker {
             )
         } else {
             currentState = "idle"
+            let idleCropW = min(stabWidth, stabHeight * cropRatio)
+            let idleCropH = idleCropW / cropRatio
             return TrackOutput(
                 cx: stabWidth / 2.0,
                 cy: stabHeight / 2.0,
-                cropW: stabHeight * outputRatio,
-                cropH: stabHeight,
+                cropW: idleCropW,
+                cropH: idleCropH,
                 detected: false,
                 state: currentState
             )
@@ -259,8 +267,10 @@ class BBoxTracker {
     func reset() {
         lastCx = stabWidth / 2.0
         lastCy = stabHeight / 2.0
-        lastCropW = stabHeight * outputRatio
-        lastCropH = stabHeight
+        let maxCropW = min(stabWidth, stabHeight * cropRatio)
+        let maxCropH = maxCropW / cropRatio
+        lastCropW = maxCropW
+        lastCropH = maxCropH
         wasDetected = false
         currentState = "idle"
         smoothInitialized = false

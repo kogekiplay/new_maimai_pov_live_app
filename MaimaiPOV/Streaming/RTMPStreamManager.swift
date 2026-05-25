@@ -10,8 +10,8 @@ enum StreamResolution: String, CaseIterable {
 
     var size: CGSize {
         switch self {
-        case .r720p: return CGSize(width: Config.outputWidth, height: Config.outputHeight)
-        case .r1080p: return CGSize(width: 1080, height: 2160)
+        case .r720p: return CGSize(width: 1280, height: 720)
+        case .r1080p: return CGSize(width: 1920, height: 1080)
         }
     }
 }

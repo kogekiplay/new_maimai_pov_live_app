@@ -55,8 +55,22 @@ enum Config {
         }
         set { UserDefaults.standard.set(newValue, forKey: yoloTargetFPSKey) }
     }
-    static let outputWidth  = 720
-    static let outputHeight = 1440
+    static let outputWidth  = 1920
+    static let outputHeight = 1080
+
+    static let gameAreaRatio: Float = 5.0 / 4.0
+    static var gameAreaWidth: Int {
+        Int(Float(outputHeight) * gameAreaRatio)
+    }
+    static var gameAreaHeight: Int {
+        outputHeight
+    }
+    static var gameAreaX: Int {
+        (outputWidth - gameAreaWidth) / 2
+    }
+    static var gameAreaY: Int {
+        0
+    }
 
     // Camera settings
     static let defaultFocusValue: Double = 0.5

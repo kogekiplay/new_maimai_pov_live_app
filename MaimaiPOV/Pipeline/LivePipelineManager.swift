@@ -90,6 +90,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var cropRenderer: CropRenderer?
     var overlayCompositor: OverlayCompositor?
     var songCardCompositor: SongCardCompositor?
+    var canvasComposer: CanvasComposer?
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
     let giftPermissionManager = GiftPermissionManager()
@@ -107,6 +108,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if let pool = ioSurfacePool, let buf = pool.lastCompletedBuffer {
                 return buf.texture
             }
+            if let cc = canvasComposer {
+                return nil
+            }
             if let cr = cropRenderer {
                 return cr.outputTexture
             }
@@ -119,7 +123,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         stabilizer?.outputTexture
     }
 
-    var isCropActive: Bool { cropRenderer != nil }
+    var isCropActive: Bool { canvasComposer != nil || cropRenderer != nil }
 
     let pipelineQueue = DispatchQueue(label: "com.maimai.pipeline", qos: .userInteractive)
 
@@ -445,6 +449,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         let cropR = CropRenderer(device: device, commandQueue: sharedCommandQueue)
         self.cropRenderer = cropR
 
+        self.canvasComposer = CanvasComposer(device: device, commandQueue: sharedCommandQueue)
+
         self.overlayCompositor = OverlayCompositor(device: device)
         self.overlayCompositor?.enabled = overlayEnabled
         self.overlayCompositor?.posX = overlayPosX
@@ -587,6 +593,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     }
                 } else if self.latestTrackOutput != nil {
                     track = self.bboxTracker.freeze()
+                } else if let cc = self.canvasComposer {
+                    let fb = cc.makeFallbackTrack()
+                    track = BBoxTracker.TrackOutput(
+                        cx: fb.cx, cy: fb.cy, cropW: fb.cropW, cropH: fb.cropH,
+                        detected: false, state: "fallback"
+                    )
                 } else if let cr = self.cropRenderer {
                     let fb = cr.makeFallbackTrack()
                     track = BBoxTracker.TrackOutput(
@@ -596,10 +608,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 } else {
                     let stabW = Float(Config.stabWidth)
                     let stabH = Float(Config.stabHeight)
-                    let outputRatio = Float(Config.outputWidth) / Float(Config.outputHeight)
+                    let cropRatio = Config.gameAreaRatio
+                    let fallbackCropW = min(stabW, stabH * cropRatio)
+                    let fallbackCropH = fallbackCropW / cropRatio
                     track = BBoxTracker.TrackOutput(
                         cx: stabW / 2.0, cy: stabH / 2.0,
-                        cropW: stabH * outputRatio, cropH: stabH,
+                        cropW: fallbackCropW, cropH: fallbackCropH,
                         detected: false, state: "nofallback"
                     )
                 }
@@ -644,8 +658,40 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 let offsetCy = track.cy + self.cropVerticalOffset
 
                 if let pool = self.ioSurfacePool,
-                   let cr = self.cropRenderer,
+                   let cc = self.canvasComposer,
                    let writeBuffer = pool.nextWriteBuffer() {
+                    let timestamp = CMTime(seconds: alignedTime, preferredTimescale: 1000000000)
+
+                    guard let cmdBuf = self.sharedCommandQueue.makeCommandBuffer(),
+                          let encoder = cmdBuf.makeComputeCommandEncoder() else {
+                        return
+                    }
+
+                    cc.encode(into: encoder,
+                              stabTexture: stab.outputTexture,
+                              cx: track.cx, cy: offsetCy,
+                              cropW: track.cropW, cropH: track.cropH,
+                              outputTexture: writeBuffer.texture)
+
+                    encoder.endEncoding()
+
+                    cmdBuf.addCompletedHandler { [weak self] _ in
+                        self?.pipelineQueue.async {
+                            guard let self = self else { return }
+                            self.streamFrameCount += 1
+                            let pipelineLatencyMs = (CACurrentMediaTime() - pipelineEnterTime) * 1000.0
+                            self.onStreamBufferAvailable?(writeBuffer.pixelBuffer, timestamp)
+                            self.streamManager.appendVideo(pixelBuffer: writeBuffer.pixelBuffer, timestamp: timestamp)
+                            DispatchQueue.main.async {
+                                self.lagMs = pipelineLatencyMs
+                                self.debug.stageLagData(ms: pipelineLatencyMs, audioDepth: self.streamManager.audioSyncQueueDepth)
+                            }
+                        }
+                    }
+                    cmdBuf.commit()
+                } else if let pool = self.ioSurfacePool,
+                          let cr = self.cropRenderer,
+                          let writeBuffer = pool.nextWriteBuffer() {
                     let timestamp = CMTime(seconds: alignedTime, preferredTimescale: 1000000000)
 
                     guard let cmdBuf = self.sharedCommandQueue.makeCommandBuffer(),
