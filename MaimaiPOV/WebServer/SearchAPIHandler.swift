@@ -4,15 +4,8 @@ import Swifter
 class SearchAPIHandler {
     weak var pipeline: LivePipelineManager?
 
-    private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
-
     private func coverURL(from musicId: Int) -> String {
-        let baseId: Int
-        if musicId >= 100000 { baseId = musicId - 100000 }
-        else if musicId >= 10000 { baseId = musicId - 10000 }
-        else { baseId = musicId }
-        let idPart = String(format: "%06d", baseId)
-        return "\(cdnBase)/\(idPart).webp"
+        return "/api/cover/\(musicId)"
     }
 
     func search(request: HttpRequest) -> HttpResponse {

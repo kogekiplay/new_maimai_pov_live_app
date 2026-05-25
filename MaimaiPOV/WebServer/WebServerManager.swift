@@ -101,6 +101,69 @@ class WebServerManager {
             guard let self = self else { return .internalServerError }
             return self.searchHandler.search(request: request)
         }
+
+        server["/api/cover/:musicId"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.serveCover(request: request)
+        }
+    }
+
+    private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
+    private let coverFormats = ["webp", "png", "avif"]
+
+    private func baseCoverId(from musicId: Int) -> Int {
+        if musicId >= 100000 { return musicId - 100000 }
+        if musicId >= 10000 { return musicId - 10000 }
+        return musicId
+    }
+
+    private func serveCover(request: HttpRequest) -> HttpResponse {
+        guard let musicIdStr = request.params[":musicId"],
+              let musicId = Int(musicIdStr) else {
+            return .badRequest(.text("Invalid musicId"))
+        }
+
+        let baseId = baseCoverId(from: musicId)
+        let idPart = String(format: "%06d", baseId)
+
+        let sem = DispatchSemaphore(value: 0)
+        var imageData: Data?
+        var contentType: String?
+
+        for format in coverFormats {
+            let urlString = "\(cdnBase)/\(idPart).\(format)"
+            guard let url = URL(string: urlString) else { continue }
+
+            let requestSem = DispatchSemaphore(value: 0)
+            var foundData: Data?
+            var foundContentType: String?
+
+            let task = URLSession.shared.dataTask(with: url) { data, response, _ in
+                if let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    foundData = data
+                    foundContentType = httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "image/\(format)"
+                }
+                requestSem.signal()
+            }
+            task.resume()
+            requestSem.wait()
+
+            if let data = foundData {
+                imageData = data
+                contentType = foundContentType
+                break
+            }
+        }
+
+        sem.signal()
+
+        guard let data = imageData, let ct = contentType else {
+            return .notFound
+        }
+
+        return .raw(200, "OK", ["Content-Type": ct, "Cache-Control": "public, max-age=86400"]) { writer in
+            try writer.write(data)
+        }
     }
 
     private func loadControlHTML() -> Data? {

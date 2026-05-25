@@ -28,9 +28,9 @@
     overflow: visible;
   }
 
-  .card-inner {
+  .card-body {
     background: #111;
-    border-radius: 14px 14px 10px 10px;
+    border-radius: 14px;
     overflow: hidden;
     position: relative;
   }
@@ -108,10 +108,9 @@
   .cover-wrapper {
     width: 100%;
     aspect-ratio: 1 / 1;
-    border-radius: 8px 8px 0 0;
+    border-radius: 8px;
     overflow: hidden;
     border: 2px solid rgba(255,255,255,0.08);
-    border-bottom: none;
   }
 
   .cover {
@@ -133,12 +132,9 @@
     font-weight: bold;
   }
 
-  /* 底部信息栏 - 紧凑 */
+  /* 底部信息栏 - 在card-body内部，无缝衔接 */
   .info-bar {
-    background: #111;
-    margin: 0 1px 1px;
-    border-radius: 0 0 10px 10px;
-    padding: 5px 8px 6px;
+    padding: 5px 8px 7px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -290,7 +286,7 @@
 
 <div class="card-container">
   <div class="card diff-master" id="card">
-    <div class="card-inner">
+    <div class="card-body">
       <div class="header-bar">
         <span class="difficulty-badge" id="lbl-diff">MASTER</span>
         <span class="level-badge" id="lbl-level"><span class="level-lv">LV</span><span class="level-num">13</span><span class="level-dec">.2</span></span>
@@ -300,12 +296,12 @@
           <div class="cover-placeholder">♪</div>
         </div>
       </div>
-    </div>
-    <div class="info-bar">
-      <div class="song-name" id="lbl-song">いざモニョ</div>
-      <div class="meta-row">
-        <span class="chart-badge chart-dx" id="lbl-chart">DX</span>
-        <span class="requester-label" id="lbl-requester">🎤 点歌: 小明同学</span>
+      <div class="info-bar">
+        <div class="song-name" id="lbl-song">いざモニョ</div>
+        <div class="meta-row">
+          <span class="chart-badge chart-dx" id="lbl-chart">DX</span>
+          <span class="requester-label" id="lbl-requester">by 小明同学</span>
+        </div>
       </div>
     </div>
   </div>
@@ -337,7 +333,7 @@ function updateCard() {
   chartEl.textContent = chart === 'standard' ? 'STD' : chart === 'dx' ? 'DX' : 'UTAGE';
   chartEl.className = 'chart-badge chart-' + chart;
 
-  document.getElementById('lbl-requester').textContent = '🎤 点歌: ' + document.getElementById('inp-requester').value;
+  document.getElementById('lbl-requester').textContent = 'by ' + document.getElementById('inp-requester').value;
 }
 </script>
 

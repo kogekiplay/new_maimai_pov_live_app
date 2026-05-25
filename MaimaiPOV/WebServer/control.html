@@ -187,7 +187,7 @@ if(s.isPriority)cls+=' priority';
 html+='<div class="'+cls+'">';
 html+='<div class="diff-bar '+diffClass(s.difficulty)+'"></div>';
 if(s.coverURL){
-html+='<img class="card-cover" src="'+escHtml(s.coverURL)+'" loading="lazy" onerror="if(!this._tried){this._tried=1;this.src=this.src.replace(/\\.webp$/,\'.png\')}else{this.style.display=\'none\'}" />';
+html+='<img class="card-cover" src="'+escHtml(s.coverURL)+'" loading="lazy" onerror="this.style.display=\'none\'" />';
 }else{
 html+='<div class="card-cover"></div>';
 }
@@ -282,7 +282,7 @@ for(var i=0;i<data.results.length;i++){
 var r=data.results[i];
 html+='<div class="search-result">';
 if(r.coverURL){
-html+='<img class="sr-cover" src="'+escHtml(r.coverURL)+'" loading="lazy" onerror="if(!this._tried){this._tried=1;this.src=this.src.replace(/\\.webp$/,\'.png\')}else{this.style.display=\'none\'}" />';
+html+='<img class="sr-cover" src="'+escHtml(r.coverURL)+'" loading="lazy" onerror="this.style.display=\'none\'" />';
 }else{
 html+='<div class="sr-cover"></div>';
 }
