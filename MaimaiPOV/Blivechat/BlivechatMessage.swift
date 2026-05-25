@@ -49,6 +49,8 @@ struct DanmakuMessage {
     let uid: String
     let medalName: String
 
+    var effectiveUid: String { uid.isEmpty ? authorName : uid }
+
     init?(fromArray data: [Any]) {
         guard data.count >= 17 else { return nil }
 
@@ -82,8 +84,11 @@ struct GiftMessage {
     let num: Int
     let privilegeType: PrivilegeType
     let medalLevel: Int
+    let uid: String
 
     var isPaidGift: Bool { totalCoin >= 1000 }
+
+    var effectiveUid: String { uid.isEmpty ? authorName : uid }
 
     init?(fromDict data: [String: Any]) {
         self.id = data["id"] as? String ?? ""
@@ -96,6 +101,7 @@ struct GiftMessage {
         self.num = data["num"] as? Int ?? 0
         self.privilegeType = PrivilegeType(rawValue: data["privilegeType"] as? Int ?? 0) ?? .none
         self.medalLevel = data["medalLevel"] as? Int ?? 0
+        self.uid = data["uid"] as? String ?? ""
     }
 }
 
@@ -109,6 +115,9 @@ struct MemberMessage {
     let num: Int
     let totalCoin: Int
     let price: Int
+    let uid: String
+
+    var effectiveUid: String { uid.isEmpty ? authorName : uid }
 
     init?(fromDict data: [String: Any]) {
         self.id = data["id"] as? String ?? ""
@@ -120,6 +129,7 @@ struct MemberMessage {
         self.num = data["num"] as? Int ?? 0
         self.totalCoin = data["totalCoin"] as? Int ?? 0
         self.price = data["price"] as? Int ?? 0
+        self.uid = data["uid"] as? String ?? ""
     }
 }
 
@@ -133,6 +143,9 @@ struct SuperChatMessage {
     let translation: String
     let privilegeType: PrivilegeType
     let medalLevel: Int
+    let uid: String
+
+    var effectiveUid: String { uid.isEmpty ? authorName : uid }
 
     init?(fromDict data: [String: Any]) {
         self.id = data["id"] as? String ?? ""
@@ -144,6 +157,7 @@ struct SuperChatMessage {
         self.translation = data["translation"] as? String ?? ""
         self.privilegeType = PrivilegeType(rawValue: data["privilegeType"] as? Int ?? 0) ?? .none
         self.medalLevel = data["medalLevel"] as? Int ?? 0
+        self.uid = data["uid"] as? String ?? ""
     }
 }
 

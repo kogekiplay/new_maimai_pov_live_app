@@ -18,6 +18,11 @@ struct GiftPermission: Identifiable {
     let username: String
     var remainingChances: Int
     var priorityChances: Int
+    var expiryDate: Date
+
+    var isExpired: Bool {
+        return Date() > expiryDate
+    }
 }
 
 class GiftPermissionManager: ObservableObject {
@@ -29,38 +34,58 @@ class GiftPermissionManager: ObservableObject {
 
     func handleGift(_ gift: GiftMessage) {
         guard gift.isPaidGift else { return }
-        addPermission(uid: gift.authorName, username: gift.authorName, source: .gift, normalChances: 1, priorityChances: 0)
+        addPermission(uid: gift.effectiveUid, username: gift.authorName, source: .gift, normalChances: 1, priorityChances: 0)
     }
 
     func handleSuperChat(_ sc: SuperChatMessage) {
         if sc.price >= Self.scPriorityThreshold {
-            addPermission(uid: sc.authorName, username: sc.authorName, source: .superChat, normalChances: 0, priorityChances: 1)
+            addPermission(uid: sc.effectiveUid, username: sc.authorName, source: .superChat, normalChances: 0, priorityChances: 1)
         } else {
-            addPermission(uid: sc.authorName, username: sc.authorName, source: .superChat, normalChances: 1, priorityChances: 0)
+            addPermission(uid: sc.effectiveUid, username: sc.authorName, source: .superChat, normalChances: 1, priorityChances: 0)
         }
     }
 
     func handleMember(_ member: MemberMessage) {
-        addPermission(uid: member.authorName, username: member.authorName, source: .guardMember, normalChances: 1, priorityChances: 0)
+        addPermission(uid: member.effectiveUid, username: member.authorName, source: .guardMember, normalChances: 1, priorityChances: 0)
     }
 
     func hasPermission(uid: String) -> Bool {
         guard let permission = permissions[uid] else { return false }
+        guard !permission.isExpired else {
+            permissions.removeValue(forKey: uid)
+            updateActiveCount()
+            return false
+        }
         return permission.remainingChances > 0 || permission.priorityChances > 0
     }
 
     func hasPriorityPermission(uid: String) -> Bool {
         guard let permission = permissions[uid] else { return false }
+        guard !permission.isExpired else {
+            permissions.removeValue(forKey: uid)
+            updateActiveCount()
+            return false
+        }
         return permission.priorityChances > 0
     }
 
     func getPermission(uid: String) -> GiftPermission? {
-        guard let permission = permissions[uid], (permission.remainingChances > 0 || permission.priorityChances > 0) else { return nil }
-        return permission
+        guard let permission = permissions[uid] else { return nil }
+        guard !permission.isExpired else {
+            permissions.removeValue(forKey: uid)
+            updateActiveCount()
+            return nil
+        }
+        return (permission.remainingChances > 0 || permission.priorityChances > 0) ? permission : nil
     }
 
     func consumePermission(uid: String) -> ConsumedPermissionType? {
         guard var permission = permissions[uid] else { return nil }
+        guard !permission.isExpired else {
+            permissions.removeValue(forKey: uid)
+            updateActiveCount()
+            return nil
+        }
         if permission.priorityChances > 0 {
             permission.priorityChances -= 1
             if permission.remainingChances <= 0 && permission.priorityChances <= 0 {
@@ -85,6 +110,11 @@ class GiftPermissionManager: ObservableObject {
 
     func consumePriorityPermission(uid: String) -> Bool {
         guard var permission = permissions[uid], permission.priorityChances > 0 else { return false }
+        guard !permission.isExpired else {
+            permissions.removeValue(forKey: uid)
+            updateActiveCount()
+            return false
+        }
         permission.priorityChances -= 1
         if permission.remainingChances <= 0 && permission.priorityChances <= 0 {
             permissions.removeValue(forKey: uid)
@@ -97,6 +127,11 @@ class GiftPermissionManager: ObservableObject {
 
     func consumeNormalPermission(uid: String) -> Bool {
         guard var permission = permissions[uid], permission.remainingChances > 0 else { return false }
+        guard !permission.isExpired else {
+            permissions.removeValue(forKey: uid)
+            updateActiveCount()
+            return false
+        }
         permission.remainingChances -= 1
         if permission.remainingChances <= 0 && permission.priorityChances <= 0 {
             permissions.removeValue(forKey: uid)
@@ -108,12 +143,24 @@ class GiftPermissionManager: ObservableObject {
     }
 
     func activePermissions() -> [GiftPermission] {
-        permissions.values.filter { $0.remainingChances > 0 || $0.priorityChances > 0 }
+        cleanExpiredPermissions()
+        return permissions.values.filter { $0.remainingChances > 0 || $0.priorityChances > 0 }
     }
 
     func clearAll() {
         permissions.removeAll()
         updateActiveCount()
+    }
+
+    func cleanExpiredPermissions() {
+        let now = Date()
+        let expiredKeys = permissions.filter { $0.value.isExpired }.map { $0.key }
+        for key in expiredKeys {
+            permissions.removeValue(forKey: key)
+        }
+        if !expiredKeys.isEmpty {
+            updateActiveCount()
+        }
     }
 
     func addTestPermission(uid: String, username: String) {
@@ -124,23 +171,45 @@ class GiftPermissionManager: ObservableObject {
         addPermission(uid: uid, username: username, source: .superChat, normalChances: 0, priorityChances: 99)
     }
 
-    private func addPermission(uid: String, username: String, source: PermissionSource, normalChances: Int, priorityChances: Int) {
+    private func expiryDate(for source: PermissionSource) -> Date {
+        let durationMinutes: Int
+        switch source {
+        case .gift:
+            durationMinutes = Config.giftDurationMinutes
+        case .superChat:
+            durationMinutes = Config.superChatDurationMinutes
+        case .guardMember:
+            durationMinutes = Config.guardDurationMinutes
+        }
+        return Date().addingTimeInterval(TimeInterval(durationMinutes * 60))
+    }
+
+    func addPermission(uid: String, username: String, source: PermissionSource, normalChances: Int, priorityChances: Int) {
+        let newExpiry = expiryDate(for: source)
         if var existing = permissions[uid] {
-            existing.remainingChances += normalChances
-            existing.priorityChances += priorityChances
+            if existing.isExpired {
+                existing.remainingChances = normalChances
+                existing.priorityChances = priorityChances
+                existing.expiryDate = newExpiry
+            } else {
+                existing.remainingChances += normalChances
+                existing.priorityChances += priorityChances
+                existing.expiryDate = max(existing.expiryDate, newExpiry)
+            }
             permissions[uid] = existing
         } else {
             permissions[uid] = GiftPermission(
                 uid: uid,
                 username: username,
                 remainingChances: normalChances,
-                priorityChances: priorityChances
+                priorityChances: priorityChances,
+                expiryDate: newExpiry
             )
         }
         updateActiveCount()
     }
 
     private func updateActiveCount() {
-        activePermissionCount = permissions.values.filter { $0.remainingChances > 0 || $0.priorityChances > 0 }.count
+        activePermissionCount = permissions.values.filter { !$0.isExpired && ($0.remainingChances > 0 || $0.priorityChances > 0) }.count
     }
 }

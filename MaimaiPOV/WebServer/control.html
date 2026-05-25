@@ -76,6 +76,36 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 .sr-add:active{opacity:0.7}
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:100;opacity:0;transition:opacity 0.3s;pointer-events:none}
 .toast.show{opacity:1}
+.debug-section{padding:8px 12px 16px}
+.debug-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(45,27,78,0.6);border-radius:10px;cursor:pointer;margin-bottom:8px}
+.debug-toggle h2{font-size:14px;color:#c084fc;font-weight:600;margin:0}
+.debug-toggle .arrow{color:#8b7ba8;transition:transform 0.2s;font-size:12px}
+.debug-toggle .arrow.open{transform:rotate(180deg)}
+.debug-panel{display:none}
+.debug-panel.open{display:block}
+.perm-list{margin-bottom:12px}
+.perm-item{background:rgba(45,27,78,0.6);border-radius:8px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px;font-size:11px}
+.perm-item .perm-name{color:#f0e6ff;font-weight:600;min-width:60px}
+.perm-item .perm-chances{color:#8b7ba8}
+.perm-item .perm-chances span{font-weight:600}
+.perm-item .perm-normal{color:#22bb5b}
+.perm-item .perm-priority{color:#ffc107}
+.perm-item .perm-expiry{color:#6b8ba8;margin-left:auto;font-size:10px}
+.perm-empty{color:#6b5b8a;text-align:center;padding:12px;font-size:12px}
+.debug-row{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.debug-row label{font-size:11px;color:#8b7ba8;min-width:50px}
+.debug-row input,.debug-row select{flex:1;padding:6px 10px;border:1px solid rgba(192,132,252,0.3);border-radius:6px;background:rgba(45,27,78,0.6);color:#f0e6ff;font-size:12px;outline:none}
+.debug-row input::placeholder{color:#6b5b8a}
+.debug-row input:focus{border-color:rgba(255,107,157,0.5)}
+.debug-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.debug-btn{padding:6px 12px;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:opacity 0.15s}
+.debug-btn:active{opacity:0.7}
+.debug-btn-gift{background:rgba(34,187,91,0.2);color:#22bb5b;border:1px solid rgba(34,187,91,0.3)}
+.debug-btn-sc{background:rgba(255,193,7,0.2);color:#ffc107;border:1px solid rgba(255,193,7,0.3)}
+.debug-btn-member{background:rgba(192,132,252,0.2);color:#c084fc;border:1px solid rgba(192,132,252,0.3)}
+.debug-btn-clear{background:rgba(246,72,97,0.2);color:#f64861;border:1px solid rgba(246,72,97,0.3)}
+.debug-btn-add{background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff}
+.debug-btn-refresh{background:rgba(192,132,252,0.2);color:#c084fc;border:1px solid rgba(192,132,252,0.3)}
 </style>
 </head>
 <body>
@@ -92,6 +122,36 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 <button onclick="doSearch()">搜索</button>
 </div>
 <div class="search-results" id="searchResults"></div>
+</div>
+<div class="debug-section">
+<div class="debug-toggle" onclick="toggleDebug()">
+<h2>🔧 权限调试</h2>
+<span class="arrow" id="debugArrow">▼</span>
+</div>
+<div class="debug-panel" id="debugPanel">
+<div class="perm-list" id="permList"><div class="perm-empty">加载中...</div></div>
+<div class="debug-row">
+<label>用户名</label>
+<input type="text" id="debugUsername" placeholder="输入用户名" />
+</div>
+<div class="debug-btns">
+<button class="debug-btn debug-btn-gift" onclick="simGift()">🎁 模拟礼物</button>
+<button class="debug-btn debug-btn-sc" onclick="simSC()">💰 模拟SC(≥30)</button>
+<button class="debug-btn debug-btn-sc" onclick="simSCSmall()">💵 模拟SC(&lt;30)</button>
+<button class="debug-btn debug-btn-member" onclick="simMember()">⚓ 模拟上舰</button>
+</div>
+<div class="debug-row">
+<label>普通次数</label>
+<input type="number" id="debugNormal" value="1" min="0" max="99" style="width:50px;flex:none" />
+<label>插队次数</label>
+<input type="number" id="debugPriority" value="0" min="0" max="99" style="width:50px;flex:none" />
+<button class="debug-btn debug-btn-add" onclick="addPerm()">添加权限</button>
+</div>
+<div class="debug-btns">
+<button class="debug-btn debug-btn-refresh" onclick="fetchPerms()">🔄 刷新</button>
+<button class="debug-btn debug-btn-clear" onclick="clearPerms()">🗑 清空权限</button>
+</div>
+</div>
 </div>
 <div class="bottom-bar">
 <button class="btn-skip" onclick="skipSong()">⏭ 切歌</button>
@@ -339,6 +399,113 @@ showToast('已添加');
 document.getElementById('searchInput').addEventListener('keydown',function(e){
 if(e.key==='Enter')doSearch();
 });
+function toggleDebug(){
+var panel=document.getElementById('debugPanel');
+var arrow=document.getElementById('debugArrow');
+if(panel.classList.contains('open')){
+panel.classList.remove('open');
+arrow.classList.remove('open');
+}else{
+panel.classList.add('open');
+arrow.classList.add('open');
+fetchPerms();
+}
+}
+function fetchPerms(){
+var xhr=new XMLHttpRequest();
+xhr.open('GET','/api/debug/permissions',true);
+xhr.onload=function(){
+if(xhr.status===200){
+try{renderPerms(JSON.parse(xhr.responseText))}catch(e){}
+}
+};
+xhr.send();
+}
+function renderPerms(data){
+var container=document.getElementById('permList');
+if(!data.permissions||data.permissions.length===0){
+container.innerHTML='<div class="perm-empty">暂无活跃权限</div>';
+return;
+}
+var html='';
+for(var i=0;i<data.permissions.length;i++){
+var p=data.permissions[i];
+html+='<div class="perm-item">';
+html+='<span class="perm-name">'+escHtml(p.username||p.uid)+'</span>';
+html+='<span class="perm-chances">';
+if(p.remainingChances>0)html+='<span class="perm-normal">普通×'+p.remainingChances+'</span> ';
+if(p.priorityChances>0)html+='<span class="perm-priority">插队×'+p.priorityChances+'</span>';
+if(p.remainingChances<=0&&p.priorityChances<=0)html+='无次数';
+html+='</span>';
+html+='<span class="perm-expiry">到期 '+escHtml(p.expiryDate||'')+'</span>';
+html+='</div>';
+}
+container.innerHTML=html;
+}
+function getDebugUsername(){
+return document.getElementById('debugUsername').value.trim()||'测试用户';
+}
+function simGift(){
+var name=getDebugUsername();
+postDebug('/api/debug/simulate/gift',{authorName:name,totalCoin:1000},function(){
+showToast('已模拟付费礼物 → +1普通权限');
+fetchPerms();
+});
+}
+function simSC(){
+var name=getDebugUsername();
+postDebug('/api/debug/simulate/sc',{authorName:name,price:30,content:''},function(){
+showToast('已模拟SC≥30元 → +1插队权限');
+fetchPerms();
+});
+}
+function simSCSmall(){
+var name=getDebugUsername();
+postDebug('/api/debug/simulate/sc',{authorName:name,price:10,content:''},function(){
+showToast('已模拟SC<30元 → +1普通权限');
+fetchPerms();
+});
+}
+function simMember(){
+var name=getDebugUsername();
+postDebug('/api/debug/simulate/member',{authorName:name},function(){
+showToast('已模拟上舰 → +1普通权限');
+fetchPerms();
+});
+}
+function addPerm(){
+var name=getDebugUsername();
+var normal=parseInt(document.getElementById('debugNormal').value)||0;
+var priority=parseInt(document.getElementById('debugPriority').value)||0;
+if(normal<=0&&priority<=0){showToast('请设置至少1次权限');return}
+postDebug('/api/debug/permissions/add',{uid:name,username:name,normalChances:normal,priorityChances:priority,source:'gift'},function(){
+showToast('已添加权限: 普通×'+normal+' 插队×'+priority);
+fetchPerms();
+});
+}
+function clearPerms(){
+postDebug('/api/debug/permissions/clear',{},function(){
+showToast('已清空所有权限');
+fetchPerms();
+});
+}
+function postDebug(url,body,cb){
+var xhr=new XMLHttpRequest();
+xhr.open('POST',url,true);
+xhr.setRequestHeader('Content-Type','application/json');
+xhr.onload=function(){
+if(xhr.status===200){
+try{
+var data=JSON.parse(xhr.responseText);
+if(cb)cb(data);
+}catch(e){}
+}else{
+try{showToast(JSON.parse(xhr.responseText).message||'操作失败')}catch(e){showToast('操作失败')}
+}
+};
+xhr.onerror=function(){showToast('网络错误')};
+xhr.send(body?JSON.stringify(body):'{}');
+}
 fetchQueue();
 setInterval(fetchQueue,1500);
 </script>

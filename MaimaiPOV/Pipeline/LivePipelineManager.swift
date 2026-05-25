@@ -203,7 +203,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         switch result.type {
         case .songRequest(let query, let diffInput, let chartTypePreference):
-            let uid = msg.authorName
+            let uid = msg.effectiveUid
 
             DispatchQueue.main.async {
                 self.debug.log("[点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
@@ -293,12 +293,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
-    private func handleSuperChatForSongRequest(_ sc: SuperChatMessage) {
+    func handleSuperChatForSongRequest(_ sc: SuperChatMessage) {
         let result = danmakuParser.parse(sc.content)
 
         switch result.type {
         case .songRequest(let query, let diffInput, let chartTypePreference):
-            let uid = sc.authorName
+            let uid = sc.effectiveUid
             let isPrioritySC = sc.price >= 30
 
             DispatchQueue.main.async {
