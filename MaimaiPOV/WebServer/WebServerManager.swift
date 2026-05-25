@@ -52,10 +52,12 @@ class WebServerManager {
     }
 
     private func setupRoutes() {
-        server["/"] = { [weak self] request in
+        server["/"] = { [weak self] _ in
             guard let self = self else { return .notFound }
             if let html = self.loadControlHTML() {
-                return .raw(200, "OK", [("Content-Type", "text/html; charset=utf-8")], html)
+                return .raw(200, "OK", ["Content-Type": "text/html; charset=utf-8"]) { writer in
+                    try writer.write(html)
+                }
             }
             return .notFound
         }
@@ -70,12 +72,12 @@ class WebServerManager {
             }
         }
 
-        server["/api/queue/skip"] = { [weak self] request in
+        server["/api/queue/skip"] = { [weak self] _ in
             guard let self = self else { return .internalServerError }
             return self.queueHandler.skip()
         }
 
-        server["/api/queue/clear"] = { [weak self] request in
+        server["/api/queue/clear"] = { [weak self] _ in
             guard let self = self else { return .internalServerError }
             return self.queueHandler.clear()
         }

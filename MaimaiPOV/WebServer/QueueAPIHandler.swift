@@ -4,75 +4,62 @@ import Swifter
 class QueueAPIHandler {
     weak var pipeline: LivePipelineManager?
 
+    private func buildQueueResponse() -> [String: Any] {
+        guard let pipeline = pipeline else { return [:] }
+        let manager = pipeline.songCardManager
+        var queueItems: [[String: Any]] = []
+
+        for (i, song) in manager.queue.enumerated() {
+            var item: [String: Any] = [
+                "index": i,
+                "songName": song.songName,
+                "artist": song.artist,
+                "isPriority": song.isPriority
+            ]
+            if let diff = song.difficulty { item["difficulty"] = diff }
+            if let level = song.level { item["level"] = level }
+            if let ct = song.chartType { item["chartType"] = ct }
+            if let req = song.requester { item["requester"] = req }
+            if let mid = song.musicId { item["musicId"] = mid }
+            queueItems.append(item)
+        }
+
+        return [
+            "currentIndex": manager.currentIndex,
+            "queue": queueItems
+        ]
+    }
+
     func getQueue() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
-        var resultJson: Data?
+        var response: [String: Any] = [:]
 
         DispatchQueue.main.async { [weak self] in
-            guard let self = self, let pipeline = self.pipeline else {
-                sem.signal()
-                return
-            }
-            let manager = pipeline.songCardManager
-            var queueItems: [[String: Any]] = []
-
-            for (i, song) in manager.queue.enumerated() {
-                var item: [String: Any] = [
-                    "index": i,
-                    "songName": song.songName,
-                    "artist": song.artist,
-                    "isPriority": song.isPriority
-                ]
-                if let diff = song.difficulty { item["difficulty"] = diff }
-                if let level = song.level { item["level"] = level }
-                if let ct = song.chartType { item["chartType"] = ct }
-                if let req = song.requester { item["requester"] = req }
-                if let mid = song.musicId { item["musicId"] = mid }
-                queueItems.append(item)
-            }
-
-            let response: [String: Any] = [
-                "currentIndex": manager.currentIndex,
-                "queue": queueItems
-            ]
-            resultJson = try? JSONSerialization.data(withJSONObject: response)
+            response = self?.buildQueueResponse() ?? [:]
             sem.signal()
         }
 
         sem.wait()
-        guard let data = resultJson else {
-            return .internalServerError
-        }
-        return .raw(200, "OK", [("Content-Type", "application/json; charset=utf-8")], data)
+        return .ok(.json(response))
     }
 
     func skip() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
-        var success = false
 
         DispatchQueue.main.async { [weak self] in
-            guard let self = self, let pipeline = self.pipeline else {
-                sem.signal()
-                return
-            }
-            pipeline.triggerSongCardSwitch()
-            success = true
+            self?.pipeline?.triggerSongCardSwitch()
             sem.signal()
         }
 
         sem.wait()
-        return success ? getQueue() : .internalServerError
+        return getQueue()
     }
 
     func clear() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
 
         DispatchQueue.main.async { [weak self] in
-            guard let self = self, let pipeline = self.pipeline else {
-                sem.signal()
-                return
-            }
-            pipeline.clearSongQueue()
+            self?.pipeline?.clearSongQueue()
             sem.signal()
         }
 
@@ -191,8 +178,7 @@ class QueueAPIHandler {
             }
 
             var chartTypePreference: String? = chartType
-            if chartTypePreference == "dx" { chartTypePreference = "dx" }
-            else if chartTypePreference == "standard" || chartTypePreference == "std" { chartTypePreference = "standard" }
+            if chartTypePreference == "std" { chartTypePreference = "standard" }
 
             guard let song = db.pickByChartType(
                 candidates: candidates.candidates,

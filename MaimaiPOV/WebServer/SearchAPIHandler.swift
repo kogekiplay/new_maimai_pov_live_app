@@ -13,7 +13,7 @@ class SearchAPIHandler {
         let query = queryParam.removingPercentEncoding ?? queryParam
 
         let sem = DispatchSemaphore(value: 0)
-        var resultJson: Data?
+        var response: [String: Any] = [:]
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -57,18 +57,14 @@ class SearchAPIHandler {
                 results.append(item)
             }
 
-            let response: [String: Any] = [
+            response = [
                 "query": query,
                 "results": results
             ]
-            resultJson = try? JSONSerialization.data(withJSONObject: response)
             sem.signal()
         }
 
         sem.wait()
-        guard let data = resultJson else {
-            return .internalServerError
-        }
-        return .raw(200, "OK", [("Content-Type", "application/json; charset=utf-8")], data)
+        return .ok(.json(response))
     }
 }
