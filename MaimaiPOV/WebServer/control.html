@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>点歌队列</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding-bottom:80px}
+.header{text-align:center;padding:16px 12px 8px;background:rgba(45,27,78,0.6);position:sticky;top:0;z-index:10;backdrop-filter:blur(10px)}
+.header h1{font-size:20px;background:linear-gradient(90deg,#ff6b9d,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}
+.header .server-ip{font-size:11px;color:#8b7ba8;margin-top:4px}
+.queue-section{padding:8px 12px}
+.queue-empty{text-align:center;padding:40px 20px;color:#6b5b8a;font-size:14px}
+.song-card{background:rgba(45,27,78,0.8);border-radius:12px;margin-bottom:8px;overflow:hidden;display:flex;align-items:stretch;position:relative;transition:transform 0.15s}
+.song-card.current{border:1px solid rgba(255,107,157,0.4);box-shadow:0 0 12px rgba(255,107,157,0.15)}
+.song-card.priority{border:1px solid rgba(255,193,7,0.3)}
+.diff-bar{width:4px;flex-shrink:0;border-radius:2px 0 0 2px}
+.diff-basic{background:#22bb5b}
+.diff-advanced{background:#fb9c2c}
+.diff-expert{background:#f64861}
+.diff-master{background:#9e45e2}
+.diff-remaster{background:#dbaaff}
+.diff-utage{background:#ff6b9d}
+.card-body{flex:1;padding:10px 12px;min-width:0}
+.card-top{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.song-name{font-size:14px;font-weight:600;color:#f0e6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.chart-badge{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;flex-shrink:0}
+.chart-dx{background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff}
+.chart-std{background:rgba(192,132,252,0.3);color:#c084fc}
+.chart-utage{background:rgba(255,107,157,0.3);color:#ff6b9d}
+.priority-badge{font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(255,193,7,0.3);color:#ffc107;flex-shrink:0}
+.card-info{display:flex;align-items:center;gap:8px;font-size:11px;color:#8b7ba8}
+.card-info .difficulty{font-weight:600}
+.card-info .requester{margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px}
+.card-actions{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:6px 8px;flex-shrink:0}
+.card-actions button{width:28px;height:28px;border:none;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:opacity 0.15s}
+.card-actions button:active{opacity:0.6}
+.btn-up{background:rgba(192,132,252,0.2);color:#c084fc}
+.btn-down{background:rgba(192,132,252,0.2);color:#c084fc}
+.btn-remove{background:rgba(246,72,97,0.2);color:#f64861}
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:8px;padding:12px 16px;background:rgba(26,10,46,0.95);backdrop-filter:blur(10px);z-index:10}
+.bottom-bar button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.15s}
+.bottom-bar button:active{opacity:0.7}
+.btn-skip{background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff}
+.btn-clear{background:rgba(246,72,97,0.2);color:#f64861;border:1px solid rgba(246,72,97,0.3)!important}
+.search-section{padding:8px 12px 16px}
+.search-section h2{font-size:14px;color:#c084fc;margin-bottom:8px;font-weight:600}
+.search-box{display:flex;gap:8px;margin-bottom:12px}
+.search-box input{flex:1;padding:10px 14px;border:1px solid rgba(192,132,252,0.3);border-radius:10px;background:rgba(45,27,78,0.6);color:#f0e6ff;font-size:14px;outline:none}
+.search-box input::placeholder{color:#6b5b8a}
+.search-box input:focus{border-color:rgba(255,107,157,0.5)}
+.search-box button{padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+.search-box button:active{opacity:0.7}
+.search-results{display:none}
+.search-result{background:rgba(45,27,78,0.6);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.search-result .sr-title{font-size:13px;font-weight:600;color:#f0e6ff;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.search-result .sr-title .song-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-result .sr-artist{font-size:11px;color:#8b7ba8;margin-bottom:6px}
+.search-result .sr-diffs{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.sr-diff{font-size:10px;padding:2px 6px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s}
+.sr-diff:hover{border-color:rgba(255,255,255,0.3)}
+.sr-diff.selected{border-color:#ff6b9d;box-shadow:0 0 6px rgba(255,107,157,0.3)}
+.sr-diff-basic{background:rgba(34,187,91,0.2);color:#22bb5b}
+.sr-diff-advanced{background:rgba(251,156,44,0.2);color:#fb9c2c}
+.sr-diff-expert{background:rgba(246,72,97,0.2);color:#f64861}
+.sr-diff-master{background:rgba(158,69,226,0.2);color:#9e45e2}
+.sr-diff-remaster{background:rgba(219,170,255,0.2);color:#dbaaff}
+.sr-diff-utage{background:rgba(255,107,157,0.2);color:#ff6b9d}
+.sr-add{padding:4px 12px;border:none;border-radius:6px;background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff;font-size:11px;font-weight:600;cursor:pointer;margin-left:auto}
+.sr-add:active{opacity:0.7}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:100;opacity:0;transition:opacity 0.3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>🎵 点歌队列</h1>
+<div class="server-ip" id="serverIp"></div>
+</div>
+<div class="queue-section" id="queueSection">
+<div class="queue-empty">暂无歌曲</div>
+</div>
+<div class="search-section">
+<h2>🔍 搜索添加</h2>
+<div class="search-box">
+<input type="text" id="searchInput" placeholder="输入歌名、别名或ID" />
+<button onclick="doSearch()">搜索</button>
+</div>
+<div class="search-results" id="searchResults"></div>
+</div>
+<div class="bottom-bar">
+<button class="btn-skip" onclick="skipSong()">⏭ 切歌</button>
+<button class="btn-clear" onclick="clearQueue()">🗑 清空</button>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var currentIndex=-1;
+var pollTimer=null;
+function getBaseUrl(){
+return location.origin;
+}
+function showToast(msg){
+var t=document.getElementById('toast');
+t.textContent=msg;
+t.classList.add('show');
+setTimeout(function(){t.classList.remove('show')},1500);
+}
+function diffClass(diff){
+var d=(diff||'').toLowerCase();
+if(d.indexOf('basic')>=0)return'diff-basic';
+if(d.indexOf('advanced')>=0)return'diff-advanced';
+if(d.indexOf('expert')>=0)return'diff-expert';
+if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'diff-master';
+if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'diff-remaster';
+if(d.indexOf('utage')>=0)return'diff-utage';
+return'diff-master';
+}
+function diffSmallClass(diff){
+var d=(diff||'').toLowerCase();
+if(d.indexOf('basic')>=0)return'sr-diff-basic';
+if(d.indexOf('advanced')>=0)return'sr-diff-advanced';
+if(d.indexOf('expert')>=0)return'sr-diff-expert';
+if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'sr-diff-master';
+if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'sr-diff-remaster';
+if(d.indexOf('utage')>=0)return'sr-diff-utage';
+return'sr-diff-master';
+}
+function chartClass(ct){
+if(ct==='dx')return'chart-dx';
+if(ct==='standard'||ct==='std')return'chart-std';
+if(ct==='utage')return'chart-utage';
+return'chart-std';
+}
+function chartLabel(ct){
+if(ct==='dx')return'DX';
+if(ct==='standard')return'STD';
+if(ct==='utage')return'UTAGE';
+return(ct||'').toUpperCase();
+}
+function renderQueue(data){
+currentIndex=data.currentIndex;
+var section=document.getElementById('queueSection');
+if(!data.queue||data.queue.length===0){
+section.innerHTML='<div class="queue-empty">暂无歌曲</div>';
+return;
+}
+var html='';
+for(var i=0;i<data.queue.length;i++){
+var s=data.queue[i];
+var isCurrent=(i===currentIndex);
+var cls='song-card';
+if(isCurrent)cls+=' current';
+if(s.isPriority)cls+=' priority';
+html+='<div class="'+cls+'">';
+html+='<div class="diff-bar '+diffClass(s.difficulty)+'"></div>';
+html+='<div class="card-body">';
+html+='<div class="card-top">';
+html+='<span class="song-name">'+escHtml(s.songName)+'</span>';
+if(s.chartType)html+='<span class="chart-badge '+chartClass(s.chartType)+'">'+chartLabel(s.chartType)+'</span>';
+if(s.isPriority)html+='<span class="priority-badge">⚡插队</span>';
+html+='</div>';
+html+='<div class="card-info">';
+if(s.difficulty)html+='<span class="difficulty" style="color:'+diffColor(s.difficulty)+'">'+escHtml(s.difficulty)+'</span>';
+if(s.level)html+='<span>Lv.'+escHtml(s.level)+'</span>';
+if(s.requester)html+='<span class="requester">'+escHtml(s.requester)+'</span>';
+html+='</div>';
+html+='</div>';
+html+='<div class="card-actions">';
+html+='<button class="btn-up" onclick="moveSong('+i+',\'up\')" '+(i===0?'disabled':'')+'>▲</button>';
+html+='<button class="btn-down" onclick="moveSong('+i+',\'down\')" '+(i===data.queue.length-1?'disabled':'')+'>▼</button>';
+html+='<button class="btn-remove" onclick="removeSong('+i+')">✕</button>';
+html+='</div>';
+html+='</div>';
+}
+section.innerHTML=html;
+}
+function diffColor(diff){
+var d=(diff||'').toLowerCase();
+if(d.indexOf('basic')>=0)return'#22bb5b';
+if(d.indexOf('advanced')>=0)return'#fb9c2c';
+if(d.indexOf('expert')>=0)return'#f64861';
+if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'#9e45e2';
+if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'#dbaaff';
+if(d.indexOf('utage')>=0)return'#ff6b9d';
+return'#9e45e2';
+}
+function escHtml(s){
+if(!s)return'';
+return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fetchQueue(){
+var xhr=new XMLHttpRequest();
+xhr.open('GET',getBaseUrl()+'/api/queue',true);
+xhr.onload=function(){
+if(xhr.status===200){
+try{var data=JSON.parse(xhr.responseText);renderQueue(data)}catch(e){}
+}
+};
+xhr.onerror=function(){};
+xhr.send();
+}
+function postAction(url,body,cb){
+var xhr=new XMLHttpRequest();
+xhr.open('POST',getBaseUrl()+url,true);
+xhr.setRequestHeader('Content-Type','application/json');
+xhr.onload=function(){
+if(xhr.status===200){
+try{var data=JSON.parse(xhr.responseText);renderQueue(data);if(cb)cb(data)}catch(e){}
+}else{
+try{showToast(JSON.parse(xhr.responseText).message||'操作失败')}catch(e){showToast('操作失败')}
+}
+};
+xhr.onerror=function(){showToast('网络错误')};
+xhr.send(body?JSON.stringify(body):'{}');
+}
+function skipSong(){postAction('/api/queue/skip')}
+function clearQueue(){postAction('/api/queue/clear')}
+function removeSong(idx){postAction('/api/queue/remove',{index:idx})}
+function moveSong(idx,dir){postAction('/api/queue/move',{index:idx,direction:dir})}
+function doSearch(){
+var q=document.getElementById('searchInput').value.trim();
+if(!q)return;
+var xhr=new XMLHttpRequest();
+xhr.open('GET',getBaseUrl()+'/api/search?q='+encodeURIComponent(q),true);
+xhr.onload=function(){
+if(xhr.status===200){
+try{renderSearchResults(JSON.parse(xhr.responseText))}catch(e){showToast('解析错误')}
+}else{
+showToast('搜索失败');
+}
+};
+xhr.onerror=function(){showToast('网络错误')};
+xhr.send();
+}
+function renderSearchResults(data){
+var container=document.getElementById('searchResults');
+if(!data.results||data.results.length===0){
+container.style.display='block';
+container.innerHTML='<div style="color:#6b5b8a;text-align:center;padding:16px;font-size:13px">未找到歌曲</div>';
+return;
+}
+container.style.display='block';
+var html='';
+for(var i=0;i<data.results.length;i++){
+var r=data.results[i];
+html+='<div class="search-result">';
+html+='<div class="sr-title">';
+html+='<span class="song-title">'+escHtml(r.title)+'</span>';
+if(r.chartType)html+='<span class="chart-badge '+chartClass(r.chartType)+'">'+chartLabel(r.chartType)+'</span>';
+html+='</div>';
+if(r.artist)html+='<div class="sr-artist">'+escHtml(r.artist)+'</div>';
+html+='<div class="sr-diffs">';
+var diffMap={};
+if(r.difficulties){
+for(var j=0;j<r.difficulties.length;j++){
+var d=r.difficulties[j];
+var key=d.name;
+if(!diffMap[key])diffMap[key]=[];
+diffMap[key].push(d);
+}
+var keys=Object.keys(diffMap);
+for(var k=0;k<keys.length;k++){
+var dn=keys[k];
+var dv=diffMap[dn][0];
+var sel=(k===keys.length-1)?' selected':'';
+html+='<span class="sr-diff '+diffSmallClass(dn)+sel+'" data-diff-name="'+dn+'" data-music-id="'+r.musicId+'" data-chart-type="'+(r.chartType||'')+'" onclick="selectDiff(this)">'+dn+' Lv.'+dv.level+'</span>';
+}
+}
+html+='<button class="sr-add" onclick="addSong(this)">添加</button>';
+html+='</div>';
+html+='</div>';
+}
+container.innerHTML=html;
+}
+function selectDiff(el){
+var parent=el.parentElement;
+var diffs=parent.querySelectorAll('.sr-diff');
+for(var i=0;i<diffs.length;i++)diffs[i].classList.remove('selected');
+el.classList.add('selected');
+}
+function addSong(btn){
+var parent=btn.parentElement;
+var sel=parent.querySelector('.sr-diff.selected');
+if(!sel){showToast('请先选择难度');return}
+var musicId=parseInt(sel.getAttribute('data-music-id'));
+var chartType=sel.getAttribute('data-chart-type');
+var diffName=sel.getAttribute('data-diff-name');
+var diffMap={'BASIC':'绿','ADVANCED':'黄','EXPERT':'红','MASTER':'紫','Re:MASTER':'白','UTAGE':'宴'};
+var diffInput=diffMap[diffName]||diffName;
+postAction('/api/queue/add',{musicId:musicId,difficulty:diffInput,chartType:chartType},function(){
+showToast('已添加');
+});
+}
+document.getElementById('searchInput').addEventListener('keydown',function(e){
+if(e.key==='Enter')doSearch();
+});
+document.getElementById('serverIp').textContent=location.host;
+fetchQueue();
+pollTimer=setInterval(fetchQueue,1500);
+</script>
+</body>
+</html>

@@ -49,6 +49,8 @@ targets:
       - path: MaimaiPOV/SongRequest
         buildPhase: resources
         type: folder
+      - path: MaimaiPOV/WebServer/control.html
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.maimai.MaimaiPOV
