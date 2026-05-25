@@ -27,6 +27,8 @@ class QueueAPIHandler {
             if let level = song.level { item["level"] = level }
             if let ct = song.chartType { item["chartType"] = ct }
             if let req = song.requester { item["requester"] = req }
+            if let rn = song.requesterName { item["requesterName"] = rn }
+            item["giftValue"] = song.giftValue
             if let mid = song.musicId {
                 item["musicId"] = mid
                 item["coverURL"] = coverURL(from: mid)

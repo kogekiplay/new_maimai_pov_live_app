@@ -143,6 +143,16 @@ class WebServerManager {
             guard let self = self else { return .internalServerError }
             return self.debugHandler.simulateMember(request: request)
         }
+
+        server["/api/debug/simulate/danmaku"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.debugHandler.simulateDanmaku(request: request)
+        }
+
+        server["/api/debug/gift-pool"] = { [weak self] _ in
+            guard let self = self else { return .internalServerError }
+            return self.debugHandler.getGiftPool()
+        }
     }
 
     private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"

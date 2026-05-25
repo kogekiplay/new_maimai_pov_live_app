@@ -108,6 +108,19 @@ class DebugAPIHandler {
 
             if let gift = gift {
                 pipeline.giftPermissionManager.handleGift(gift)
+
+                if gift.isPaidGift {
+                    pipeline.songCardManager.userGiftPool[authorName, default: 0] += gift.totalCoin
+                    if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {
+                        pipeline.songCardManager.updateGiftValue(name: authorName, delta: gift.totalCoin)
+                        let lockedEnd = pipeline.songCardManager.lockedEndIndex
+                        if index >= lockedEnd {
+                            pipeline.songCardManager.reorderQueueByGiftValue()
+                            pipeline.refreshDisplayedCardsIfNeeded()
+                        }
+                    }
+                }
+
                 result = [
                     "success": true,
                     "isPaidGift": gift.isPaidGift,
@@ -159,6 +172,16 @@ class DebugAPIHandler {
 
             if let sc = sc {
                 pipeline.giftPermissionManager.handleSuperChat(sc)
+
+                pipeline.songCardManager.userGiftPool[authorName, default: 0] += sc.price * 1000
+                if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {
+                    pipeline.songCardManager.updateGiftValue(name: authorName, delta: sc.price * 1000)
+                    let lockedEnd = pipeline.songCardManager.lockedEndIndex
+                    if index >= lockedEnd {
+                        pipeline.songCardManager.reorderQueueByGiftValue()
+                        pipeline.refreshDisplayedCardsIfNeeded()
+                    }
+                }
 
                 if !content.isEmpty {
                     pipeline.handleSuperChatForSongRequest(sc)
@@ -214,6 +237,18 @@ class DebugAPIHandler {
 
             if let member = member {
                 pipeline.giftPermissionManager.handleMember(member)
+
+                let coinValue = 198 * 1000
+                pipeline.songCardManager.userGiftPool[authorName, default: 0] += coinValue
+                if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {
+                    pipeline.songCardManager.updateGiftValue(name: authorName, delta: coinValue)
+                    let lockedEnd = pipeline.songCardManager.lockedEndIndex
+                    if index >= lockedEnd {
+                        pipeline.songCardManager.reorderQueueByGiftValue()
+                        pipeline.refreshDisplayedCardsIfNeeded()
+                    }
+                }
+
                 result = [
                     "success": true,
                     "authorName": authorName
@@ -227,5 +262,86 @@ class DebugAPIHandler {
 
         sem.wait()
         return .ok(.json(result))
+    }
+
+    func simulateDanmaku(request: HttpRequest) -> HttpResponse {
+        guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
+              let authorName = body["authorName"] as? String,
+              let content = body["content"] as? String else {
+            return .badRequest(.text("Missing 'authorName' or 'content'"))
+        }
+
+        let sem = DispatchSemaphore(value: 0)
+        var result: [String: Any] = ["success": true]
+
+        DispatchQueue.main.async { [weak self] in
+            guard let pipeline = self?.pipeline else {
+                result = ["success": false, "error": "Pipeline not available"]
+                sem.signal()
+                return
+            }
+
+            let danmaku = DanmakuMessage(
+                fromArray: [
+                    "",
+                    Int(Date().timeIntervalSince1970),
+                    authorName,
+                    0,
+                    content,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    UUID().uuidString,
+                    "",
+                    0,
+                    0,
+                    0,
+                    0,
+                    ""
+                ]
+            )
+
+            if let danmaku = danmaku {
+                pipeline.handleDanmakuForSongRequest(danmaku)
+                result = [
+                    "success": true,
+                    "authorName": authorName,
+                    "content": content
+                ]
+            } else {
+                result = ["success": false, "error": "Failed to create DanmakuMessage"]
+            }
+
+            sem.signal()
+        }
+
+        sem.wait()
+        return .ok(.json(result))
+    }
+
+    func getGiftPool() -> HttpResponse {
+        let sem = DispatchSemaphore(value: 0)
+        var result: [[String: Any]] = []
+
+        DispatchQueue.main.async { [weak self] in
+            guard let pipeline = self?.pipeline else {
+                sem.signal()
+                return
+            }
+            let pool = pipeline.songCardManager.userGiftPool
+            for (name, value) in pool.sorted(by: { $0.value > $1.value }) {
+                result.append([
+                    "name": name,
+                    "giftValue": value
+                ])
+            }
+            sem.signal()
+        }
+
+        sem.wait()
+        return .ok(.json(["giftPool": result]])
     }
 }

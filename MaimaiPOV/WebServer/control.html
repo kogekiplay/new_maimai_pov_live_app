@@ -125,7 +125,7 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 </div>
 <div class="debug-section">
 <div class="debug-toggle" onclick="toggleDebug()">
-<h2>🔧 权限调试</h2>
+<h2>🔧 调试面板</h2>
 <span class="arrow" id="debugArrow">▼</span>
 </div>
 <div class="debug-panel" id="debugPanel">
@@ -141,16 +141,19 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 <button class="debug-btn debug-btn-member" onclick="simMember()">⚓ 模拟上舰</button>
 </div>
 <div class="debug-row">
-<label>普通次数</label>
-<input type="number" id="debugNormal" value="1" min="0" max="99" style="width:50px;flex:none" />
-<label>插队次数</label>
-<input type="number" id="debugPriority" value="0" min="0" max="99" style="width:50px;flex:none" />
-<button class="debug-btn debug-btn-add" onclick="addPerm()">添加权限</button>
+<label>弹幕内容</label>
+<input type="text" id="debugDanmaku" placeholder="点歌 歌名 [难度]" />
 </div>
 <div class="debug-btns">
-<button class="debug-btn debug-btn-refresh" onclick="fetchPerms()">🔄 刷新</button>
-<button class="debug-btn debug-btn-clear" onclick="clearPerms()">🗑 清空权限</button>
+<button class="debug-btn debug-btn-gift" onclick="simDanmaku()">💬 模拟弹幕点歌</button>
+<button class="debug-btn debug-btn-sc" onclick="simSCSong()">🎤 模拟SC点歌</button>
 </div>
+<div class="debug-btns">
+<button class="debug-btn debug-btn-refresh" onclick="fetchPerms()">🔄 刷新权限</button>
+<button class="debug-btn debug-btn-clear" onclick="clearPerms()">🗑 清空权限</button>
+<button class="debug-btn debug-btn-refresh" onclick="fetchGiftPool()">🎁 刷新送礼池</button>
+</div>
+<div class="perm-list" id="giftPoolList" style="margin-top:8px"><div class="perm-empty">点击"刷新送礼池"查看</div></div>
 </div>
 </div>
 <div class="bottom-bar">
@@ -219,7 +222,7 @@ if(!data||!data.queue)return'';
 var parts=[];
 for(var i=0;i<data.queue.length;i++){
 var s=data.queue[i];
-parts.push(s.songName+'|'+(s.difficulty||'')+'|'+(s.isPriority?'1':'0')+'|'+(s.requester||''));
+parts.push(s.songName+'|'+(s.difficulty||'')+'|'+(s.isPriority?'1':'0')+'|'+(s.requester||'')+'|'+(s.giftValue||0));
 }
 return data.currentIndex+'|'+data.remaining+'|'+parts.join(',');
 }
@@ -262,6 +265,7 @@ if(s.difficulty)html+='<span class="difficulty" style="color:'+diffColor(s.diffi
 if(s.level)html+='<span>Lv.'+escHtml(s.level)+'</span>';
 if(s.bpm)html+='<span class="bpm">♪'+s.bpm+'</span>';
 if(s.requester)html+='<span class="requester">'+escHtml(s.requester)+'</span>';
+if(s.giftValue>0)html+='<span style="color:#22bb5b;font-size:10px">🎁'+(s.giftValue/1000).toFixed(1)+'元</span>';
 html+='</div>';
 html+='</div>';
 html+='<div class="card-actions">';
@@ -491,6 +495,53 @@ postDebug('/api/debug/permissions/clear',{},function(){
 showToast('已清空所有权限');
 fetchPerms();
 });
+}
+function simDanmaku(){
+var name=getDebugUsername();
+var content=document.getElementById('debugDanmaku').value.trim();
+if(!content){showToast('请输入弹幕内容');return}
+postDebug('/api/debug/simulate/danmaku',{authorName:name,content:content},function(data){
+if(data.success)showToast('已模拟弹幕: '+content);
+else showToast('模拟失败');
+});
+}
+function simSCSong(){
+var name=getDebugUsername();
+var content=document.getElementById('debugDanmaku').value.trim();
+if(!content){showToast('请输入SC点歌内容');return}
+postDebug('/api/debug/simulate/sc',{authorName:name,price:30,content:content},function(data){
+if(data.success)showToast('已模拟SC点歌: '+content);
+else showToast('模拟失败');
+});
+}
+function fetchGiftPool(){
+var xhr=new XMLHttpRequest();
+xhr.open('GET','/api/debug/gift-pool',true);
+xhr.onload=function(){
+if(xhr.status===200){
+try{renderGiftPool(JSON.parse(xhr.responseText))}catch(e){}
+}
+};
+xhr.send();
+}
+function renderGiftPool(data){
+var container=document.getElementById('giftPoolList');
+if(!data.giftPool||data.giftPool.length===0){
+container.innerHTML='<div class="perm-empty">送礼池为空</div>';
+return;
+}
+var html='';
+for(var i=0;i<data.giftPool.length;i++){
+var p=data.giftPool[i];
+var rmb=(p.giftValue/1000).toFixed(1);
+html+='<div class="perm-item">';
+html+='<span class="perm-name">'+escHtml(p.name)+'</span>';
+html+='<span class="perm-chances">';
+html+='<span style="color:#22bb5b">🎁'+p.giftValue+'币 (¥'+rmb+')</span>';
+html+='</span>';
+html+='</div>';
+}
+container.innerHTML=html;
 }
 function postDebug(url,body,cb){
 var xhr=new XMLHttpRequest();
