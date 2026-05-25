@@ -34,19 +34,19 @@ class GiftPermissionManager: ObservableObject {
 
     func handleGift(_ gift: GiftMessage) {
         guard gift.isPaidGift else { return }
-        addPermission(uid: gift.effectiveUid, username: gift.authorName, source: .gift, normalChances: 1, priorityChances: 0)
+        addPermission(uid: gift.authorName, username: gift.authorName, source: .gift, normalChances: 1, priorityChances: 0)
     }
 
     func handleSuperChat(_ sc: SuperChatMessage) {
         if sc.price >= Self.scPriorityThreshold {
-            addPermission(uid: sc.effectiveUid, username: sc.authorName, source: .superChat, normalChances: 0, priorityChances: 1)
+            addPermission(uid: sc.authorName, username: sc.authorName, source: .superChat, normalChances: 0, priorityChances: 1)
         } else {
-            addPermission(uid: sc.effectiveUid, username: sc.authorName, source: .superChat, normalChances: 1, priorityChances: 0)
+            addPermission(uid: sc.authorName, username: sc.authorName, source: .superChat, normalChances: 1, priorityChances: 0)
         }
     }
 
     func handleMember(_ member: MemberMessage) {
-        addPermission(uid: member.effectiveUid, username: member.authorName, source: .guardMember, normalChances: 1, priorityChances: 0)
+        addPermission(uid: member.authorName, username: member.authorName, source: .guardMember, normalChances: 1, priorityChances: 0)
     }
 
     func hasPermission(uid: String) -> Bool {
@@ -192,8 +192,8 @@ class GiftPermissionManager: ObservableObject {
                 existing.priorityChances = priorityChances
                 existing.expiryDate = newExpiry
             } else {
-                existing.remainingChances += normalChances
-                existing.priorityChances += priorityChances
+                if normalChances > 0 { existing.remainingChances = 1 }
+                if priorityChances > 0 { existing.priorityChances = 1 }
                 existing.expiryDate = max(existing.expiryDate, newExpiry)
             }
             permissions[uid] = existing
@@ -201,8 +201,8 @@ class GiftPermissionManager: ObservableObject {
             permissions[uid] = GiftPermission(
                 uid: uid,
                 username: username,
-                remainingChances: normalChances,
-                priorityChances: priorityChances,
+                remainingChances: min(normalChances, 1),
+                priorityChances: min(priorityChances, 1),
                 expiryDate: newExpiry
             )
         }

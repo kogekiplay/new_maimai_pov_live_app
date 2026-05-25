@@ -203,7 +203,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         switch result.type {
         case .songRequest(let query, let diffInput, let chartTypePreference):
-            let uid = msg.effectiveUid
+            let uid = msg.authorName
 
             DispatchQueue.main.async {
                 self.debug.log("[点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
@@ -298,7 +298,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         switch result.type {
         case .songRequest(let query, let diffInput, let chartTypePreference):
-            let uid = sc.effectiveUid
+            let uid = sc.authorName
             let isPrioritySC = sc.price >= 30
 
             DispatchQueue.main.async {
