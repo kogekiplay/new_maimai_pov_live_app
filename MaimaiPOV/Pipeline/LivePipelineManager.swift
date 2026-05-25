@@ -91,6 +91,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var overlayCompositor: OverlayCompositor?
     var songCardCompositor: SongCardCompositor?
     var canvasComposer: CanvasComposer?
+    var leftPanelRenderer: LeftPanelRenderer?
+    var leftPanelCompositor: LeftPanelCompositor?
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
     let giftPermissionManager = GiftPermissionManager()
@@ -493,6 +495,15 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         self.songCardCompositor?.enabled = songCardEnabled
         songCardManager.delegate = self
 
+        if Config.leftPanelEnabled {
+            self.leftPanelRenderer = LeftPanelRenderer(device: device)
+            self.leftPanelCompositor = LeftPanelCompositor(device: device)
+            renderLeftPanelAnnouncement()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.refreshLeftPanel()
+            }
+        }
+
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
             width: Config.outputWidth,
@@ -702,6 +713,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                               cx: offsetCx, cy: track.cy,
                               cropW: track.cropW, cropH: track.cropH,
                               outputTexture: writeBuffer.texture)
+
+                    if let panel = self.leftPanelCompositor, panel.enabled {
+                        panel.updateAnimations()
+                        panel.encode(into: encoder, outputTexture: writeBuffer.texture)
+                    }
 
                     encoder.endEncoding()
 
@@ -1060,12 +1076,66 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func onCurrentSongChanged(_ song: SongCardData) {
+        renderLeftPanelCurrentSong(song)
+        renderLeftPanelNextSong(songCardManager.nextSong)
     }
 
     func onQueueUpdated(_ songs: [SongCardData]) {
+        refreshLeftPanel()
     }
 
     func triggerSongCardSwitch() {
+        let skippedName = songCardManager.currentSong?.requesterName
+
+        if let leftCompositor = leftPanelCompositor {
+            let newNextData = songCardManager.currentIndex + 3 < songCardManager.queue.count
+                ? songCardManager.queue[songCardManager.currentIndex + 3]
+                : nil
+
+            if let data = newNextData {
+                if let musicId = data.musicId {
+                    CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
+                        guard let self = self else { return }
+                        DispatchQueue.main.async {
+                            self.leftPanelRenderer?.renderNextSong(data, coverBase64: base64) { [weak self] texture in
+                                guard let self = self else { return }
+                                self.leftPanelCompositor?.switchToNext(newNextTexture: texture, newNextData: data)
+                                self.songCardManager.switchToNext()
+                                if let name = skippedName {
+                                    self.songCardManager.resetGiftPool(name: name)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        self.leftPanelRenderer?.renderNextSong(data, coverBase64: nil) { [weak self] texture in
+                            guard let self = self else { return }
+                            self.leftPanelCompositor?.switchToNext(newNextTexture: texture, newNextData: data)
+                            self.songCardManager.switchToNext()
+                            if let name = skippedName {
+                                self.songCardManager.resetGiftPool(name: name)
+                            }
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.leftPanelRenderer?.renderNextSong(nil, coverBase64: nil) { [weak self] texture in
+                        guard let self = self else { return }
+                        self.leftPanelCompositor?.switchToNext(newNextTexture: texture, newNextData: nil)
+                        self.songCardManager.switchToNext()
+                        if let name = skippedName {
+                            self.songCardManager.resetGiftPool(name: name)
+                        }
+                    }
+                }
+            }
+            return
+        }
+
         guard let compositor = songCardCompositor else { return }
 
         let hasMoreSongs = songCardManager.currentIndex + 1 < songCardManager.queue.count
@@ -1111,9 +1181,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func addSongToQueue(_ song: SongCardData) {
-        guard let compositor = songCardCompositor else { return }
-
         songCardManager.addSong(song)
+
+        if leftPanelCompositor != nil {
+            refreshLeftPanel()
+        }
+
+        guard let compositor = songCardCompositor else { return }
 
         if compositor.cards.count < compositor.slots.count {
             if let musicId = song.musicId {
@@ -1137,6 +1211,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     func addSongAtNextToQueue(_ song: SongCardData) {
         songCardManager.addSongAtNext(song)
         refreshDisplayedCards()
+        if leftPanelCompositor != nil {
+            refreshLeftPanel()
+        }
     }
 
     private func refreshDisplayedCards() {
@@ -1195,6 +1272,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     func updateSongQueue(_ songs: [SongCardData]) {
         songCardManager.updateQueue(songs)
 
+        if leftPanelCompositor != nil {
+            refreshLeftPanel()
+        }
+
         guard let compositor = songCardCompositor else { return }
 
         if songs.isEmpty {
@@ -1238,10 +1319,104 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func clearSongQueue() {
         songCardCompositor?.clearAll()
+        leftPanelCompositor?.clearAll()
         songCardManager.clearQueue()
+        if leftPanelCompositor != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.refreshLeftPanel()
+            }
+        }
     }
 
     func refreshDisplayedCardsIfNeeded() {
         refreshDisplayedCards()
+    }
+
+    private func renderLeftPanelCurrentSong(_ song: SongCardData?) {
+        guard let renderer = leftPanelRenderer, let compositor = leftPanelCompositor else { return }
+
+        if let song = song {
+            if let musicId = song.musicId {
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
+                    guard self != nil else { return }
+                    DispatchQueue.main.async {
+                        renderer.renderCurrentSong(song, coverBase64: base64) { texture in
+                            if let texture = texture {
+                                compositor.setCurrentSong(texture: texture, data: song)
+                            }
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    renderer.renderCurrentSong(song, coverBase64: nil) { texture in
+                        if let texture = texture {
+                            compositor.setCurrentSong(texture: texture, data: song)
+                        }
+                    }
+                }
+            }
+        } else {
+            DispatchQueue.main.async {
+                renderer.renderCurrentSong(nil, coverBase64: nil) { texture in
+                    if let texture = texture {
+                        compositor.setCurrentSong(texture: texture, data: nil)
+                    }
+                }
+            }
+        }
+    }
+
+    private func renderLeftPanelNextSong(_ song: SongCardData?) {
+        guard let renderer = leftPanelRenderer, let compositor = leftPanelCompositor else { return }
+
+        if let song = song {
+            if let musicId = song.musicId {
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
+                    guard self != nil else { return }
+                    DispatchQueue.main.async {
+                        renderer.renderNextSong(song, coverBase64: base64) { texture in
+                            if let texture = texture {
+                                compositor.setNextSong(texture: texture, data: song)
+                            }
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    renderer.renderNextSong(song, coverBase64: nil) { texture in
+                        if let texture = texture {
+                            compositor.setNextSong(texture: texture, data: song)
+                        }
+                    }
+                }
+            }
+        } else {
+            DispatchQueue.main.async {
+                renderer.renderNextSong(nil, coverBase64: nil) { texture in
+                    if let texture = texture {
+                        compositor.setNextSong(texture: texture, data: nil)
+                    }
+                }
+            }
+        }
+    }
+
+    private func refreshLeftPanel() {
+        let current = songCardManager.currentSong
+        let next = songCardManager.nextSong
+        renderLeftPanelCurrentSong(current)
+        renderLeftPanelNextSong(next)
+    }
+
+    func renderLeftPanelAnnouncement() {
+        guard let renderer = leftPanelRenderer, let compositor = leftPanelCompositor else { return }
+        DispatchQueue.main.async {
+            renderer.renderAnnouncement(Config.announcementText) { texture in
+                if let texture = texture {
+                    compositor.setAnnouncement(texture: texture)
+                }
+            }
+        }
     }
 }
