@@ -175,11 +175,39 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             DispatchQueue.main.async {
                 self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (\(coinType))")
             }
+            if msg.isPaidGift {
+                let name = msg.authorName
+                self.songCardManager.userGiftPool[name, default: 0] += msg.totalCoin
+                if let index = self.songCardManager.findSongIndex(byName: name) {
+                    self.songCardManager.updateGiftValue(name: name, delta: msg.totalCoin)
+                    let lockedEnd = self.songCardManager.lockedEndIndex
+                    DispatchQueue.main.async {
+                        if index >= lockedEnd {
+                            self.songCardManager.reorderQueueByGiftValue()
+                            self.refreshDisplayedCardsIfNeeded()
+                        }
+                        self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
+                    }
+                }
+            }
         }
 
         blivechatClient.onSuperChat = { [weak self] msg in
             guard let self = self else { return }
             self.giftPermissionManager.handleSuperChat(msg)
+            let name = msg.authorName
+            let coinValue = msg.price * 1000
+            self.songCardManager.userGiftPool[name, default: 0] += coinValue
+            if let index = self.songCardManager.findSongIndex(byName: name) {
+                self.songCardManager.updateGiftValue(name: name, delta: coinValue)
+                let lockedEnd = self.songCardManager.lockedEndIndex
+                DispatchQueue.main.async {
+                    if index >= lockedEnd {
+                        self.songCardManager.reorderQueueByGiftValue()
+                        self.refreshDisplayedCardsIfNeeded()
+                    }
+                }
+            }
             DispatchQueue.main.async {
                 self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
             }
@@ -189,6 +217,19 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         blivechatClient.onMember = { [weak self] msg in
             guard let self = self else { return }
             self.giftPermissionManager.handleMember(msg)
+            let name = msg.authorName
+            let coinValue = 198 * 1000
+            self.songCardManager.userGiftPool[name, default: 0] += coinValue
+            if let index = self.songCardManager.findSongIndex(byName: name) {
+                self.songCardManager.updateGiftValue(name: name, delta: coinValue)
+                let lockedEnd = self.songCardManager.lockedEndIndex
+                DispatchQueue.main.async {
+                    if index >= lockedEnd {
+                        self.songCardManager.reorderQueueByGiftValue()
+                        self.refreshDisplayedCardsIfNeeded()
+                    }
+                }
+            }
             DispatchQueue.main.async {
                 self.debug.log("[上舰] \(msg.authorName)")
             }
