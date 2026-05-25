@@ -397,6 +397,23 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: songCardEnabledKey) }
     }
 
+    static let defaultLeftPanelEnabled: Bool = true
+    static var leftPanelEnabled: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: leftPanelEnabledKey) != nil else {
+                return defaultLeftPanelEnabled
+            }
+            return UserDefaults.standard.bool(forKey: leftPanelEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: leftPanelEnabledKey) }
+    }
+
+    static let defaultAnnouncementText: String = "弹幕点歌需送礼物\nSC点歌立即生效"
+    static var announcementText: String {
+        get { UserDefaults.standard.string(forKey: announcementTextKey) ?? defaultAnnouncementText }
+        set { UserDefaults.standard.set(newValue, forKey: announcementTextKey) }
+    }
+
     static let defaultBlivechatServer: String = BlivechatServer.cn.rawValue
     static var blivechatServer: String {
         get { UserDefaults.standard.string(forKey: blivechatServerKey) ?? defaultBlivechatServer }
@@ -492,6 +509,8 @@ enum Config {
     private static let overlayRotationKey = "com.maimai.overlayRotation"
     private static let cropHorizontalOffsetKey = "com.maimai.cropHorizontalOffset"
     private static let songCardEnabledKey = "com.maimai.songCardEnabled"
+    private static let leftPanelEnabledKey = "com.maimai.leftPanelEnabled"
+    private static let announcementTextKey = "com.maimai.announcementText"
     private static let blivechatServerKey = "com.maimai.blivechatServer"
     private static let blivechatIdentityCodeKey = "com.maimai.blivechatIdentityCode"
     private static let giftDurationMinutesKey = "com.maimai.giftDurationMinutes"
