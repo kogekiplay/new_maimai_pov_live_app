@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=240, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    padding: 40px;
+  }
+
+  .card-container {
+    width: 240px;
+    filter: drop-shadow(0 6px 20px rgba(0,0,0,0.5));
+  }
+
+  .card {
+    width: 240px;
+    position: relative;
+    border-radius: 18px;
+    padding: 4px;
+    overflow: visible;
+  }
+
+  .card-inner {
+    background: #111;
+    border-radius: 14px 14px 10px 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* 难度边框色 */
+  .diff-basic { background: linear-gradient(135deg, #22bb5b, #18a04a); }
+  .diff-advanced { background: linear-gradient(135deg, #fb9c2c, #e08520); }
+  .diff-expert { background: linear-gradient(135deg, #f64861, #d93d53); }
+  .diff-master { background: linear-gradient(135deg, #9e45e0, #8538c4); }
+  .diff-remaster { background: linear-gradient(135deg, #dbaaff, #f6b2ff, #dbaaff); }
+  .diff-utage { background: linear-gradient(135deg, #ff69b4, #e0559d); }
+
+  /* 顶部标签栏 */
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 3px 6px 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* 左上角难度标识 */
+  .difficulty-badge {
+    font-size: 24px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: 1.5px;
+    line-height: 1;
+    -webkit-text-stroke: 1.2px rgba(0,0,0,0.5);
+    paint-order: stroke fill;
+    text-shadow:
+      0 2px 8px rgba(0,0,0,0.7),
+      0 0 16px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+  }
+
+  /* 右上角等级 */
+  .level-badge {
+    color: white;
+    line-height: 1;
+    transform: translateY(-2px);
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    -webkit-text-stroke: 0.8px rgba(0,0,0,0.4);
+    paint-order: stroke fill;
+    text-shadow:
+      0 2px 8px rgba(0,0,0,0.65),
+      0 0 14px rgba(0,0,0,0.25);
+  }
+
+  .level-lv {
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .level-num {
+    font-size: 26px;
+    font-weight: 900;
+  }
+
+  .level-dec {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  /* 封面区域 */
+  .cover-area {
+    padding: 0 6px 2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .cover-wrapper {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.08);
+    border-bottom: none;
+  }
+
+  .cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .cover-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.25);
+    font-size: 36px;
+    font-weight: bold;
+  }
+
+  /* 底部信息栏 - 紧凑 */
+  .info-bar {
+    background: #111;
+    margin: 0 1px 1px;
+    border-radius: 0 0 10px 10px;
+    padding: 5px 8px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .song-name {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.5px;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chart-badge {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: white;
+    letter-spacing: 0.8px;
+    flex-shrink: 0;
+  }
+
+  .chart-standard { background: rgba(255,255,255,0.12); }
+  .chart-dx { background: rgba(255,80,80,0.55); }
+  .chart-utage { background: rgba(255,105,180,0.55); }
+
+  .requester-label {
+    color: #ffd93d;
+    font-size: 16px;
+    font-weight: 800;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+
+  /* ===== 预览控制面板 ===== */
+  .preview-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(30,30,50,0.95);
+    border-radius: 16px;
+    padding: 20px;
+    color: #ccc;
+    font-family: -apple-system, sans-serif;
+    min-width: 260px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .preview-panel h3 {
+    color: #fff;
+    margin-bottom: 12px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 8px;
+  }
+
+  .preview-panel label {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #aaa;
+  }
+
+  .preview-panel select,
+  .preview-panel input {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.3);
+    color: #fff;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .preview-panel select:focus,
+  .preview-panel input:focus {
+    outline: none;
+    border-color: #9e45e0;
+  }
+
+  .color-preview-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  .color-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .color-dot:hover { transform: scale(1.15); }
+  .color-dot.active { border-color: #fff; box-shadow: 0 0 8px currentColor; }
+
+  .dot-basic { background: linear-gradient(135deg, #22bb5b, #18a04a); }
+  .dot-advanced { background: linear-gradient(135deg, #fb9c2c, #e08520); }
+  .dot-expert { background: linear-gradient(135deg, #f64861, #d93d53); }
+  .dot-master { background: linear-gradient(135deg, #9e45e0, #8538c4); }
+  .dot-remaster { background: linear-gradient(135deg, #dbaaff, #f6b2ff, #dbaaff); }
+  .dot-utage { background: linear-gradient(135deg, #ff69b4, #e0559d); }
+</style>
+</head>
+<body>
+
+<div class="preview-panel">
+  <h3>🎮 卡片预览控制</h3>
+  <label>难度（切换边框颜色）</label>
+  <div class="color-preview-row">
+    <div class="color-dot dot-basic active" onclick="setDiff('basic', 'BASIC')" title="BASIC"></div>
+    <div class="color-dot dot-advanced" onclick="setDiff('advanced', 'ADVANCED')" title="ADVANCED"></div>
+    <div class="color-dot dot-expert" onclick="setDiff('expert', 'EXPERT')" title="EXPERT"></div>
+    <div class="color-dot dot-master" onclick="setDiff('master', 'MASTER')" title="MASTER"></div>
+    <div class="color-dot dot-remaster" onclick="setDiff('remaster', 'Re:MASTER')" title="Re:MASTER"></div>
+    <div class="color-dot dot-utage" onclick="setDiff('utage', 'UTAGE')" title="UTAGE"></div>
+  </div>
+
+  <label>等级</label>
+  <input type="text" id="inp-level" value="13.2" oninput="updateCard()">
+
+  <label>歌曲名</label>
+  <input type="text" id="inp-song" value="いざモニョ" oninput="updateCard()">
+
+  <label>谱面类型</label>
+  <select id="inp-chart" onchange="updateCard()">
+    <option value="standard">STD</option>
+    <option value="dx" selected>DX</option>
+    <option value="utage">UTAGE</option>
+  </select>
+
+  <label>点歌人</label>
+  <input type="text" id="inp-requester" value="小明同学" oninput="updateCard()">
+</div>
+
+<div class="card-container">
+  <div class="card diff-master" id="card">
+    <div class="card-inner">
+      <div class="header-bar">
+        <span class="difficulty-badge" id="lbl-diff">MASTER</span>
+        <span class="level-badge" id="lbl-level"><span class="level-lv">LV</span><span class="level-num">13</span><span class="level-dec">.2</span></span>
+      </div>
+      <div class="cover-area">
+        <div class="cover-wrapper">
+          <div class="cover-placeholder">♪</div>
+        </div>
+      </div>
+    </div>
+    <div class="info-bar">
+      <div class="song-name" id="lbl-song">いざモニョ</div>
+      <div class="meta-row">
+        <span class="chart-badge chart-dx" id="lbl-chart">DX</span>
+        <span class="requester-label" id="lbl-requester">🎤 点歌: 小明同学</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setDiff(diffClass, diffLabel) {
+  const card = document.getElementById('card');
+  card.className = 'card diff-' + diffClass;
+  document.getElementById('lbl-diff').textContent = diffLabel;
+
+  document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function updateCard() {
+  const lv = document.getElementById('inp-level').value.trim();
+  const parts = lv.split('.');
+  const intPart = parts[0] || '0';
+  const decPart = parts.length > 1 ? '.' + parts[1] : '';
+
+  document.getElementById('lbl-level').innerHTML =
+    '<span class="level-lv">LV</span><span class="level-num">' + intPart + '</span><span class="level-dec">' + decPart + '</span>';
+
+  document.getElementById('lbl-song').textContent = document.getElementById('inp-song').value;
+
+  const chart = document.getElementById('inp-chart').value;
+  const chartEl = document.getElementById('lbl-chart');
+  chartEl.textContent = chart === 'standard' ? 'STD' : chart === 'dx' ? 'DX' : 'UTAGE';
+  chartEl.className = 'chart-badge chart-' + chart;
+
+  document.getElementById('lbl-requester').textContent = '🎤 点歌: ' + document.getElementById('inp-requester').value;
+}
+</script>
+
+</body>
+</html>

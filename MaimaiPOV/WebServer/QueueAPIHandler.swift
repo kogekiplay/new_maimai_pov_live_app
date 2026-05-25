@@ -19,11 +19,13 @@ class QueueAPIHandler {
     private func buildQueueResponse() -> [String: Any] {
         guard let pipeline = pipeline else { return [:] }
         let manager = pipeline.songCardManager
+        let ci = max(0, manager.currentIndex)
         var queueItems: [[String: Any]] = []
 
-        for (i, song) in manager.queue.enumerated() {
+        for i in ci..<manager.queue.count {
+            let song = manager.queue[i]
             var item: [String: Any] = [
-                "index": i,
+                "index": i - ci,
                 "songName": song.songName,
                 "artist": song.artist,
                 "isPriority": song.isPriority
@@ -40,13 +42,19 @@ class QueueAPIHandler {
             queueItems.append(item)
         }
 
-        let remaining = max(0, manager.queue.count - manager.currentIndex - 1)
+        let remaining = max(0, manager.queue.count - ci - 1)
 
         return [
-            "currentIndex": manager.currentIndex,
+            "currentIndex": 0,
             "remaining": remaining,
             "queue": queueItems
         ]
+    }
+
+    private func realIndex(_ displayIndex: Int) -> Int {
+        guard let pipeline = pipeline else { return displayIndex }
+        let ci = max(0, pipeline.songCardManager.currentIndex)
+        return ci + displayIndex
     }
 
     func getQueue() -> HttpResponse {
@@ -66,17 +74,7 @@ class QueueAPIHandler {
         let sem = DispatchSemaphore(value: 0)
 
         DispatchQueue.main.async { [weak self] in
-            guard let self = self, let pipeline = self.pipeline else {
-                sem.signal()
-                return
-            }
-            let manager = pipeline.songCardManager
-            guard manager.currentIndex >= 0, manager.currentIndex < manager.queue.count else {
-                sem.signal()
-                return
-            }
-            manager.removeSong(at: manager.currentIndex)
-            pipeline.refreshDisplayedCardsIfNeeded()
+            self?.pipeline?.triggerSongCardSwitch()
             sem.signal()
         }
 
@@ -98,7 +96,7 @@ class QueueAPIHandler {
 
     func remove(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let index = body["index"] as? Int else {
+              let displayIndex = body["index"] as? Int else {
             return .badRequest(.text("Missing or invalid 'index'"))
         }
 
@@ -110,6 +108,7 @@ class QueueAPIHandler {
                 sem.signal()
                 return
             }
+            let index = self.realIndex(displayIndex)
             let manager = pipeline.songCardManager
             guard index >= 0, index < manager.queue.count else {
                 sem.signal()
@@ -135,7 +134,7 @@ class QueueAPIHandler {
 
     func move(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let index = body["index"] as? Int,
+              let displayIndex = body["index"] as? Int,
               let direction = body["direction"] as? String else {
             return .badRequest(.text("Missing or invalid 'index' or 'direction'"))
         }
@@ -152,6 +151,7 @@ class QueueAPIHandler {
                 sem.signal()
                 return
             }
+            let index = self.realIndex(displayIndex)
             let manager = pipeline.songCardManager
             let ci = manager.currentIndex
 

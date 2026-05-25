@@ -99,7 +99,9 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 </div>
 <div class="toast" id="toast"></div>
 <script>
+var lastQueueHash='';
 var currentIndex=-1;
+var coverCache={};
 function showToast(msg){
 var t=document.getElementById('toast');
 t.textContent=msg;
@@ -152,6 +154,15 @@ function escHtml(s){
 if(!s)return'';
 return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function queueHash(data){
+if(!data||!data.queue)return'';
+var parts=[];
+for(var i=0;i<data.queue.length;i++){
+var s=data.queue[i];
+parts.push(s.songName+'|'+(s.difficulty||'')+'|'+(s.isPriority?'1':'0')+'|'+(s.requester||''));
+}
+return data.currentIndex+'|'+data.remaining+'|'+parts.join(',');
+}
 function renderQueue(data){
 currentIndex=data.currentIndex;
 var remainingEl=document.getElementById('remainingInfo');
@@ -176,7 +187,7 @@ if(s.isPriority)cls+=' priority';
 html+='<div class="'+cls+'">';
 html+='<div class="diff-bar '+diffClass(s.difficulty)+'"></div>';
 if(s.coverURL){
-html+='<img class="card-cover" src="'+escHtml(s.coverURL)+'" onerror="this.style.display=\'none\'" />';
+html+='<img class="card-cover" src="'+escHtml(s.coverURL)+'" loading="lazy" onerror="this.style.display=\'none\'" />';
 }else{
 html+='<div class="card-cover"></div>';
 }
@@ -207,7 +218,14 @@ var xhr=new XMLHttpRequest();
 xhr.open('GET','/api/queue',true);
 xhr.onload=function(){
 if(xhr.status===200){
-try{var data=JSON.parse(xhr.responseText);renderQueue(data)}catch(e){}
+try{
+var data=JSON.parse(xhr.responseText);
+var h=queueHash(data);
+if(h!==lastQueueHash){
+lastQueueHash=h;
+renderQueue(data);
+}
+}catch(e){}
 }
 };
 xhr.onerror=function(){};
@@ -219,7 +237,12 @@ xhr.open('POST',url,true);
 xhr.setRequestHeader('Content-Type','application/json');
 xhr.onload=function(){
 if(xhr.status===200){
-try{var data=JSON.parse(xhr.responseText);renderQueue(data);if(cb)cb(data)}catch(e){}
+try{
+var data=JSON.parse(xhr.responseText);
+lastQueueHash=queueHash(data);
+renderQueue(data);
+if(cb)cb(data);
+}catch(e){}
 }else{
 try{showToast(JSON.parse(xhr.responseText).message||'操作失败')}catch(e){showToast('操作失败')}
 }
@@ -259,7 +282,7 @@ for(var i=0;i<data.results.length;i++){
 var r=data.results[i];
 html+='<div class="search-result">';
 if(r.coverURL){
-html+='<img class="sr-cover" src="'+escHtml(r.coverURL)+'" onerror="this.style.display=\'none\'" />';
+html+='<img class="sr-cover" src="'+escHtml(r.coverURL)+'" loading="lazy" onerror="this.style.display=\'none\'" />';
 }else{
 html+='<div class="sr-cover"></div>';
 }
