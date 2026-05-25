@@ -202,7 +202,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
-    private func handleDanmakuForSongRequest(_ msg: DanmakuMessage) {
+    func handleDanmakuForSongRequest(_ msg: DanmakuMessage) {
         let result = danmakuParser.parse(msg.content)
 
         switch result.type {

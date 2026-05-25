@@ -342,6 +342,7 @@ class DebugAPIHandler {
         }
 
         sem.wait()
-        return .ok(.json(["giftPool": result]])
+        let response: [String: Any] = ["giftPool": result]
+        return .ok(.json(response))
     }
 }
