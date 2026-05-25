@@ -11,6 +11,13 @@ class SongCardManager: ObservableObject {
 
     weak var delegate: SongCardDataProvider?
 
+    var userGiftPool: [String: Int] = [:]
+
+    var lockedEndIndex: Int {
+        guard currentIndex >= 0 else { return 0 }
+        return min(currentIndex + 2, queue.count)
+    }
+
     var currentSong: SongCardData? {
         guard currentIndex >= 0, currentIndex < queue.count else { return nil }
         return queue[currentIndex]
@@ -54,8 +61,12 @@ class SongCardManager: ObservableObject {
     }
 
     func switchToNext() {
-        guard currentIndex + 1 < queue.count else { return }
+        guard currentIndex >= 0, currentIndex + 1 < queue.count else { return }
+        let skippedName = queue[currentIndex].requesterName
         currentIndex += 1
+        if let name = skippedName {
+            resetGiftPool(name: name)
+        }
         delegate?.onCurrentSongChanged(queue[currentIndex])
     }
 
@@ -70,7 +81,11 @@ class SongCardManager: ObservableObject {
 
     func removeSong(at index: Int) {
         guard index >= 0, index < queue.count else { return }
+        let removedName = queue[index].requesterName
         queue.remove(at: index)
+        if let name = removedName {
+            resetGiftPool(name: name)
+        }
         delegate?.onQueueUpdated(queue)
 
         if queue.isEmpty {
@@ -107,6 +122,47 @@ class SongCardManager: ObservableObject {
     func clearQueue() {
         queue.removeAll()
         currentIndex = -1
+        userGiftPool.removeAll()
         delegate?.onQueueUpdated([])
+    }
+
+    func findSongIndex(byName name: String) -> Int? {
+        guard currentIndex >= 0 else { return nil }
+        for i in currentIndex..<queue.count {
+            if queue[i].requesterName == name {
+                return i
+            }
+        }
+        return nil
+    }
+
+    func hasSongInQueue(name: String) -> Bool {
+        return findSongIndex(byName: name) != nil
+    }
+
+    func updateGiftValue(name: String, delta: Int) -> Bool {
+        guard let index = findSongIndex(byName: name) else { return false }
+        queue[index].giftValue = userGiftPool[name] ?? queue[index].giftValue + delta
+        return true
+    }
+
+    func resetGiftPool(name: String) {
+        userGiftPool.removeValue(forKey: name)
+    }
+
+    func reorderQueueByGiftValue() {
+        let lockedEnd = lockedEndIndex
+        guard currentIndex >= 0, lockedEnd < queue.count else { return }
+
+        var sortable = Array(queue[lockedEnd...])
+        sortable.sort { a, b in
+            if a.giftValue != b.giftValue {
+                return a.giftValue > b.giftValue
+            }
+            return a.addedAt < b.addedAt
+        }
+
+        queue.replaceSubrange(lockedEnd..., with: sortable)
+        delegate?.onQueueUpdated(queue)
     }
 }
