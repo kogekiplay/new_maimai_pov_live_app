@@ -23,6 +23,7 @@ class DebugAPIHandler {
                     "username": perm.username,
                     "remainingChances": perm.remainingChances,
                     "priorityChances": perm.priorityChances,
+                    "accumulatedCoin": perm.accumulatedCoin,
                     "expiryDate": formatter.string(from: perm.expiryDate),
                     "isExpired": perm.isExpired
                 ])

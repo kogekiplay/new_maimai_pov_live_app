@@ -435,7 +435,10 @@ html+='<span class="perm-name">'+escHtml(p.username||p.uid)+'</span>';
 html+='<span class="perm-chances">';
 if(p.remainingChances>0)html+='<span class="perm-normal">普通×'+p.remainingChances+'</span> ';
 if(p.priorityChances>0)html+='<span class="perm-priority">插队×'+p.priorityChances+'</span>';
-if(p.remainingChances<=0&&p.priorityChances<=0)html+='无次数';
+if(p.remainingChances<=0&&p.priorityChances<=0){
+if(p.accumulatedCoin>0)html+='<span style="color:#6b8ba8">累积'+p.accumulatedCoin+'币</span>';
+else html+='无次数';
+}
 html+='</span>';
 html+='<span class="perm-expiry">到期 '+escHtml(p.expiryDate||'')+'</span>';
 html+='</div>';
