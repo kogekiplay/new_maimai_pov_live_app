@@ -76,6 +76,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var blivechatIdentityCode: String = Config.blivechatIdentityCode
     @Published var latestDanmaku: String = ""
     @Published var danmakuCount: Int = 0
+    @Published var webServerURL: String = ""
 
     let camera = CameraCaptureManager()
     let debug = DebugInfoManager.shared
@@ -94,6 +95,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     let giftPermissionManager = GiftPermissionManager()
     let songDatabase = SongDatabase()
     let danmakuParser = DanmakuParser()
+    let webServerManager = WebServerManager()
     var bboxTracker = BBoxTracker()
     var latestTrackOutput: BBoxTracker.TrackOutput?
 
@@ -148,6 +150,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }.store(in: &cancellables)
 
         setupBlivechatCallbacks()
+        webServerManager.pipeline = self
     }
 
     private func setupBlivechatCallbacks() {
@@ -395,12 +398,15 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             roomKeyValue: blivechatIdentityCode
         )
 
+        webServerManager.start()
+
         observeBlivechatState()
     }
 
     @MainActor func disconnectBlivechat() {
         blivechatClient.disconnect()
         blivechatConnectionState = .disconnected
+        webServerManager.stop()
     }
 
     private func observeBlivechatState() {
@@ -1155,5 +1161,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     func clearSongQueue() {
         songCardCompositor?.clearAll()
         songCardManager.clearQueue()
+    }
+
+    func refreshDisplayedCardsIfNeeded() {
+        refreshDisplayedCards()
     }
 }

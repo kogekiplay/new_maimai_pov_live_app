@@ -488,6 +488,29 @@ struct Phase2View: View {
             if isBlivechatConnected {
                 Divider().background(Color.gray.opacity(0.3))
 
+                if !pipeline.webServerURL.isEmpty {
+                    HStack {
+                        Text("LAN").font(.caption).frame(width: 55, alignment: .leading)
+                        Text(pipeline.webServerURL)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.cyan)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .onTapGesture {
+                                UIPasteboard.general.string = pipeline.webServerURL
+                            }
+                        Spacer()
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 10))
+                            .foregroundColor(.gray)
+                            .onTapGesture {
+                                UIPasteboard.general.string = pipeline.webServerURL
+                            }
+                    }
+                }
+
+                Divider().background(Color.gray.opacity(0.3))
+
                 HStack {
                     Text("弹幕").font(.caption).frame(width: 55, alignment: .leading)
                     Text(pipeline.latestDanmaku)

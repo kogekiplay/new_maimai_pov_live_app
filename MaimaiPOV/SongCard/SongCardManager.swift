@@ -81,6 +81,29 @@ class SongCardManager: ObservableObject {
         }
     }
 
+    func moveSong(at index: Int, direction: String) {
+        guard index >= 0, index < queue.count else { return }
+        let targetIndex: Int
+        if direction == "up" {
+            guard index > 0 else { return }
+            targetIndex = index - 1
+        } else if direction == "down" {
+            guard index < queue.count - 1 else { return }
+            targetIndex = index + 1
+        } else {
+            return
+        }
+        queue.swapAt(index, targetIndex)
+
+        if index == currentIndex {
+            currentIndex = targetIndex
+        } else if targetIndex == currentIndex {
+            currentIndex = index
+        }
+
+        delegate?.onQueueUpdated(queue)
+    }
+
     func clearQueue() {
         queue.removeAll()
         currentIndex = -1

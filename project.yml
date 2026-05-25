@@ -10,6 +10,9 @@ packages:
   HaishinKit:
     url: https://github.com/HaishinKit/HaishinKit.swift
     minorVersion: 2.0
+  Swifter:
+    url: https://github.com/httpswift/swifter
+    minorVersion: 1.5
 
 settings:
   base:
@@ -70,5 +73,6 @@ targets:
     dependencies:
       - package: HaishinKit
         product: HaishinKit
+      - package: Swifter
     entitlements:
       path: MaimaiPOV/App/MaimaiPOV.entitlements
