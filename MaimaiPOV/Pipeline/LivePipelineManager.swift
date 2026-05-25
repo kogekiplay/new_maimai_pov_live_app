@@ -274,7 +274,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 requester: msg.authorName,
                 musicId: song.id,
                 chartType: song.chartType,
-                isPriority: usePriority
+                isPriority: usePriority,
+                bpm: song.bpm
             )
 
             DispatchQueue.main.async {
@@ -359,7 +360,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 requester: sc.authorName,
                 musicId: song.id,
                 chartType: song.chartType,
-                isPriority: isPrioritySC
+                isPriority: isPrioritySC,
+                bpm: song.bpm
             )
 
             DispatchQueue.main.async {

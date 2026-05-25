@@ -4,6 +4,17 @@ import Swifter
 class SearchAPIHandler {
     weak var pipeline: LivePipelineManager?
 
+    private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
+
+    private func coverURL(from musicId: Int) -> String {
+        let baseId: Int
+        if musicId >= 100000 { baseId = musicId - 100000 }
+        else if musicId >= 10000 { baseId = musicId - 10000 }
+        else { baseId = musicId }
+        let idPart = String(format: "%06d", baseId)
+        return "\(cdnBase)/\(idPart).webp"
+    }
+
     func search(request: HttpRequest) -> HttpResponse {
         guard let queryParam = request.queryParams.first(where: { $0.0 == "q" })?.1,
               !queryParam.isEmpty else {
@@ -49,10 +60,12 @@ class SearchAPIHandler {
                 var item: [String: Any] = [
                     "musicId": song.id,
                     "title": song.title,
-                    "difficulties": difficulties
+                    "difficulties": difficulties,
+                    "coverURL": self.coverURL(from: song.id)
                 ]
                 if let artist = song.artist { item["artist"] = artist }
                 if let ct = song.chartType { item["chartType"] = ct }
+                if let bpm = song.bpm { item["bpm"] = bpm }
 
                 results.append(item)
             }

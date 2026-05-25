@@ -4,6 +4,18 @@ import Swifter
 class QueueAPIHandler {
     weak var pipeline: LivePipelineManager?
 
+    private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
+
+    private func coverURL(from musicId: Int?) -> String? {
+        guard let musicId = musicId else { return nil }
+        let baseId: Int
+        if musicId >= 100000 { baseId = musicId - 100000 }
+        else if musicId >= 10000 { baseId = musicId - 10000 }
+        else { baseId = musicId }
+        let idPart = String(format: "%06d", baseId)
+        return "\(cdnBase)/\(idPart).webp"
+    }
+
     private func buildQueueResponse() -> [String: Any] {
         guard let pipeline = pipeline else { return [:] }
         let manager = pipeline.songCardManager
@@ -20,12 +32,19 @@ class QueueAPIHandler {
             if let level = song.level { item["level"] = level }
             if let ct = song.chartType { item["chartType"] = ct }
             if let req = song.requester { item["requester"] = req }
-            if let mid = song.musicId { item["musicId"] = mid }
+            if let mid = song.musicId {
+                item["musicId"] = mid
+                item["coverURL"] = coverURL(from: mid)
+            }
+            if let bpm = song.bpm { item["bpm"] = bpm }
             queueItems.append(item)
         }
 
+        let remaining = max(0, manager.queue.count - manager.currentIndex - 1)
+
         return [
             "currentIndex": manager.currentIndex,
+            "remaining": remaining,
             "queue": queueItems
         ]
     }
@@ -47,7 +66,17 @@ class QueueAPIHandler {
         let sem = DispatchSemaphore(value: 0)
 
         DispatchQueue.main.async { [weak self] in
-            self?.pipeline?.triggerSongCardSwitch()
+            guard let self = self, let pipeline = self.pipeline else {
+                sem.signal()
+                return
+            }
+            let manager = pipeline.songCardManager
+            guard manager.currentIndex >= 0, manager.currentIndex < manager.queue.count else {
+                sem.signal()
+                return
+            }
+            manager.removeSong(at: manager.currentIndex)
+            pipeline.refreshDisplayedCardsIfNeeded()
             sem.signal()
         }
 
@@ -210,7 +239,8 @@ class QueueAPIHandler {
                 requester: "LAN",
                 musicId: song.id,
                 chartType: song.chartType,
-                isPriority: false
+                isPriority: false,
+                bpm: song.bpm
             )
 
             pipeline.addSongToQueue(cardData)
