@@ -309,20 +309,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
 
         case .notACommand:
-            let name = sc.authorName
-            let coinValue = sc.price * 1000
-            songCardManager.userGiftPool[name, default: 0] += coinValue
-            if let index = songCardManager.findSongIndex(byName: name) {
-                songCardManager.updateGiftValue(name: name, delta: coinValue)
-                let lockedEnd = songCardManager.lockedEndIndex
-                DispatchQueue.main.async {
-                    if index >= lockedEnd {
-                        self.songCardManager.reorderQueueByGiftValue()
-                        self.refreshDisplayedCardsIfNeeded()
-                    }
-                    self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
-                }
-            }
+            break
         }
     }
 
@@ -409,7 +396,20 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
 
         case .notACommand:
-            break
+            let name = sc.authorName
+            let coinValue = sc.price * 1000
+            songCardManager.userGiftPool[name, default: 0] += coinValue
+            if let index = songCardManager.findSongIndex(byName: name) {
+                songCardManager.updateGiftValue(name: name, delta: coinValue)
+                let lockedEnd = songCardManager.lockedEndIndex
+                DispatchQueue.main.async {
+                    if index >= lockedEnd {
+                        self.songCardManager.reorderQueueByGiftValue()
+                        self.refreshDisplayedCardsIfNeeded()
+                    }
+                    self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
+                }
+            }
         }
     }
 
