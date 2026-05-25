@@ -69,7 +69,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var slot2PosY: Float = 0.135
     @Published var slot2Scale: Float = 0.23
 
-    @Published var cropVerticalOffset: Float = Config.cropVerticalOffset
+    @Published var cropHorizontalOffset: Float = Config.cropHorizontalOffset
 
     @Published var blivechatConnectionState: ConnectionState = .disconnected
     @Published var blivechatServer: BlivechatServer = BlivechatServer(rawValue: Config.blivechatServer) ?? .cn
@@ -655,7 +655,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     self.debug.stageFrameData(snapshot)
                 }
 
-                let offsetCy = track.cy + self.cropVerticalOffset
+                let offsetCx = track.cx + self.cropHorizontalOffset
 
                 if let pool = self.ioSurfacePool,
                    let cc = self.canvasComposer,
@@ -669,7 +669,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
                     cc.encode(into: encoder,
                               stabTexture: stab.outputTexture,
-                              cx: track.cx, cy: offsetCy,
+                              cx: offsetCx, cy: track.cy,
                               cropW: track.cropW, cropH: track.cropH,
                               outputTexture: writeBuffer.texture)
 
@@ -698,7 +698,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                           let encoder = cmdBuf.makeComputeCommandEncoder() else {
                         cr.process(
                             stabTexture: stab.outputTexture,
-                            cx: track.cx, cy: offsetCy,
+                            cx: offsetCx, cy: track.cy,
                             cropW: track.cropW, cropH: track.cropH,
                             outputTexture: writeBuffer.texture
                         ) { [weak self] in
@@ -719,7 +719,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
                     cr.encode(into: encoder,
                               stabTexture: stab.outputTexture,
-                              cx: track.cx, cy: offsetCy,
+                              cx: offsetCx, cy: track.cy,
                               cropW: track.cropW, cropH: track.cropH,
                               outputTexture: writeBuffer.texture)
 
@@ -751,15 +751,15 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     cmdBuf.commit()
                 } else if let cr = self.cropRenderer {
                     if let track = self.latestTrackOutput {
-                        let offsetCy = track.cy + self.cropVerticalOffset
+                        let offsetCx = track.cx + self.cropHorizontalOffset
                         cr.process(stabTexture: stab.outputTexture,
-                                   cx: track.cx, cy: offsetCy,
+                                   cx: offsetCx, cy: track.cy,
                                    cropW: track.cropW, cropH: track.cropH)
                     } else {
                         let fb = cr.makeFallbackTrack()
-                        let offsetCy = fb.cy + self.cropVerticalOffset
+                        let offsetCx = fb.cx + self.cropHorizontalOffset
                         cr.process(stabTexture: stab.outputTexture,
-                                   cx: fb.cx, cy: offsetCy,
+                                   cx: offsetCx, cy: fb.cy,
                                    cropW: fb.cropW, cropH: fb.cropH)
                     }
                     let pipelineLatencyMs = (CACurrentMediaTime() - pipelineEnterTime) * 1000.0
@@ -1002,9 +1002,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         songCardCompositor?.repositionCards()
     }
 
-    @MainActor func updateCropVerticalOffset() {
-        Config.cropVerticalOffset = cropVerticalOffset
-        debug.cropVerticalOffset = cropVerticalOffset
+    @MainActor func updateCropHorizontalOffset() {
+        Config.cropHorizontalOffset = cropHorizontalOffset
+        debug.cropHorizontalOffset = cropHorizontalOffset
     }
 
     func loadOverlayImage(_ image: UIImage) {

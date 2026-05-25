@@ -58,7 +58,7 @@ class DebugInfoManager: ObservableObject {
     @Published var trackTrust: Float = 1.0
     @Published var trackAspectRatio: Float = 1.0
 
-    @Published var cropVerticalOffset: Float = 0
+    @Published var cropHorizontalOffset: Float = 0
 
     @Published var logMessages: [String] = []
     @Published var streamInfo: String = "--"

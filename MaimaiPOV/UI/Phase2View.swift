@@ -871,13 +871,13 @@ struct Phase2View: View {
     }
 
     private var cropVerticalOffsetRow: some View {
-        labeledRow("VOffset") {
-            Slider(value: $pipeline.cropVerticalOffset, in: -500...500, step: 10)
+        labeledRow("HOffset") {
+            Slider(value: $pipeline.cropHorizontalOffset, in: -500...500, step: 10)
         } valueLabel: {
-            Text("\(Int(pipeline.cropVerticalOffset))px").font(.caption).foregroundColor(.gray).frame(width: 50, alignment: .trailing)
+            Text("\(Int(pipeline.cropHorizontalOffset))px").font(.caption).foregroundColor(.gray).frame(width: 50, alignment: .trailing)
         }
-        .onChange(of: pipeline.cropVerticalOffset) { _ in
-            pipeline.updateCropVerticalOffset()
+        .onChange(of: pipeline.cropHorizontalOffset) { _ in
+            pipeline.updateCropHorizontalOffset()
         }
     }
 

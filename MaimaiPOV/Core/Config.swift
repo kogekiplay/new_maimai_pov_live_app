@@ -58,7 +58,7 @@ enum Config {
     static let outputWidth  = 1920
     static let outputHeight = 1080
 
-    static let gameAreaRatio: Float = 5.0 / 4.0
+    static let gameAreaRatio: Float = 1.0
     static var gameAreaWidth: Int {
         Int(Float(outputHeight) * gameAreaRatio)
     }
@@ -435,15 +435,15 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: guardDurationMinutesKey) }
     }
 
-    static let defaultCropVerticalOffset: Float = 0.0
-    static var cropVerticalOffset: Float {
+    static let defaultCropHorizontalOffset: Float = 0.0
+    static var cropHorizontalOffset: Float {
         get {
-            guard UserDefaults.standard.object(forKey: cropVerticalOffsetKey) != nil else {
-                return defaultCropVerticalOffset
+            guard UserDefaults.standard.object(forKey: cropHorizontalOffsetKey) != nil else {
+                return defaultCropHorizontalOffset
             }
-            return Float(UserDefaults.standard.double(forKey: cropVerticalOffsetKey))
+            return Float(UserDefaults.standard.double(forKey: cropHorizontalOffsetKey))
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: cropVerticalOffsetKey) }
+        set { UserDefaults.standard.set(Double(newValue), forKey: cropHorizontalOffsetKey) }
     }
 
     static let defaultStreamBitrate: Int = 4000
@@ -490,7 +490,7 @@ enum Config {
     private static let overlayScaleKey = "com.maimai.overlayScale"
     private static let overlayOpacityKey = "com.maimai.overlayOpacity"
     private static let overlayRotationKey = "com.maimai.overlayRotation"
-    private static let cropVerticalOffsetKey = "com.maimai.cropVerticalOffset"
+    private static let cropHorizontalOffsetKey = "com.maimai.cropHorizontalOffset"
     private static let songCardEnabledKey = "com.maimai.songCardEnabled"
     private static let blivechatServerKey = "com.maimai.blivechatServer"
     private static let blivechatIdentityCodeKey = "com.maimai.blivechatIdentityCode"
