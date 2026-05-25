@@ -230,6 +230,7 @@ class QueueAPIHandler {
                 difficulty: diffName,
                 level: levelStr,
                 requester: "LAN",
+                requesterName: "LAN",
                 musicId: song.id,
                 chartType: song.chartType,
                 isPriority: false,

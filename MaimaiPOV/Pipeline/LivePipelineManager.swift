@@ -207,15 +207,15 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         switch result.type {
         case .songRequest(let query, let diffInput, let chartTypePreference):
-            let uid = msg.authorName
+            let name = msg.authorName
 
             DispatchQueue.main.async {
                 self.debug.log("[点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
             }
 
-            guard songRequestTestMode || giftPermissionManager.hasPermission(uid: uid) else {
+            guard songRequestTestMode || !songCardManager.hasSongInQueue(name: name) else {
                 DispatchQueue.main.async {
-                    self.debug.log("[点歌] \(msg.authorName) 无点歌权限")
+                    self.debug.log("[点歌] \(msg.authorName) 已有歌曲在队列中")
                 }
                 return
             }
@@ -247,49 +247,37 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 return
             }
 
-            var usePriority = false
-            if !songRequestTestMode {
-                let consumedType = giftPermissionManager.consumePermission(uid: uid)
-                guard let consumed = consumedType else {
-                    DispatchQueue.main.async {
-                        self.debug.log("[点歌] \(msg.authorName) 权限消耗失败")
-                    }
-                    return
-                }
-                usePriority = (consumed == .priority)
-            } else {
-                usePriority = songRequestTestPriorityMode
-            }
-
             let diffName = songDatabase.difficultyDisplayName(noteResult.diffName)
             let ctDisplay = songDatabase.chartTypeDisplayName(song.chartType)
             let levelStr = noteResult.levelValue.truncatingRemainder(dividingBy: 1) == 0
                 ? "\(Int(noteResult.levelValue))"
                 : "\(noteResult.levelValue)"
 
-            let coverURL: String? = nil
+            let giftVal = songCardManager.userGiftPool[name] ?? 0
 
             let cardData = SongCardData(
                 songName: song.title,
                 artist: song.artist ?? "",
                 difficulty: diffName,
                 level: levelStr,
-                coverURL: coverURL,
+                coverURL: nil,
                 requester: msg.authorName,
+                requesterName: name,
                 musicId: song.id,
                 chartType: song.chartType,
-                isPriority: usePriority,
-                bpm: song.bpm
+                isPriority: false,
+                bpm: song.bpm,
+                giftValue: giftVal
             )
 
             DispatchQueue.main.async {
-                if usePriority {
-                    self.addSongAtNextToQueue(cardData)
-                } else {
-                    self.addSongToQueue(cardData)
+                self.addSongToQueue(cardData)
+                if giftVal > 0 {
+                    self.songCardManager.reorderQueueByGiftValue()
+                    self.refreshDisplayedCardsIfNeeded()
                 }
-                let priorityTag = usePriority ? "⚡插队" : "排队"
-                self.debug.log("[点歌] ✅ \(msg.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(candidates.matchKind?.rawValue ?? "?")] [\(priorityTag)]")
+                let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
+                self.debug.log("[点歌] ✅ \(msg.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(candidates.matchKind?.rawValue ?? "?")]\(giftTag)")
             }
 
         case .notACommand:
@@ -302,17 +290,25 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         switch result.type {
         case .songRequest(let query, let diffInput, let chartTypePreference):
-            let uid = sc.authorName
-            let isPrioritySC = sc.price >= 30
+            let name = sc.authorName
 
             DispatchQueue.main.async {
-                self.debug.log("[SC点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") priority=\(isPrioritySC)")
+                self.debug.log("[SC点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") price=\(sc.price)")
+            }
+
+            if songCardManager.hasSongInQueue(name: name) {
+                songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
+                DispatchQueue.main.async {
+                    self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中，SC金额累积到送礼池")
+                }
+                return
             }
 
             let candidates = songDatabase.findCandidates(query: query)
             if candidates.candidates.isEmpty {
+                songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] 未找到歌曲: \"\(query)\"，权限保留")
+                    self.debug.log("[SC点歌] 未找到歌曲: \"\(query)\"，SC金额累积到送礼池")
                 }
                 return
             }
@@ -322,32 +318,24 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 chartTypePreference: chartTypePreference,
                 diffInput: diffInput
             ) else {
+                songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] 候选\(candidates.candidates.count)首但无法选择，权限保留")
+                    self.debug.log("[SC点歌] 候选\(candidates.candidates.count)首但无法选择，SC金额累积到送礼池")
                 }
                 return
             }
 
             let targetDiffNum = songDatabase.resolveDiffInput(diffInput)
             guard let noteResult = songDatabase.findNote(song: song, targetDiffNum: targetDiffNum) else {
+                songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] \(song.title) 没有可用难度，权限保留")
+                    self.debug.log("[SC点歌] \(song.title) 没有可用难度，SC金额累积到送礼池")
                 }
                 return
             }
 
-            var consumed = false
-            if isPrioritySC {
-                consumed = giftPermissionManager.consumePriorityPermission(uid: uid)
-            } else {
-                consumed = giftPermissionManager.consumeNormalPermission(uid: uid)
-            }
-            guard consumed else {
-                DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] \(sc.authorName) 权限消耗失败")
-                }
-                return
-            }
+            songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
+            let giftVal = songCardManager.userGiftPool[name] ?? 0
 
             let diffName = songDatabase.difficultyDisplayName(noteResult.diffName)
             let ctDisplay = songDatabase.chartTypeDisplayName(song.chartType)
@@ -362,20 +350,21 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 level: levelStr,
                 coverURL: nil,
                 requester: sc.authorName,
+                requesterName: name,
                 musicId: song.id,
                 chartType: song.chartType,
-                isPriority: isPrioritySC,
-                bpm: song.bpm
+                isPriority: false,
+                bpm: song.bpm,
+                giftValue: giftVal
             )
 
             DispatchQueue.main.async {
-                if isPrioritySC {
-                    self.addSongAtNextToQueue(cardData)
-                } else {
-                    self.addSongToQueue(cardData)
+                self.addSongToQueue(cardData)
+                if giftVal > 0 {
+                    self.songCardManager.reorderQueueByGiftValue()
+                    self.refreshDisplayedCardsIfNeeded()
                 }
-                let priorityTag = isPrioritySC ? "⚡插队" : "排队"
-                self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(priorityTag)]")
+                self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [🎁\(giftVal)]")
             }
 
         case .notACommand:
