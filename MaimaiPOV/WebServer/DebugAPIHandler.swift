@@ -173,19 +173,7 @@ class DebugAPIHandler {
             if let sc = sc {
                 pipeline.giftPermissionManager.handleSuperChat(sc)
 
-                pipeline.songCardManager.userGiftPool[authorName, default: 0] += sc.price * 1000
-                if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {
-                    pipeline.songCardManager.updateGiftValue(name: authorName, delta: sc.price * 1000)
-                    let lockedEnd = pipeline.songCardManager.lockedEndIndex
-                    if index >= lockedEnd {
-                        pipeline.songCardManager.reorderQueueByGiftValue()
-                        pipeline.refreshDisplayedCardsIfNeeded()
-                    }
-                }
-
-                if !content.isEmpty {
-                    pipeline.handleSuperChatForSongRequest(sc)
-                }
+                pipeline.handleSuperChatForSongRequest(sc)
 
                 result = [
                     "success": true,

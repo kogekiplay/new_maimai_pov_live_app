@@ -195,19 +195,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         blivechatClient.onSuperChat = { [weak self] msg in
             guard let self = self else { return }
             self.giftPermissionManager.handleSuperChat(msg)
-            let name = msg.authorName
-            let coinValue = msg.price * 1000
-            self.songCardManager.userGiftPool[name, default: 0] += coinValue
-            if let index = self.songCardManager.findSongIndex(byName: name) {
-                self.songCardManager.updateGiftValue(name: name, delta: coinValue)
-                let lockedEnd = self.songCardManager.lockedEndIndex
-                DispatchQueue.main.async {
-                    if index >= lockedEnd {
-                        self.songCardManager.reorderQueueByGiftValue()
-                        self.refreshDisplayedCardsIfNeeded()
-                    }
-                }
-            }
             DispatchQueue.main.async {
                 self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
             }
@@ -322,7 +309,20 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
 
         case .notACommand:
-            break
+            let name = sc.authorName
+            let coinValue = sc.price * 1000
+            songCardManager.userGiftPool[name, default: 0] += coinValue
+            if let index = songCardManager.findSongIndex(byName: name) {
+                songCardManager.updateGiftValue(name: name, delta: coinValue)
+                let lockedEnd = songCardManager.lockedEndIndex
+                DispatchQueue.main.async {
+                    if index >= lockedEnd {
+                        self.songCardManager.reorderQueueByGiftValue()
+                        self.refreshDisplayedCardsIfNeeded()
+                    }
+                    self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
+                }
+            }
         }
     }
 
