@@ -38,10 +38,11 @@ class DebugAPIHandler {
             )
 
             if let gift = gift {
-                if gift.isPaidGift {
-                    pipeline.songCardManager.userGiftPool[authorName, default: 0] += gift.totalCoin
+                let coinValue = max(gift.totalCoin, gift.totalFreeCoin)
+                if coinValue > 0 {
+                    pipeline.songCardManager.userGiftPool[authorName, default: 0] += coinValue
                     if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {
-                        pipeline.songCardManager.updateGiftValue(name: authorName, delta: gift.totalCoin)
+                        pipeline.songCardManager.updateGiftValue(name: authorName, delta: coinValue)
                         let lockedEnd = pipeline.songCardManager.lockedEndIndex
                         if index >= lockedEnd {
                             pipeline.songCardManager.reorderQueueByGiftValue()
@@ -49,7 +50,9 @@ class DebugAPIHandler {
                         }
                     }
                     pipeline.refreshLeftPanel()
-                    pipeline.postMarquee("🎁 感谢 \(authorName) 送出 \(gift.giftName) ×\(gift.num)", type: .gift)
+                    if gift.isPaidGift {
+                        pipeline.postMarquee("🎁 感谢 \(authorName) 送出 \(gift.giftName) ×\(gift.num)", type: .gift)
+                    }
                 }
 
                 result = [

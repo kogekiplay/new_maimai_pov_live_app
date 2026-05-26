@@ -362,6 +362,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         self.songCardManager.reorderQueueByGiftValue()
                         self.reorderRightPanel()
                     }
+                    self.refreshLeftPanel()
                 }
                 return
             }
