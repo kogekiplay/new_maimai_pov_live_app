@@ -6,7 +6,7 @@ class MarqueeManager {
     private var activeItems: [ActiveMarquee] = []
 
     struct ActiveMarquee {
-        let item: MarqueeItem
+        var item: MarqueeItem
         var scrollX: Float
         var isFullyVisible: Bool
     }
@@ -38,19 +38,20 @@ class MarqueeManager {
     func updateAnimations() {
         for i in 0..<activeItems.count {
             activeItems[i].scrollX -= scrollSpeed
-            if !activeItems[i].isFullyVisible,
-               let cw = activeItems[i].item.texture != nil ? activeItems[i].item.contentWidth : 0,
-               cw > 0,
-               activeItems[i].scrollX + Float(cw) <= Float(Config.outputWidth) {
+            let cw = activeItems[i].item.contentWidth
+            if !activeItems[i].isFullyVisible && cw > 0 && activeItems[i].scrollX + Float(cw) <= Float(Config.outputWidth) {
                 activeItems[i].isFullyVisible = true
             }
         }
 
-        while let first = activeItems.first,
-              let cw = first.item.texture != nil ? first.item.contentWidth : 0,
-              cw > 0,
-              first.scrollX < -Float(cw) {
-            activeItems.removeFirst()
+        while !activeItems.isEmpty {
+            let first = activeItems[0]
+            let cw = first.item.contentWidth
+            if cw > 0 && first.scrollX < -Float(cw) {
+                activeItems.removeFirst()
+            } else {
+                break
+            }
         }
 
         tryDequeueNext()
@@ -58,8 +59,7 @@ class MarqueeManager {
 
     private func canStartNext() -> Bool {
         if activeItems.isEmpty { return true }
-        guard let last = activeItems.last else { return true }
-        return last.isFullyVisible
+        return activeItems[activeItems.count - 1].isFullyVisible
     }
 
     private func tryDequeueNext() {
@@ -68,7 +68,9 @@ class MarqueeManager {
 
         let next = queue.removeFirst()
         let startX: Float
-        if let last = activeItems.last, let lastCW = last.item.texture != nil ? last.item.contentWidth : 0, lastCW > 0 {
+        let last = activeItems[activeItems.count - 1]
+        let lastCW = last.item.contentWidth
+        if lastCW > 0 {
             startX = last.scrollX + Float(lastCW) + itemGap
         } else {
             startX = Float(Config.outputWidth)
