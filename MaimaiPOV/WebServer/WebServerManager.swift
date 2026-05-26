@@ -165,7 +165,7 @@ class WebServerManager {
                     try writer.write(jsonData)
                 }
             case "POST":
-                guard let bodyData = try? JSONSerialization.jsonObject(with: request.body, options: []) as? [String: Any],
+                guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
                       let text = bodyData["text"] as? String else {
                     return .badRequest(.text("Missing 'text' field"))
                 }
