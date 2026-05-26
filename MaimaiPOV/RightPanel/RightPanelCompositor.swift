@@ -307,6 +307,13 @@ class RightPanelCompositor {
         stopIdleScroll()
         lastOperationTime = CACurrentMediaTime()
 
+        if isScrollAnimating {
+            scrollOffset = targetScrollOffset
+            isScrollAnimating = false
+            updateRowPositionsForScroll()
+            scrollCompletion = nil
+        }
+
         let maxOffset = Float(max(0, rows.count - maxVisibleRows))
         let clampedTarget = max(0, min(targetOffset, maxOffset))
 

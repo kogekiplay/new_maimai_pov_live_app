@@ -79,6 +79,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var leftPanelCompositor: LeftPanelCompositor?
     var rightPanelRenderer: RightPanelRenderer?
     var rightPanelCompositor: RightPanelCompositor?
+    private var rightPanelGeneration: Int = 0
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
     let songDatabase = SongDatabase()
@@ -1216,12 +1217,14 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
         }
 
+        let gen = rightPanelGeneration
         let maxOffset = Float(max(0, (compositor.totalRowCount + 1) - compositor.maxVisibleRows))
         let currentOffset = compositor.currentScrollOffset
 
         if currentOffset < maxOffset - 0.01 {
             compositor.animateScrollTo(targetOffset: maxOffset, duration: 0.3) { [weak self] in
-                self?.performAddRightPanelRow(song: song, queueIndex: queueIndex)
+                guard let self = self, self.rightPanelGeneration == gen else { return }
+                self.performAddRightPanelRow(song: song, queueIndex: queueIndex)
             }
         } else {
             performAddRightPanelRow(song: song, queueIndex: queueIndex)
@@ -1231,12 +1234,17 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     private func performAddRightPanelRow(song: SongCardData, queueIndex: Int) {
         guard let renderer = rightPanelRenderer else { return }
 
+        if rightPanelCompositor?.getRowDataForId(song.id) != nil {
+            return
+        }
+
         if let musicId = song.musicId {
             CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
                 guard let self = self else { return }
                 DispatchQueue.main.async {
                     self.rightPanelRenderer?.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { [weak self] _, texture in
                         guard let self = self, let texture = texture else { return }
+                        if self.rightPanelCompositor?.getRowDataForId(song.id) != nil { return }
                         self.rightPanelCompositor?.addRowAtBottom(texture: texture, data: song, queueIndex: queueIndex)
                     }
                 }
@@ -1253,6 +1261,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func reorderRightPanel() {
+        rightPanelGeneration += 1
         guard let compositor = rightPanelCompositor else { return }
 
         let ci = songCardManager.currentIndex
@@ -1470,6 +1479,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     private func switchRightPanelToNext() {
+        rightPanelGeneration += 1
         guard let compositor = rightPanelCompositor else { return }
 
         let ci = songCardManager.currentIndex
