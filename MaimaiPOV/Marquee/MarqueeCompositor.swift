@@ -7,6 +7,8 @@ class MarqueeCompositor {
     let manager: MarqueeManager
     private let renderer: MarqueeRenderer
 
+    private let maxConcurrentItems = 16
+
     var enabled: Bool = true
 
     init?(device: MTLDevice, manager: MarqueeManager, renderer: MarqueeRenderer) {
@@ -21,7 +23,7 @@ class MarqueeCompositor {
         }
         self.pipelineState = ps
         self.uniformsBuffer = device.makeBuffer(
-            length: MemoryLayout<MarqueeUniforms>.stride,
+            length: MemoryLayout<MarqueeUniforms>.stride * maxConcurrentItems,
             options: .storageModeShared
         )!
     }
@@ -43,7 +45,8 @@ class MarqueeCompositor {
         let items = manager.visibleItems
         guard !items.isEmpty else { return }
 
-        for entry in items {
+        for (index, entry) in items.enumerated() {
+            guard index < maxConcurrentItems else { break }
             guard let textTexture = entry.item.texture else { continue }
 
             var uniforms = MarqueeUniforms()
@@ -55,12 +58,13 @@ class MarqueeCompositor {
             uniforms.outWidth = Float(Config.outputWidth)
             uniforms.outHeight = Float(Config.outputHeight)
 
-            memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<MarqueeUniforms>.stride)
+            let offset = index * MemoryLayout<MarqueeUniforms>.stride
+            memcpy(uniformsBuffer.contents() + offset, &uniforms, MemoryLayout<MarqueeUniforms>.stride)
 
             encoder.setComputePipelineState(pipelineState)
             encoder.setTexture(outputTexture, index: 0)
             encoder.setTexture(textTexture, index: 1)
-            encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
+            encoder.setBuffer(uniformsBuffer, offset: offset, index: 0)
 
             let tgSize = MTLSize(width: 16, height: 16, depth: 1)
             let gridSize = MTLSize(width: Config.outputWidth, height: Config.outputHeight, depth: 1)
