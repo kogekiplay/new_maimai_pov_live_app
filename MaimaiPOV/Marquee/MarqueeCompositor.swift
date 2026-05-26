@@ -27,39 +27,44 @@ class MarqueeCompositor {
     }
 
     func updateAnimations() {
-        if manager.needsRendering, let item = manager.currentItem {
-            let (texture, contentWidth) = renderer.render(text: item.text, type: item.type)
+        let toRender = manager.slotsToRender
+        for entry in toRender {
+            let (texture, contentWidth) = renderer.render(text: entry.item.text, type: entry.item.type)
             if let texture = texture {
-                manager.setCurrentTexture(texture, contentWidth: contentWidth)
+                manager.setCurrentTexture(texture, contentWidth: contentWidth, for: entry.item.id)
             }
         }
         manager.updateAnimations()
     }
 
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
-        guard enabled,
-              manager.state == .scrolling,
-              let item = manager.currentItem,
-              let textTexture = item.texture else { return }
+        guard enabled else { return }
 
-        var uniforms = MarqueeUniforms()
-        uniforms.scrollX = manager.scrollX
-        uniforms.textY = Float(manager.barY)
-        uniforms.textWidth = Float(item.contentWidth)
-        uniforms.textHeight = Float(manager.barHeight)
-        uniforms.opacity = 1.0
-        uniforms.outWidth = Float(Config.outputWidth)
-        uniforms.outHeight = Float(Config.outputHeight)
+        let activeSlots = manager.activeSlots
+        guard !activeSlots.isEmpty else { return }
 
-        memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<MarqueeUniforms>.stride)
+        for slot in activeSlots {
+            guard let textTexture = slot.item.texture else { continue }
 
-        encoder.setComputePipelineState(pipelineState)
-        encoder.setTexture(outputTexture, index: 0)
-        encoder.setTexture(textTexture, index: 1)
-        encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
+            var uniforms = MarqueeUniforms()
+            uniforms.scrollX = slot.scrollX
+            uniforms.textY = Float(slot.yPosition)
+            uniforms.textWidth = Float(slot.item.contentWidth)
+            uniforms.textHeight = Float(manager.barHeight)
+            uniforms.opacity = 1.0
+            uniforms.outWidth = Float(Config.outputWidth)
+            uniforms.outHeight = Float(Config.outputHeight)
 
-        let tgSize = MTLSize(width: 16, height: 16, depth: 1)
-        let gridSize = MTLSize(width: Config.outputWidth, height: Config.outputHeight, depth: 1)
-        encoder.dispatchThreads(gridSize, threadsPerThreadgroup: tgSize)
+            memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<MarqueeUniforms>.stride)
+
+            encoder.setComputePipelineState(pipelineState)
+            encoder.setTexture(outputTexture, index: 0)
+            encoder.setTexture(textTexture, index: 1)
+            encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
+
+            let tgSize = MTLSize(width: 16, height: 16, depth: 1)
+            let gridSize = MTLSize(width: Config.outputWidth, height: Config.outputHeight, depth: 1)
+            encoder.dispatchThreads(gridSize, threadsPerThreadgroup: tgSize)
+        }
     }
 }

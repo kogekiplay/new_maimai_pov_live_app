@@ -49,6 +49,7 @@ class DebugAPIHandler {
                         }
                     }
                     pipeline.refreshLeftPanel()
+                    pipeline.postMarquee("🎁 感谢 \(authorName) 送出 \(gift.giftName) ×\(gift.num)", type: .gift)
                 }
 
                 result = [
@@ -163,6 +164,7 @@ class DebugAPIHandler {
                     }
                 }
                 pipeline.refreshLeftPanel()
+                pipeline.postMarquee("⭐ \(authorName) 上舰了!", type: .member)
 
                 result = [
                     "success": true,
