@@ -129,6 +129,11 @@ class WebServerManager {
             return self.debugHandler.getGiftPool()
         }
 
+        server["/api/debug/simulate/marquee"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.debugHandler.simulateMarquee(request: request)
+        }
+
         server["/api/announcement"] = { [weak self] request in
             guard let self = self else { return .internalServerError }
             switch request.method {
