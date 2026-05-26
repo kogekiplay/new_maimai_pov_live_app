@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UIKit
 
 class BlivechatClient: ObservableObject {
     @Published var connectionState: ConnectionState = .disconnected
@@ -9,6 +10,7 @@ class BlivechatClient: ObservableObject {
     var onSuperChat: ((SuperChatMessage) -> Void)?
     var onMember: ((MemberMessage) -> Void)?
     var onError: ((BlivechatErrorMessage) -> Void)?
+    var onReconnectLog: ((String) -> Void)?
 
     private var webSocketTask: URLSessionWebSocketTask?
     private var session: URLSession?
@@ -16,11 +18,34 @@ class BlivechatClient: ObservableObject {
     private var reconnectTimer: Timer?
     private var reconnectDelay: Double = 5.0
     private let maxReconnectDelay: Double = 30.0
+    private var reconnectAttemptCount: Int = 0
 
     private var server: BlivechatServer = .cn
     private var roomKeyType: RoomKeyType = .authCode
     private var roomKeyValue: String = ""
     private var isIntentionalDisconnect = false
+    private var hasReceivedMessage = false
+
+    var isManuallyDisconnected: Bool { isIntentionalDisconnect }
+
+    private var foregroundObserver: NSObjectProtocol?
+
+    init() {
+        foregroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleAppForeground()
+        }
+    }
+
+    deinit {
+        if let observer = foregroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        cleanup()
+    }
 
     func connect(server: BlivechatServer, roomKeyType: RoomKeyType, roomKeyValue: String) {
         disconnect()
@@ -30,6 +55,7 @@ class BlivechatClient: ObservableObject {
         self.roomKeyValue = roomKeyValue
         self.isIntentionalDisconnect = false
         self.reconnectDelay = 5.0
+        self.reconnectAttemptCount = 0
 
         performConnect()
     }
@@ -43,6 +69,7 @@ class BlivechatClient: ObservableObject {
     private func performConnect() {
         cleanup()
         connectionState = .connecting
+        hasReceivedMessage = false
 
         let url = server.websocketURL
         var request = URLRequest(url: url)
@@ -56,11 +83,21 @@ class BlivechatClient: ObservableObject {
         receiveMessage()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.sendJoinRoom()
-            self?.startHeartbeat()
-            self?.connectionState = .connected
-            self?.reconnectDelay = 5.0
+            guard let self = self else { return }
+            self.sendJoinRoom()
+            self.startHeartbeat()
         }
+    }
+
+    private func confirmConnected() {
+        guard !hasReceivedMessage else { return }
+        hasReceivedMessage = true
+        connectionState = .connected
+        reconnectDelay = 5.0
+        if reconnectAttemptCount > 0 {
+            onReconnectLog?("[重连] 第\(reconnectAttemptCount)次重连成功")
+        }
+        reconnectAttemptCount = 0
     }
 
     private func sendJoinRoom() {
@@ -105,6 +142,7 @@ class BlivechatClient: ObservableObject {
         webSocketTask?.receive { [weak self] result in
             switch result {
             case .success(let message):
+                self?.confirmConnected()
                 self?.handleMessage(message)
                 self?.receiveMessage()
 
@@ -196,10 +234,45 @@ class BlivechatClient: ObservableObject {
         }
     }
 
+    private func friendlyErrorMessage(_ error: Error) -> String {
+        let nsError = error as NSError
+        let code = nsError.code
+        let domain = nsError.domain
+
+        if domain == NSURLErrorDomain {
+            switch code {
+            case NSURLErrorTimedOut:
+                return "连接超时"
+            case NSURLErrorCannotConnectToHost:
+                return "无法连接服务器"
+            case NSURLErrorNetworkConnectionLost:
+                return "连接断开"
+            case NSURLErrorNotConnectedToInternet:
+                return "网络不可用"
+            case NSURLErrorDNSLookupFailed:
+                return "DNS解析失败"
+            case NSURLErrorCannotFindHost:
+                return "找不到服务器"
+            case NSURLErrorResourceUnavailable:
+                return "资源不可用"
+            default:
+                break
+            }
+        }
+
+        let desc = error.localizedDescription
+        if desc.count > 20 {
+            let index = desc.index(desc.startIndex, offsetBy: 20)
+            return String(desc[..<index]) + "..."
+        }
+        return desc
+    }
+
     private func handleConnectionError(_ error: Error) {
         guard !isIntentionalDisconnect else { return }
 
-        connectionState = .error(error.localizedDescription)
+        let friendlyMsg = friendlyErrorMessage(error)
+        connectionState = .reconnecting(friendlyMsg)
         scheduleReconnect()
     }
 
@@ -207,11 +280,35 @@ class BlivechatClient: ObservableObject {
         guard !isIntentionalDisconnect else { return }
 
         reconnectTimer?.invalidate()
-        reconnectTimer = Timer.scheduledTimer(withTimeInterval: reconnectDelay, repeats: false) { [weak self] _ in
+        reconnectAttemptCount += 1
+        let delay = reconnectDelay
+
+        onReconnectLog?("[重连] 第\(reconnectAttemptCount)次尝试，\(Int(delay))秒后重连")
+
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             self?.performConnect()
         }
 
         reconnectDelay = min(reconnectDelay * 2, maxReconnectDelay)
+    }
+
+    private func handleAppForeground() {
+        guard !isIntentionalDisconnect else { return }
+
+        switch connectionState {
+        case .connected:
+            if !hasReceivedMessage {
+                reconnectDelay = 2.0
+                connectionState = .reconnecting("回到前台，正在重连...")
+                scheduleReconnect()
+            }
+        case .reconnecting, .error, .connecting:
+            reconnectTimer?.invalidate()
+            reconnectDelay = 1.0
+            performConnect()
+        case .disconnected:
+            break
+        }
     }
 
     private func cleanup() {
@@ -223,9 +320,6 @@ class BlivechatClient: ObservableObject {
         webSocketTask = nil
         session?.invalidateAndCancel()
         session = nil
-    }
-
-    deinit {
-        cleanup()
+        hasReceivedMessage = false
     }
 }

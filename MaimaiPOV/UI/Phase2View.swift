@@ -95,7 +95,6 @@ struct Phase2View: View {
         .onChange(of: pipeline.overlayScale) { _ in pipeline.updateOverlayScale() }
         .onChange(of: pipeline.overlayOpacity) { _ in pipeline.updateOverlayOpacity() }
         .onChange(of: pipeline.overlayRotation) { _ in pipeline.updateOverlayRotation() }
-        .onChange(of: pipeline.songCardEnabled) { _ in pipeline.updateSongCardEnabled() }
         .onChange(of: pipeline.streamManager.isStreaming) { streaming in
             if streaming {
                 pipeline.debug.isDetailVisible = false
@@ -298,10 +297,6 @@ struct Phase2View: View {
                 overlayOpacityRow
                 overlayRotationRow
             }
-            songCardToggleRow
-            if pipeline.songCardEnabled {
-                songCardSlotTuningSection
-            }
 
             Button {
                 withAnimation {
@@ -463,6 +458,20 @@ struct Phase2View: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.red)
                     .controlSize(.small)
+                } else if isBlivechatReconnecting {
+                    Button {
+                        pipeline.disconnectBlivechat()
+                    } label: {
+                        HStack {
+                            ProgressView().scaleEffect(0.6)
+                            Text("重连中...").font(.caption).fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .controlSize(.small)
+                    .disabled(true)
                 } else {
                     Button {
                         pipeline.connectBlivechat()
@@ -524,24 +533,6 @@ struct Phase2View: View {
                         .foregroundColor(.gray)
                 }
 
-                HStack {
-                    Text("测试模式").font(.caption).frame(width: 55, alignment: .leading)
-                    Toggle("", isOn: $pipeline.songRequestTestMode)
-                        .labelsHidden()
-                        .scaleEffect(0.7)
-                    Spacer()
-                }
-
-                if pipeline.songRequestTestMode {
-                    HStack {
-                        Text("插队测试").font(.caption).frame(width: 55, alignment: .leading)
-                        Toggle("", isOn: $pipeline.songRequestTestPriorityMode)
-                            .labelsHidden()
-                            .scaleEffect(0.7)
-                        Spacer()
-                    }
-                }
-
                 Divider().background(Color.gray.opacity(0.3))
             }
         }
@@ -553,12 +544,20 @@ struct Phase2View: View {
         return false
     }
 
+    private var isBlivechatReconnecting: Bool {
+        if case .reconnecting = pipeline.blivechatConnectionState { return true }
+        return false
+    }
+
     private var blivechatStateText: String {
         switch pipeline.blivechatConnectionState {
         case .disconnected: return "未连接"
         case .connecting: return "连接中..."
         case .connected: return "已连接"
-        case .error(let msg): return "错误: \(msg)"
+        case .reconnecting(let msg): return "重连中: \(msg)"
+        case .error(let msg):
+            let display = msg.count > 15 ? String(msg.prefix(15)) + "..." : msg
+            return "错误: \(display)"
         }
     }
 
@@ -567,6 +566,7 @@ struct Phase2View: View {
         case .disconnected: return .gray
         case .connecting: return .yellow
         case .connected: return .green
+        case .reconnecting: return .yellow
         case .error: return .red
         }
     }
@@ -723,58 +723,6 @@ struct Phase2View: View {
                 .font(.caption2)
                 .foregroundColor(pipeline.overlayEnabled ? .green : .red)
         }
-    }
-
-    private var songCardToggleRow: some View {
-        HStack {
-            Text("SongCard").font(.caption).frame(width: 55, alignment: .leading)
-            Toggle("", isOn: $pipeline.songCardEnabled).labelsHidden()
-            Spacer()
-            if pipeline.songCardEnabled {
-                Button {
-                    pipeline.addSongToQueue(SongCardData(
-                        songName: "Song \(pipeline.songCardManager.queue.count + 1)",
-                        artist: "Artist",
-                        difficulty: ["BASIC", "ADVANCED", "EXPERT", "MASTER"][pipeline.songCardManager.queue.count % 4],
-                        level: "\(7 + pipeline.songCardManager.queue.count)",
-                        requester: "User\(pipeline.songCardManager.queue.count + 1)"
-                    ))
-                } label: {
-                    Image(systemName: "plus").font(.caption2).foregroundColor(.green)
-                }
-                Button {
-                    pipeline.triggerSongCardSwitch()
-                } label: {
-                    Image(systemName: "forward.fill").font(.caption2).foregroundColor(.yellow)
-                }
-            }
-            Text(pipeline.songCardEnabled ? "ON" : "OFF")
-                .font(.caption2)
-                .foregroundColor(pipeline.songCardEnabled ? .green : .red)
-        }
-    }
-
-    private var songCardSlotTuningSection: some View {
-        VStack(spacing: 4) {
-            slotTuningRow(label: "S0X", value: $pipeline.slot0PosX, range: 0.0...1.0, step: 0.01)
-            slotTuningRow(label: "S0Y", value: $pipeline.slot0PosY, range: 0.0...0.5, step: 0.005)
-            slotTuningRow(label: "S0S", value: $pipeline.slot0Scale, range: 0.05...1.0, step: 0.01)
-            slotTuningRow(label: "S1X", value: $pipeline.slot1PosX, range: 0.0...1.0, step: 0.01)
-            slotTuningRow(label: "S1Y", value: $pipeline.slot1PosY, range: 0.0...0.5, step: 0.005)
-            slotTuningRow(label: "S1S", value: $pipeline.slot1Scale, range: 0.05...1.0, step: 0.01)
-            slotTuningRow(label: "S2X", value: $pipeline.slot2PosX, range: 0.0...1.0, step: 0.01)
-            slotTuningRow(label: "S2Y", value: $pipeline.slot2PosY, range: 0.0...0.5, step: 0.005)
-            slotTuningRow(label: "S2S", value: $pipeline.slot2Scale, range: 0.05...1.0, step: 0.01)
-        }
-        .onChange(of: pipeline.slot0PosX) { _ in pipeline.updateSongCardSlots() }
-        .onChange(of: pipeline.slot0PosY) { _ in pipeline.updateSongCardSlots() }
-        .onChange(of: pipeline.slot0Scale) { _ in pipeline.updateSongCardSlots() }
-        .onChange(of: pipeline.slot1PosX) { _ in pipeline.updateSongCardSlots() }
-        .onChange(of: pipeline.slot1PosY) { _ in pipeline.updateSongCardSlots() }
-        .onChange(of: pipeline.slot1Scale) { _ in pipeline.updateSongCardSlots() }
-        .onChange(of: pipeline.slot2PosX) { _ in pipeline.updateSongCardSlots() }
-        .onChange(of: pipeline.slot2PosY) { _ in pipeline.updateSongCardSlots() }
-        .onChange(of: pipeline.slot2Scale) { _ in pipeline.updateSongCardSlots() }
     }
 
     private func slotTuningRow(label: String, value: Binding<Float>, range: ClosedRange<Float>, step: Float) -> some View {

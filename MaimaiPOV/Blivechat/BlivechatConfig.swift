@@ -35,5 +35,6 @@ enum ConnectionState: Equatable {
     case disconnected
     case connecting
     case connected
+    case reconnecting(String)
     case error(String)
 }

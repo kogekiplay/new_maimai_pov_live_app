@@ -55,20 +55,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var overlayOpacity: Float = Config.overlayOpacity
     @Published var overlayRotation: Float = Config.overlayRotation
 
-    @Published var songCardEnabled: Bool = Config.songCardEnabled
-    @Published var songRequestTestMode: Bool = false
-    @Published var songRequestTestPriorityMode: Bool = false
-
-    @Published var slot0PosX: Float = 0.20
-    @Published var slot0PosY: Float = 0.13
-    @Published var slot0Scale: Float = 0.25
-    @Published var slot1PosX: Float = 0.51
-    @Published var slot1PosY: Float = 0.135
-    @Published var slot1Scale: Float = 0.23
-    @Published var slot2PosX: Float = 0.81
-    @Published var slot2PosY: Float = 0.135
-    @Published var slot2Scale: Float = 0.23
-
     @Published var cropHorizontalOffset: Float = Config.cropHorizontalOffset
 
     @Published var blivechatConnectionState: ConnectionState = .disconnected
@@ -87,9 +73,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     var stabilizer: MetalStabilizer?
     var yoloDetector: YOLODetector?
-    var cropRenderer: CropRenderer?
     var overlayCompositor: OverlayCompositor?
-    var songCardCompositor: SongCardCompositor?
     var canvasComposer: CanvasComposer?
     var leftPanelRenderer: LeftPanelRenderer?
     var leftPanelCompositor: LeftPanelCompositor?
@@ -111,11 +95,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if let pool = ioSurfacePool, let buf = pool.lastCompletedBuffer {
                 return buf.texture
             }
-            if let cc = canvasComposer {
+            if let _ = canvasComposer {
                 return nil
-            }
-            if let cr = cropRenderer {
-                return cr.outputTexture
             }
             return stabilizer?.outputTexture
         }
@@ -126,7 +107,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         stabilizer?.outputTexture
     }
 
-    var isCropActive: Bool { canvasComposer != nil || cropRenderer != nil }
+    var isCropActive: Bool { canvasComposer != nil }
 
     let pipelineQueue = DispatchQueue(label: "com.maimai.pipeline", qos: .userInteractive)
 
@@ -228,6 +209,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 self.debug.log("[blivechat错误] code=\(error.code) \(error.message)")
             }
         }
+
+        blivechatClient.onReconnectLog = { [weak self] message in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.debug.log(message)
+            }
+        }
     }
 
     func handleDanmakuForSongRequest(_ msg: DanmakuMessage) {
@@ -241,7 +229,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 self.debug.log("[点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
             }
 
-            guard songRequestTestMode || !songCardManager.hasSongInQueue(name: name) else {
+            guard !songCardManager.hasSongInQueue(name: name) else {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] \(msg.authorName) 已有歌曲在队列中")
                 }
@@ -484,7 +472,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if state != self.blivechatConnectionState {
                 self.blivechatConnectionState = state
             }
-            if case .disconnected = state {
+            if case .disconnected = state, self.blivechatClient.isManuallyDisconnected {
                 timer.invalidate()
             }
         }
@@ -508,9 +496,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         debug.lensType = selectedLens.rawValue
         debug.log("Pipeline initialized: \(selectedLens.rawValue)")
 
-        let cropR = CropRenderer(device: device, commandQueue: sharedCommandQueue)
-        self.cropRenderer = cropR
-
         self.canvasComposer = CanvasComposer(device: device, commandQueue: sharedCommandQueue)
 
         self.overlayCompositor = OverlayCompositor(device: device)
@@ -521,8 +506,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         self.overlayCompositor?.opacity = overlayOpacity
         self.overlayCompositor?.rotation = overlayRotation * .pi / 180.0
 
-        self.songCardCompositor = SongCardCompositor(device: device)
-        self.songCardCompositor?.enabled = songCardEnabled
         songCardManager.delegate = self
 
         if Config.leftPanelEnabled {
@@ -676,12 +659,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         cx: fb.cx, cy: fb.cy, cropW: fb.cropW, cropH: fb.cropH,
                         detected: false, state: "fallback"
                     )
-                } else if let cr = self.cropRenderer {
-                    let fb = cr.makeFallbackTrack()
-                    track = BBoxTracker.TrackOutput(
-                        cx: fb.cx, cy: fb.cy, cropW: fb.cropW, cropH: fb.cropH,
-                        detected: false, state: "fallback"
-                    )
                 } else {
                     let stabW = Float(Config.stabWidth)
                     let stabH = Float(Config.stabHeight)
@@ -776,84 +753,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         }
                     }
                     cmdBuf.commit()
-                } else if let pool = self.ioSurfacePool,
-                          let cr = self.cropRenderer,
-                          let writeBuffer = pool.nextWriteBuffer() {
-                    let timestamp = CMTime(seconds: alignedTime, preferredTimescale: 1000000000)
-
-                    guard let cmdBuf = self.sharedCommandQueue.makeCommandBuffer(),
-                          let encoder = cmdBuf.makeComputeCommandEncoder() else {
-                        cr.process(
-                            stabTexture: stab.outputTexture,
-                            cx: offsetCx, cy: track.cy,
-                            cropW: track.cropW, cropH: track.cropH,
-                            outputTexture: writeBuffer.texture
-                        ) { [weak self] in
-                            self?.pipelineQueue.async {
-                                guard let self = self else { return }
-                                self.streamFrameCount += 1
-                                let pipelineLatencyMs = (CACurrentMediaTime() - pipelineEnterTime) * 1000.0
-                                self.onStreamBufferAvailable?(writeBuffer.pixelBuffer, timestamp)
-                                self.streamManager.appendVideo(pixelBuffer: writeBuffer.pixelBuffer, timestamp: timestamp)
-                                DispatchQueue.main.async {
-                                    self.lagMs = pipelineLatencyMs
-                                    self.debug.stageLagData(ms: pipelineLatencyMs, audioDepth: self.streamManager.audioSyncQueueDepth)
-                                }
-                            }
-                        }
-                        return
-                    }
-
-                    cr.encode(into: encoder,
-                              stabTexture: stab.outputTexture,
-                              cx: offsetCx, cy: track.cy,
-                              cropW: track.cropW, cropH: track.cropH,
-                              outputTexture: writeBuffer.texture)
-
-                    if let overlay = self.overlayCompositor,
-                       overlay.enabled, overlay.overlayTexture != nil {
-                        overlay.encode(into: encoder, outputTexture: writeBuffer.texture)
-                    }
-
-                    if let songCard = self.songCardCompositor, songCard.enabled {
-                        songCard.updateAnimations()
-                        songCard.encode(into: encoder, outputTexture: writeBuffer.texture)
-                    }
-
-                    encoder.endEncoding()
-
-                    cmdBuf.addCompletedHandler { [weak self] _ in
-                        self?.pipelineQueue.async {
-                            guard let self = self else { return }
-                            self.streamFrameCount += 1
-                            let pipelineLatencyMs = (CACurrentMediaTime() - pipelineEnterTime) * 1000.0
-                            self.onStreamBufferAvailable?(writeBuffer.pixelBuffer, timestamp)
-                            self.streamManager.appendVideo(pixelBuffer: writeBuffer.pixelBuffer, timestamp: timestamp)
-                            DispatchQueue.main.async {
-                                self.lagMs = pipelineLatencyMs
-                                self.debug.stageLagData(ms: pipelineLatencyMs, audioDepth: self.streamManager.audioSyncQueueDepth)
-                            }
-                        }
-                    }
-                    cmdBuf.commit()
-                } else if let cr = self.cropRenderer {
-                    if let track = self.latestTrackOutput {
-                        let offsetCx = track.cx + self.cropHorizontalOffset
-                        cr.process(stabTexture: stab.outputTexture,
-                                   cx: offsetCx, cy: track.cy,
-                                   cropW: track.cropW, cropH: track.cropH)
-                    } else {
-                        let fb = cr.makeFallbackTrack()
-                        let offsetCx = fb.cx + self.cropHorizontalOffset
-                        cr.process(stabTexture: stab.outputTexture,
-                                   cx: offsetCx, cy: fb.cy,
-                                   cropW: fb.cropW, cropH: fb.cropH)
-                    }
-                    let pipelineLatencyMs = (CACurrentMediaTime() - pipelineEnterTime) * 1000.0
-                    DispatchQueue.main.async {
-                        self.lagMs = pipelineLatencyMs
-                        self.debug.stageLagData(ms: pipelineLatencyMs, audioDepth: 0)
-                    }
                 }
             }
         }
@@ -1073,22 +972,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         overlayCompositor?.rotation = overlayRotation * .pi / 180.0
     }
 
-    @MainActor func updateSongCardEnabled() {
-        Config.songCardEnabled = songCardEnabled
-        songCardCompositor?.enabled = songCardEnabled
-    }
-
-    @MainActor func updateSongCardSlots() {
-        songCardCompositor?.slots = [
-            CardSlot(posX: slot0PosX, posY: slot0PosY, scale: slot0Scale),
-            CardSlot(posX: slot1PosX, posY: slot1PosY, scale: slot1Scale),
-            CardSlot(posX: slot2PosX, posY: slot2PosY, scale: slot2Scale)
-        ]
-        songCardCompositor?.offScreenRight = CardSlot(posX: 1.3, posY: slot1PosY, scale: slot1Scale)
-        songCardCompositor?.offScreenLeft = CardSlot(posX: -0.3, posY: slot0PosY, scale: slot0Scale)
-        songCardCompositor?.repositionCards()
-    }
-
     @MainActor func updateCropHorizontalOffset() {
         Config.cropHorizontalOffset = cropHorizontalOffset
         debug.cropHorizontalOffset = cropHorizontalOffset
@@ -1184,49 +1067,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
             return
         }
-
-        guard let compositor = songCardCompositor else { return }
-
-        let hasMoreSongs = songCardManager.currentIndex + 1 < songCardManager.queue.count
-
-        if !hasMoreSongs {
-            if !compositor.cards.isEmpty {
-                compositor.switchToNext()
-            }
-            clearSongQueue()
-            return
-        }
-
-        let nextIndex = songCardManager.currentIndex + 1
-        var newData: SongCardData?
-
-        if nextIndex + 2 < songCardManager.queue.count {
-            newData = songCardManager.queue[nextIndex + 2]
-        }
-
-        if let data = newData, let renderer = compositor.renderer {
-            if let musicId = data.musicId {
-                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
-                    guard let self = self else { return }
-                    DispatchQueue.main.async {
-                        renderer.renderCard(data: data, coverBase64: base64) { [weak self] texture in
-                            guard let self = self, let texture = texture else { return }
-                            self.songCardCompositor?.switchToNext(newCardTexture: texture, newCardData: data)
-                            self.songCardManager.switchToNext()
-                        }
-                    }
-                }
-            } else {
-                renderer.renderCard(data: data, coverBase64: nil) { [weak self] texture in
-                    guard let self = self, let texture = texture else { return }
-                    self.songCardCompositor?.switchToNext(newCardTexture: texture, newCardData: data)
-                    self.songCardManager.switchToNext()
-                }
-            }
-        } else {
-            songCardCompositor?.switchToNext()
-            songCardManager.switchToNext()
-        }
     }
 
     func addSongToQueue(_ song: SongCardData) {
@@ -1237,88 +1077,14 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         addRightPanelRow(song: song)
-
-        guard let compositor = songCardCompositor else { return }
-
-        if compositor.cards.count < compositor.slots.count {
-            if let musicId = song.musicId {
-                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
-                    guard let self = self else { return }
-                    DispatchQueue.main.async {
-                        if base64 != nil {
-                            self.debug.log("[封面] musicId=\(musicId) 加载成功")
-                        } else {
-                            self.debug.log("[封面] musicId=\(musicId) 加载失败，使用占位图")
-                        }
-                        self.renderAndAddCard(data: song, coverBase64: base64)
-                    }
-                }
-            } else {
-                renderAndAddCard(data: song, coverBase64: nil)
-            }
-        }
     }
 
     func addSongAtNextToQueue(_ song: SongCardData) {
         songCardManager.addSongAtNext(song)
-        refreshDisplayedCards()
         if leftPanelCompositor != nil {
             refreshLeftPanel()
         }
         refreshRightPanel()
-    }
-
-    private func refreshDisplayedCards() {
-        guard let compositor = songCardCompositor else { return }
-
-        let ci = songCardManager.currentIndex
-        let queue = songCardManager.queue
-        guard ci >= 0, ci < queue.count else { return }
-
-        let displayData = Array(queue[ci...].prefix(3))
-        var textures: [MTLTexture?] = Array(repeating: nil, count: displayData.count)
-
-        func renderNext(index: Int) {
-            guard index < displayData.count else {
-                let cardDataList: [(texture: MTLTexture, data: SongCardData)] = zip(textures, displayData).compactMap { t, d in
-                    guard let t = t else { return nil }
-                    return (texture: t, data: d)
-                }
-                self.songCardCompositor?.updateAllCards(cardDataList: cardDataList)
-                DispatchQueue.main.async {
-                    self.debug.log("[插队] 卡片已刷新，显示\(cardDataList.count)张")
-                }
-                return
-            }
-
-            let songData = displayData[index]
-            let onRendered: (MTLTexture?) -> Void = { texture in
-                textures[index] = texture
-                renderNext(index: index + 1)
-            }
-
-            if let musicId = songData.musicId {
-                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
-                    DispatchQueue.main.async {
-                        compositor.renderer?.renderCard(data: songData, coverBase64: base64, completion: onRendered)
-                    }
-                }
-            } else {
-                compositor.renderer?.renderCard(data: songData, coverBase64: nil, completion: onRendered)
-            }
-        }
-
-        renderNext(index: 0)
-    }
-
-    private func renderAndAddCard(data: SongCardData, coverBase64: String?) {
-        guard let compositor = songCardCompositor else { return }
-        compositor.renderer?.renderCard(data: data, coverBase64: coverBase64) { [weak self] texture in
-            guard let self = self, let texture = texture else { return }
-            if self.songCardCompositor?.cards.count ?? 0 < self.songCardCompositor?.slots.count ?? 0 {
-                self.songCardCompositor?.addCard(texture: texture, data: data)
-            }
-        }
     }
 
     func updateSongQueue(_ songs: [SongCardData]) {
@@ -1328,49 +1094,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             refreshLeftPanel()
         }
 
-        guard let compositor = songCardCompositor else { return }
-
-        if songs.isEmpty {
-            compositor.clearAll()
-            return
-        }
-
-        let displayData = Array(songs.prefix(3))
-        let group = DispatchGroup()
-        var textures: [MTLTexture?] = Array(repeating: nil, count: displayData.count)
-
-        for i in 0..<displayData.count {
-            group.enter()
-            let songData = displayData[i]
-            if let musicId = songData.musicId {
-                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
-                    DispatchQueue.main.async {
-                        compositor.renderer?.renderCard(data: songData, coverBase64: base64) { texture in
-                            textures[i] = texture
-                            group.leave()
-                        }
-                    }
-                }
-            } else {
-                compositor.renderer?.renderCard(data: songData, coverBase64: nil) { texture in
-                    textures[i] = texture
-                    group.leave()
-                }
-            }
-        }
-
-        group.notify(queue: .main) { [weak self] in
-            guard let self = self else { return }
-            let cardDataList: [(texture: MTLTexture, data: SongCardData)] = zip(textures, displayData).compactMap { t, d in
-                guard let t = t else { return nil }
-                return (texture: t, data: d)
-            }
-            self.songCardCompositor?.updateAllCards(cardDataList: cardDataList)
-        }
+        refreshRightPanel()
     }
 
     func clearSongQueue() {
-        songCardCompositor?.clearAll()
         leftPanelCompositor?.clearAll()
         rightPanelCompositor?.clearAll()
         songCardManager.clearQueue()
@@ -1383,7 +1110,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func refreshDisplayedCardsIfNeeded() {
-        refreshDisplayedCards()
         refreshRightPanel()
     }
 
