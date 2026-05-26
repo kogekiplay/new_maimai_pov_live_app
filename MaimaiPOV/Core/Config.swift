@@ -386,17 +386,6 @@ enum Config {
         set { UserDefaults.standard.set(Double(newValue), forKey: overlayRotationKey) }
     }
 
-    static let defaultSongCardEnabled: Bool = false
-    static var songCardEnabled: Bool {
-        get {
-            guard UserDefaults.standard.object(forKey: songCardEnabledKey) != nil else {
-                return defaultSongCardEnabled
-            }
-            return UserDefaults.standard.bool(forKey: songCardEnabledKey)
-        }
-        set { UserDefaults.standard.set(newValue, forKey: songCardEnabledKey) }
-    }
-
     static let defaultLeftPanelEnabled: Bool = true
     static var leftPanelEnabled: Bool {
         get {
@@ -508,7 +497,6 @@ enum Config {
     private static let overlayOpacityKey = "com.maimai.overlayOpacity"
     private static let overlayRotationKey = "com.maimai.overlayRotation"
     private static let cropHorizontalOffsetKey = "com.maimai.cropHorizontalOffset"
-    private static let songCardEnabledKey = "com.maimai.songCardEnabled"
     private static let leftPanelEnabledKey = "com.maimai.leftPanelEnabled"
     private static let announcementTextKey = "com.maimai.announcementText"
     private static let blivechatServerKey = "com.maimai.blivechatServer"

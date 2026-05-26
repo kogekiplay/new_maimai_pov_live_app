@@ -116,7 +116,6 @@ class QueueAPIHandler {
             manager.removeSong(at: index)
 
             if manager.queue.isEmpty {
-                pipeline.songCardCompositor?.clearAll()
                 pipeline.leftPanelCompositor?.clearAll()
                 pipeline.rightPanelCompositor?.clearAll()
             } else if wasInLockedArea {
