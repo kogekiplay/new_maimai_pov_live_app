@@ -1492,7 +1492,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
-    private func reorderRightPanel() {
+    func reorderRightPanel() {
         guard let compositor = rightPanelCompositor else {
             print("[RightPanel] reorderRightPanel: compositor is nil!")
             return

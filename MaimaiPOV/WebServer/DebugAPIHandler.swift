@@ -45,7 +45,7 @@ class DebugAPIHandler {
                         let lockedEnd = pipeline.songCardManager.lockedEndIndex
                         if index >= lockedEnd {
                             pipeline.songCardManager.reorderQueueByGiftValue()
-                            pipeline.refreshDisplayedCardsIfNeeded()
+                            pipeline.reorderRightPanel()
                         }
                     }
                 }
@@ -158,7 +158,7 @@ class DebugAPIHandler {
                     let lockedEnd = pipeline.songCardManager.lockedEndIndex
                     if index >= lockedEnd {
                         pipeline.songCardManager.reorderQueueByGiftValue()
-                        pipeline.refreshDisplayedCardsIfNeeded()
+                        pipeline.reorderRightPanel()
                     }
                 }
 
