@@ -61,3 +61,4 @@ export_onnx.py
 AGENTS.md
 点歌姬/
 ios-app-technical-spec.md
+.claude/

@@ -224,15 +224,27 @@ class RightPanelCompositor {
                 print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) fromY=\(String(format:"%.4f",fromPosY)) toY=\(String(format:"%.4f",targetPosY)) dy=\(String(format:"%.4f",dy)) animating=true")
             } else {
                 let texture = textures[item.queueIndex]
-                let row = RightPanelRowState.atPosition(
-                    posX: normalPosX,
-                    posY: targetPosY,
+                let row = RightPanelRowState(
                     texture: texture,
                     data: item.data,
-                    queueIndex: item.queueIndex
+                    queueIndex: item.queueIndex,
+                    currentPosX: offScreenRightPosX,
+                    currentPosY: targetPosY,
+                    currentOpacity: 0.0,
+                    targetPosX: normalPosX,
+                    targetPosY: targetPosY,
+                    targetOpacity: 1.0,
+                    startPosX: offScreenRightPosX,
+                    startPosY: targetPosY,
+                    startOpacity: 0.0,
+                    isAnimating: true,
+                    animStartTime: CACurrentMediaTime() + 0.15,
+                    animDuration: 0.35,
+                    shouldRemoveAfterAnimation: false,
+                    pendingAnimations: []
                 )
                 newRows.append(row)
-                print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) NEW atY=\(String(format:"%.4f",targetPosY)) hasTexture=\(texture != nil)")
+                print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) NEW slideIn atY=\(String(format:"%.4f",targetPosY)) hasTexture=\(texture != nil)")
             }
         }
         rows = newRows

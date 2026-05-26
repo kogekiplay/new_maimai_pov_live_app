@@ -1493,10 +1493,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func reorderRightPanel() {
-        guard let compositor = rightPanelCompositor else {
-            print("[RightPanel] reorderRightPanel: compositor is nil!")
-            return
-        }
+        guard let compositor = rightPanelCompositor else { return }
+        guard let renderer = rightPanelRenderer else { return }
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
@@ -1508,26 +1506,58 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         let visibleSongs = Array(queue[startQueueIndex...].prefix(compositor.maxVisibleRows))
-        print("[RightPanel] reorderRightPanel: ci=\(ci), startQI=\(startQueueIndex), queue.count=\(queue.count), visible=\(visibleSongs.count), compositorRows=\(compositor.currentRowCount)")
 
         var newOrder: [(queueIndex: Int, data: SongCardData)] = []
-        var needRenderItems: [(queueIndex: Int, data: SongCardData)] = []
+        var existingGiftChanged: [(queueIndex: Int, data: SongCardData)] = []
+        var newRowsNeedTexture: [(queueIndex: Int, data: SongCardData)] = []
 
         for (i, song) in visibleSongs.enumerated() {
             let queueIndex = startQueueIndex + i
             newOrder.append((queueIndex: queueIndex, data: song))
 
             let existingData = compositor.getRowDataForId(song.id)
-            if existingData == nil || existingData!.giftValue != song.giftValue {
-                needRenderItems.append((queueIndex: queueIndex, data: song))
+            if existingData == nil {
+                newRowsNeedTexture.append((queueIndex: queueIndex, data: song))
+            } else if existingData!.giftValue != song.giftValue {
+                existingGiftChanged.append((queueIndex: queueIndex, data: song))
             }
         }
 
-        compositor.reorderRows(newOrder: newOrder, textures: [:])
+        if newRowsNeedTexture.isEmpty {
+            compositor.reorderRows(newOrder: newOrder, textures: [:])
 
-        guard let renderer = rightPanelRenderer, !needRenderItems.isEmpty else { return }
+            for item in existingGiftChanged {
+                let queueIndex = item.queueIndex
+                let song = item.data
+                if let musicId = song.musicId {
+                    CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
+                        DispatchQueue.main.async {
+                            renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
+                                if let texture = texture {
+                                    compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
+                            if let texture = texture {
+                                compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                            }
+                        }
+                    }
+                }
+            }
+            return
+        }
 
-        for item in needRenderItems {
+        var renderedTextures: [Int: MTLTexture] = [:]
+        let group = DispatchGroup()
+        let lock = NSLock()
+
+        for item in newRowsNeedTexture {
+            group.enter()
             let queueIndex = item.queueIndex
             let song = item.data
             if let musicId = song.musicId {
@@ -1535,8 +1565,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     DispatchQueue.main.async {
                         renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
                             if let texture = texture {
-                                compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                                lock.lock()
+                                renderedTextures[queueIndex] = texture
+                                lock.unlock()
                             }
+                            group.leave()
                         }
                     }
                 }
@@ -1544,7 +1577,39 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
                         if let texture = texture {
-                            compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                            lock.lock()
+                            renderedTextures[queueIndex] = texture
+                            lock.unlock()
+                        }
+                        group.leave()
+                    }
+                }
+            }
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            guard self != nil else { return }
+            compositor.reorderRows(newOrder: newOrder, textures: renderedTextures)
+
+            for item in existingGiftChanged {
+                let queueIndex = item.queueIndex
+                let song = item.data
+                if let musicId = song.musicId {
+                    CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
+                        DispatchQueue.main.async {
+                            renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
+                                if let texture = texture {
+                                    compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
+                            if let texture = texture {
+                                compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                            }
                         }
                     }
                 }

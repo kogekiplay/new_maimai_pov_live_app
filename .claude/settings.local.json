@@ -16,7 +16,10 @@
       "Read(//mnt/c/Program Files/**)",
       "Read(//mnt/**)",
       "Bash(export PATH=\"/c/Program Files/GitHub CLI:$PATH\")",
-      "Bash(curl -sI \"https://github.com/Hematemesis-V/maimaiPOV_app\")"
+      "Bash(curl -sI \"https://github.com/Hematemesis-V/maimaiPOV_app\")",
+      "Bash(Get-ChildItem *)",
+      "Bash(ssh *)",
+      "WebSearch"
     ]
   }
 }
