@@ -79,6 +79,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var leftPanelCompositor: LeftPanelCompositor?
     var rightPanelRenderer: RightPanelRenderer?
     var rightPanelCompositor: RightPanelCompositor?
+    var marqueeManager: MarqueeManager?
+    var marqueeRenderer: MarqueeRenderer?
+    var marqueeCompositor: MarqueeCompositor?
     private var rightPanelGeneration: Int = 0
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
@@ -158,6 +161,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let coinValue = max(msg.totalCoin, msg.totalFreeCoin)
             DispatchQueue.main.async {
                 self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))")
+                if msg.isPaidGift {
+                    self.postMarquee("🎁 感谢 \(msg.authorName) 送出 \(msg.giftName) ×\(msg.num)", type: .gift)
+                }
             }
             if coinValue > 0 {
                 let name = msg.authorName
@@ -209,6 +215,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
             DispatchQueue.main.async {
                 self.debug.log("[上舰] \(msg.authorName)")
+                self.postMarquee("⭐ \(msg.authorName) 上舰了!", type: .member)
             }
         }
 
@@ -227,6 +234,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
+    private func postMarquee(_ text: String, type: MarqueeItem.MarqueeItemType) {
+        guard let manager = marqueeManager else { return }
+        let item = MarqueeItem(text: text, type: type)
+        manager.enqueue(item)
+    }
+
     func handleDanmakuForSongRequest(_ msg: DanmakuMessage) {
         let result = danmakuParser.parse(msg.content)
 
@@ -241,6 +254,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             guard !songCardManager.hasSongInQueue(name: name) else {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] \(msg.authorName) 已有歌曲在队列中")
+                    self.postMarquee("❌ \(name) 已有歌曲在队列中", type: .songFailure)
                 }
                 return
             }
@@ -249,6 +263,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if candidates.candidates.isEmpty {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] 未找到歌曲: \"\(query)\"")
+                    self.postMarquee("❌ 未找到\"\(query)\"", type: .songFailure)
                 }
                 return
             }
@@ -268,6 +283,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             guard let noteResult = songDatabase.findNote(song: song, targetDiffNum: targetDiffNum) else {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] \(song.title) 没有可用难度")
+                    self.postMarquee("❌ \(song.title) 没有可用难度", type: .songFailure)
                 }
                 return
             }
@@ -316,6 +332,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
                 self.debug.log("[点歌] ✅ \(msg.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(candidates.matchKind?.rawValue ?? "?")]\(giftTag)")
+                self.postMarquee("🎵 \(name) 点歌 \(song.title) (\(ctDisplay) \(diffName) \(levelStr))", type: .songSuccess)
             }
 
         case .notACommand:
@@ -424,6 +441,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
                 self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [🎁\(giftVal)]")
+                self.postMarquee("💰 \(name) SC点歌 \(song.title) (\(ctDisplay) \(diffName) \(levelStr))", type: .superChat)
             }
 
         case .notACommand:
@@ -441,6 +459,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     self.refreshLeftPanel()
                     self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                 }
+            }
+            DispatchQueue.main.async {
+                self.postMarquee("💰 感谢 \(sc.authorName) 的SC ¥\(sc.price)", type: .superChat)
             }
         }
     }
@@ -534,6 +555,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.refreshRightPanel()
         }
+
+        self.marqueeManager = MarqueeManager()
+        self.marqueeRenderer = MarqueeRenderer(device: device)
+        self.marqueeCompositor = MarqueeCompositor(device: device, manager: marqueeManager!, renderer: marqueeRenderer!)
 
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
@@ -747,6 +772,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     if let rpc = self.rightPanelCompositor, rpc.enabled {
                         rpc.updateAnimations()
                         rpc.encode(into: encoder, outputTexture: writeBuffer.texture)
+                    }
+
+                    if let marquee = self.marqueeCompositor, marquee.enabled {
+                        marquee.updateAnimations()
+                        marquee.encode(into: encoder, outputTexture: writeBuffer.texture)
                     }
 
                     encoder.endEncoding()

@@ -461,6 +461,17 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: streamBitrateKey) }
     }
 
+    static let defaultMarqueeSpeed: Float = 3.0
+    static var marqueeSpeed: Float {
+        get {
+            guard UserDefaults.standard.object(forKey: marqueeSpeedKey) != nil else {
+                return defaultMarqueeSpeed
+            }
+            return Float(UserDefaults.standard.double(forKey: marqueeSpeedKey))
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: marqueeSpeedKey) }
+    }
+
     // UserDefaults keys
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
@@ -506,6 +517,7 @@ enum Config {
     private static let guardDurationMinutesKey = "com.maimai.guardDurationMinutes"
     private static let autoFocusEnabledKey = "com.maimai.autoFocusEnabled"
     private static let streamBitrateKey = "com.maimai.streamBitrate"
+    private static let marqueeSpeedKey = "com.maimai.marqueeSpeed"
 
     // Video encoding
     static let videoBitrate: Int = 4_000_000
