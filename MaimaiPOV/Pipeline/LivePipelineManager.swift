@@ -275,6 +275,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             ) else {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] 候选\(candidates.candidates.count)首但无法选择")
+                    self.postMarquee("❌ 无法匹配歌曲", type: .songFailure)
                 }
                 return
             }
@@ -358,6 +359,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 let lockedEnd = songCardManager.lockedEndIndex
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中，SC金额累加到送礼池")
+                    self.postMarquee("❌ \(name) 已有歌曲在队列中", type: .songFailure)
                     if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
                         self.reorderRightPanel()
@@ -372,6 +374,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] 未找到歌曲: \"\(query)\"，SC金额累积到送礼池")
+                    self.postMarquee("❌ 未找到\"\(query)\"", type: .songFailure)
                 }
                 return
             }
@@ -384,6 +387,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] 候选\(candidates.candidates.count)首但无法选择，SC金额累积到送礼池")
+                    self.postMarquee("❌ 无法匹配歌曲", type: .songFailure)
                 }
                 return
             }
@@ -393,6 +397,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] \(song.title) 没有可用难度，SC金额累积到送礼池")
+                    self.postMarquee("❌ \(song.title) 没有可用难度", type: .songFailure)
                 }
                 return
             }
