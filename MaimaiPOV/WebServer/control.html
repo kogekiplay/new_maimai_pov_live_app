@@ -154,6 +154,9 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 <button class="debug-btn debug-btn-refresh" onclick="fetchGiftPool()">🎁 刷新送礼池</button>
 </div>
 <div class="perm-list" id="giftPoolList" style="margin-top:8px"><div class="perm-empty">点击"刷新送礼池"查看</div></div>
+<h3 style="margin:12px 0 6px;color:#ba68c8">📢 公告编辑</h3>
+<textarea id="announcementText" rows="3" style="width:100%;background:#1a1a2e;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:8px;font-size:14px;resize:vertical" placeholder="输入公告内容..."></textarea>
+<button class="debug-btn debug-btn-refresh" onclick="updateAnnouncement()" style="margin-top:6px">📢 更新公告</button>
 </div>
 </div>
 <div class="bottom-bar">
@@ -562,6 +565,30 @@ xhr.send(body?JSON.stringify(body):'{}');
 }
 fetchQueue();
 setInterval(fetchQueue,1500);
+fetchAnnouncement();
+function fetchAnnouncement(){
+var xhr=new XMLHttpRequest();
+xhr.open('GET','/api/announcement',true);
+xhr.onload=function(){
+if(xhr.status===200){
+try{
+var data=JSON.parse(xhr.responseText);
+document.getElementById('announcementText').value=data.text||'';
+}catch(e){}
+}
+};
+xhr.send();
+}
+function updateAnnouncement(){
+var text=document.getElementById('announcementText').value;
+postDebug('/api/announcement',{text:text},function(data){
+if(data.success){
+showToast('公告已更新');
+}else{
+showToast('更新失败');
+}
+});
+}
 </script>
 </body>
 </html>

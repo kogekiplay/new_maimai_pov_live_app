@@ -153,6 +153,35 @@ class WebServerManager {
             guard let self = self else { return .internalServerError }
             return self.debugHandler.getGiftPool()
         }
+
+        server["/api/announcement"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            switch request.method {
+            case "GET":
+                let text = Config.announcementText
+                let data = try? JSONSerialization.data(withJSONObject: ["text": text])
+                guard let jsonData = data else { return .internalServerError }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            case "POST":
+                guard let body = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
+                      let text = body["text"] as? String else {
+                    return .badRequest(.text("Missing 'text' field"))
+                }
+                Config.announcementText = text
+                DispatchQueue.main.async {
+                    self.pipeline?.renderLeftPanelAnnouncement()
+                }
+                let data = try? JSONSerialization.data(withJSONObject: ["success": true])
+                guard let jsonData = data else { return .internalServerError }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            default:
+                return .badRequest(.text("Method not allowed"))
+            }
+        }
     }
 
     private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
