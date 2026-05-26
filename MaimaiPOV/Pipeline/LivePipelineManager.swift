@@ -1493,7 +1493,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     private func reorderRightPanel() {
-        guard let compositor = rightPanelCompositor else { return }
+        guard let compositor = rightPanelCompositor else {
+            print("[RightPanel] reorderRightPanel: compositor is nil!")
+            return
+        }
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
@@ -1505,6 +1508,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         let visibleSongs = Array(queue[startQueueIndex...].prefix(compositor.maxVisibleRows))
+        print("[RightPanel] reorderRightPanel: ci=\(ci), startQI=\(startQueueIndex), queue.count=\(queue.count), visible=\(visibleSongs.count), compositorRows=\(compositor.currentRowCount)")
 
         var newOrder: [(queueIndex: Int, data: SongCardData)] = []
         var needRenderItems: [(queueIndex: Int, data: SongCardData)] = []

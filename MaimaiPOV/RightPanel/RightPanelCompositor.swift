@@ -196,22 +196,21 @@ class RightPanelCompositor {
     func reorderRows(newOrder: [(queueIndex: Int, data: SongCardData)], textures: [Int: MTLTexture]) {
         interruptCurrentAnimations()
 
+        print("[RightPanel] reorderRows called, newOrder.count=\(newOrder.count), existing rows=\(rows.count)")
         var newRows: [RightPanelRowState] = []
         for (listIndex, item) in newOrder.enumerated() {
             let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: scrollOffset)
             if let existingIndex = rows.firstIndex(where: { $0.data?.id == item.data.id }) {
                 var row = rows[existingIndex]
+                let fromPosY = row.currentPosY
                 row.data = item.data
                 row.queueIndex = item.queueIndex
                 if let tex = textures[item.queueIndex] {
                     row.texture = tex
                 }
-                let fromPosY = row.currentPosY
-                let fromPosX = row.currentPosX
-                let fromOpacity = row.currentOpacity
-                row.startPosX = fromPosX
-                row.startPosY = fromPosY
-                row.startOpacity = fromOpacity
+                row.startPosX = row.currentPosX
+                row.startPosY = row.currentPosY
+                row.startOpacity = row.currentOpacity
                 row.targetPosX = normalPosX
                 row.targetPosY = targetPosY
                 row.targetOpacity = 1.0
@@ -221,6 +220,8 @@ class RightPanelCompositor {
                 row.shouldRemoveAfterAnimation = false
                 row.pendingAnimations = []
                 newRows.append(row)
+                let dy = abs(targetPosY - fromPosY)
+                print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) fromY=\(String(format:"%.4f",fromPosY)) toY=\(String(format:"%.4f",targetPosY)) dy=\(String(format:"%.4f",dy)) animating=true")
             } else {
                 let texture = textures[item.queueIndex]
                 let row = RightPanelRowState.atPosition(
@@ -231,6 +232,7 @@ class RightPanelCompositor {
                     queueIndex: item.queueIndex
                 )
                 newRows.append(row)
+                print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) NEW atY=\(String(format:"%.4f",targetPosY)) hasTexture=\(texture != nil)")
             }
         }
         rows = newRows
