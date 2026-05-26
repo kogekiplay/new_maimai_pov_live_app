@@ -161,9 +161,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let coinValue = max(msg.totalCoin, msg.totalFreeCoin)
             DispatchQueue.main.async {
                 self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))")
-                if msg.isPaidGift {
-                    self.postMarquee("🎁 感谢 \(msg.authorName) 送出 \(msg.giftName) ×\(msg.num)", type: .gift)
-                }
+                self.postMarquee("🎁 感谢 \(msg.authorName) 送出 \(msg.giftName) ×\(msg.num)", type: .gift)
             }
             if coinValue > 0 {
                 let name = msg.authorName

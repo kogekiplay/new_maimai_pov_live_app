@@ -50,9 +50,7 @@ class DebugAPIHandler {
                         }
                     }
                     pipeline.refreshLeftPanel()
-                    if gift.isPaidGift {
-                        pipeline.postMarquee("🎁 感谢 \(authorName) 送出 \(gift.giftName) ×\(gift.num)", type: .gift)
-                    }
+                    pipeline.postMarquee("🎁 感谢 \(authorName) 送出 \(gift.giftName) ×\(gift.num)", type: .gift)
                 }
 
                 result = [
