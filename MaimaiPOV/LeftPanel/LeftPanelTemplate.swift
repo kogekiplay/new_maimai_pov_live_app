@@ -189,7 +189,7 @@ struct LeftPanelTemplate {
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: transparent;
+    background: rgba(17,17,17,0.85);
     font-family: -apple-system, sans-serif;
     width: 420px;
     height: 432px;
@@ -206,10 +206,10 @@ struct LeftPanelTemplate {
   }
   .empty-icon {
     font-size: 48px;
-    opacity: 0.4;
+    opacity: 0.5;
   }
   .empty-text {
-    color: rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.4);
     font-size: 24px;
     font-weight: 600;
   }
@@ -232,7 +232,7 @@ struct LeftPanelTemplate {
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: transparent;
+    background: rgba(17,17,17,0.85);
     font-family: -apple-system, sans-serif;
     width: 420px;
     height: 324px;
@@ -247,17 +247,17 @@ struct LeftPanelTemplate {
     gap: 10px;
   }
   .announcement-title {
-    color: rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.7);
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 1px;
   }
   .announcement-divider {
     height: 1px;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.15);
   }
   .announcement-content {
-    color: rgba(255,255,255,0.45);
+    color: rgba(255,255,255,0.55);
     font-size: 20px;
     font-weight: 500;
     line-height: 1.6;

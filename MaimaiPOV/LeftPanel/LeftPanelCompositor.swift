@@ -176,27 +176,73 @@ class LeftPanelCompositor {
         }
     }
 
-    func setCurrentSong(texture: MTLTexture?, data: SongCardData?) {
+    func setCurrentSong(texture: MTLTexture?, data: SongCardData?, animate: Bool = true) {
+        let hadTexture = currentSongState.texture != nil
         currentSongState.texture = texture
         currentSongState.data = data
-        if !currentSongState.isAnimating {
-            currentSongState.currentPosX = Self.currentSongSlot.posX
+
+        if animate && !hadTexture && texture != nil {
+            currentSongState.currentPosX = Self.offScreenLeft.posX
             currentSongState.currentPosY = Self.currentSongSlot.posY
             currentSongState.currentScale = Self.currentSongSlot.scale
-            currentSongState.currentOpacity = 1.0
-        }
-    }
+            currentSongState.currentOpacity = 0.0
 
-    func setNextSong(texture: MTLTexture?, data: SongCardData?) {
-        nextSongState.texture = texture
-        nextSongState.data = data
-        if !nextSongState.isAnimating {
-            nextSongState.currentPosX = Self.nextSongSlot.posX
-            nextSongState.currentPosY = Self.nextSongSlot.posY
-            nextSongState.currentScale = Self.nextSongSlot.scale
-            nextSongState.currentOpacity = 1.0
-        }
-    }
+            currentSongState.startPosX = Self.offScreenLeft.posX
+            currentSongState.startPosY = Self.currentSongSlot.posY
+            currentSongState.startScale = Self.currentSongSlot.scale
+            currentSongState.startOpacity = 0.0
+
+            currentSongState.targetPosX = Self.currentSongSlot.posX
+            currentSongState.targetPosY = Self.currentSongSlot.posY
+            currentSongState.targetScale = Self.currentSongSlot.scale
+            currentSongState.targetOpacity = 1.0
+
+            currentSongState.isAnimating = true
+            currentSongState.animStartTime = CACurrentMediaTime()
+            currentSongState.animDuration = 0.4
+            currentSongState.shouldRemoveAfterAnimation = false
+            currentSongState.pendingAnimations.removeAll()
+        } else if !currentSongState.isAnimating {
+             currentSongState.currentPosX = Self.currentSongSlot.posX
+             currentSongState.currentPosY = Self.currentSongSlot.posY
+             currentSongState.currentScale = Self.currentSongSlot.scale
+             currentSongState.currentOpacity = 1.0
+         }
+     }
+
+    func setNextSong(texture: MTLTexture?, data: SongCardData?, animate: Bool = true) {
+         let hadTexture = nextSongState.texture != nil
+         nextSongState.texture = texture
+         nextSongState.data = data
+
+         if animate && !hadTexture && texture != nil {
+             nextSongState.currentPosX = Self.offScreenLeft.posX
+             nextSongState.currentPosY = Self.nextSongSlot.posY
+             nextSongState.currentScale = Self.nextSongSlot.scale
+             nextSongState.currentOpacity = 0.0
+
+             nextSongState.startPosX = Self.offScreenLeft.posX
+             nextSongState.startPosY = Self.nextSongSlot.posY
+             nextSongState.startScale = Self.nextSongSlot.scale
+             nextSongState.startOpacity = 0.0
+
+             nextSongState.targetPosX = Self.nextSongSlot.posX
+             nextSongState.targetPosY = Self.nextSongSlot.posY
+             nextSongState.targetScale = Self.nextSongSlot.scale
+             nextSongState.targetOpacity = 1.0
+
+             nextSongState.isAnimating = true
+             nextSongState.animStartTime = CACurrentMediaTime() + 0.1
+             nextSongState.animDuration = 0.4
+             nextSongState.shouldRemoveAfterAnimation = false
+             nextSongState.pendingAnimations.removeAll()
+         } else if !nextSongState.isAnimating {
+             nextSongState.currentPosX = Self.nextSongSlot.posX
+             nextSongState.currentPosY = Self.nextSongSlot.posY
+             nextSongState.currentScale = Self.nextSongSlot.scale
+             nextSongState.currentOpacity = 1.0
+         }
+     }
 
     func setAnnouncement(texture: MTLTexture?) {
         announcementState.texture = texture
@@ -240,6 +286,26 @@ class LeftPanelCompositor {
     func clearAll() {
         animateStateOutLeft(&currentSongState)
         animateStateOutLeft(&nextSongState)
+    }
+
+    func resetToEmpty() {
+        currentSongState.texture = nil
+        currentSongState.data = nil
+        currentSongState.currentPosX = Self.currentSongSlot.posX
+        currentSongState.currentPosY = Self.currentSongSlot.posY
+        currentSongState.currentScale = Self.currentSongSlot.scale
+        currentSongState.currentOpacity = 0.0
+        currentSongState.isAnimating = false
+        currentSongState.pendingAnimations.removeAll()
+
+        nextSongState.texture = nil
+        nextSongState.data = nil
+        nextSongState.currentPosX = Self.nextSongSlot.posX
+        nextSongState.currentPosY = Self.nextSongSlot.posY
+        nextSongState.currentScale = Self.nextSongSlot.scale
+        nextSongState.currentOpacity = 0.0
+        nextSongState.isAnimating = false
+        nextSongState.pendingAnimations.removeAll()
     }
 
     private func animateStateToSlot(_ state: inout PanelCardState, slot: PanelSlot, duration: Float = 0.4, delay: Float = 0.0) {

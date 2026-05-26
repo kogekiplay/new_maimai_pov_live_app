@@ -1322,7 +1322,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         leftPanelCompositor?.clearAll()
         songCardManager.clearQueue()
         if leftPanelCompositor != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                self?.leftPanelCompositor?.resetToEmpty()
                 self?.refreshLeftPanel()
             }
         }
