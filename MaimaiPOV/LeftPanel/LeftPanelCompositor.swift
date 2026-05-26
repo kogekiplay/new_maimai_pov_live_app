@@ -76,6 +76,7 @@ class LeftPanelCompositor {
     private var currentSongState: PanelCardState
     private var nextSongState: PanelCardState
     private var announcementState: PanelCardState
+    private var outgoingStates: [PanelCardState] = []
 
     let outWidth = Config.outputWidth
     let outHeight = Config.outputHeight
@@ -111,7 +112,7 @@ class LeftPanelCompositor {
         self.pipelineState = ps
 
         self.uniformsBuffers = []
-        for _ in 0..<3 {
+        for _ in 0..<6 {
             guard let buffer = device.makeBuffer(
                 length: MemoryLayout<SongCardUniforms>.stride,
                 options: .storageModeShared
@@ -136,6 +137,10 @@ class LeftPanelCompositor {
         let currentTime = CACurrentMediaTime()
         updateCardState(&currentSongState, currentTime: currentTime)
         updateCardState(&nextSongState, currentTime: currentTime)
+        for i in outgoingStates.indices {
+            updateCardState(&outgoingStates[i], currentTime: currentTime)
+        }
+        outgoingStates.removeAll { $0.texture == nil && !$0.isAnimating }
     }
 
     private func updateCardState(_ state: inout PanelCardState, currentTime: CFTimeInterval) {
@@ -255,14 +260,13 @@ class LeftPanelCompositor {
     }
 
     func switchToNext(newNextTexture: MTLTexture?, newNextData: SongCardData?) {
-        animateStateOutLeft(&currentSongState)
+        var outgoingCurrent = currentSongState
+        animateStateOutLeft(&outgoingCurrent)
+        outgoingStates.append(outgoingCurrent)
 
-        animateStateToSlot(&nextSongState, slot: Self.currentSongSlot, duration: 0.4, delay: 0.05)
-
-        let oldNextState = nextSongState
-        currentSongState = oldNextState
-        currentSongState.shouldRemoveAfterAnimation = false
-        currentSongState.pendingAnimations.removeAll()
+        var promotedNext = nextSongState
+        animateStateToSlot(&promotedNext, slot: Self.currentSongSlot, duration: 0.4, delay: 0.05)
+        currentSongState = promotedNext
 
         var newState = PanelCardState.atSlot(Self.nextSongSlot, texture: newNextTexture, data: newNextData)
         newState.currentPosX = Self.offScreenLeft.posX
@@ -284,8 +288,16 @@ class LeftPanelCompositor {
     }
 
     func clearAll() {
-        animateStateOutLeft(&currentSongState)
-        animateStateOutLeft(&nextSongState)
+        if currentSongState.texture != nil {
+            var outgoing = currentSongState
+            animateStateOutLeft(&outgoing)
+            outgoingStates.append(outgoing)
+        }
+        if nextSongState.texture != nil {
+            var outgoing = nextSongState
+            animateStateOutLeft(&outgoing)
+            outgoingStates.append(outgoing)
+        }
     }
 
     func resetToEmpty() {
@@ -361,6 +373,16 @@ class LeftPanelCompositor {
 
         if let texture = announcementState.texture, announcementState.currentOpacity > 0.01 {
             encodeCard(encoder, state: announcementState, texture: texture, bufferIndex: 2, outputTexture: outputTexture, tgSize: tgSize)
+        }
+
+        for i in outgoingStates.indices {
+            let state = outgoingStates[i]
+            if let texture = state.texture, state.currentOpacity > 0.01 {
+                let bufferIndex = 3 + i
+                if bufferIndex < uniformsBuffers.count {
+                    encodeCard(encoder, state: state, texture: texture, bufferIndex: bufferIndex, outputTexture: outputTexture, tgSize: tgSize)
+                }
+            }
         }
     }
 
