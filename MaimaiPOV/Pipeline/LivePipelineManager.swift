@@ -1118,6 +1118,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                                 if let name = skippedName {
                                     self.songCardManager.resetGiftPool(name: name)
                                 }
+                                self.refreshRightPanel()
                             }
                         }
                     }
@@ -1131,6 +1132,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                             if let name = skippedName {
                                 self.songCardManager.resetGiftPool(name: name)
                             }
+                            self.refreshRightPanel()
                         }
                     }
                 }
@@ -1144,6 +1146,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         if let name = skippedName {
                             self.songCardManager.resetGiftPool(name: name)
                         }
+                        self.refreshRightPanel()
                     }
                 }
             }
@@ -1201,6 +1204,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             refreshLeftPanel()
         }
 
+        refreshRightPanel()
+
         guard let compositor = songCardCompositor else { return }
 
         if compositor.cards.count < compositor.slots.count {
@@ -1228,6 +1233,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         if leftPanelCompositor != nil {
             refreshLeftPanel()
         }
+        refreshRightPanel()
     }
 
     private func refreshDisplayedCards() {
@@ -1334,6 +1340,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     func clearSongQueue() {
         songCardCompositor?.clearAll()
         leftPanelCompositor?.clearAll()
+        rightPanelCompositor?.clearAll()
         songCardManager.clearQueue()
         if leftPanelCompositor != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
@@ -1345,6 +1352,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func refreshDisplayedCardsIfNeeded() {
         refreshDisplayedCards()
+        refreshRightPanel()
     }
 
     private func renderLeftPanelCurrentSong(_ song: SongCardData?) {
