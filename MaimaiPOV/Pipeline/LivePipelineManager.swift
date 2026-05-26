@@ -1216,7 +1216,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
         }
 
-        let maxOffset = Float(max(0, compositor.totalRowCount - compositor.maxVisibleRows))
+        let maxOffset = Float(max(0, (compositor.totalRowCount + 1) - compositor.maxVisibleRows))
         let currentOffset = compositor.currentScrollOffset
 
         if currentOffset < maxOffset - 0.01 {
@@ -1254,7 +1254,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func reorderRightPanel() {
         guard let compositor = rightPanelCompositor else { return }
-        guard let renderer = rightPanelRenderer else { return }
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
@@ -1265,11 +1264,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             return
         }
 
-        let visibleSongs = Array(queue[startQueueIndex...].prefix(compositor.maxVisibleRows))
+        let allSongs = Array(queue[startQueueIndex...])
 
         var targetScrollRow = 0
         var maxGift = 0
-        for (i, song) in visibleSongs.enumerated() {
+        for (i, song) in allSongs.enumerated() {
             if song.giftValue > maxGift {
                 maxGift = song.giftValue
                 targetScrollRow = i
@@ -1306,13 +1305,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             return
         }
 
-        let visibleSongs = Array(queue[startQueueIndex...].prefix(compositor.maxVisibleRows))
+        let allSongs = Array(queue[startQueueIndex...])
 
         var newOrder: [(queueIndex: Int, data: SongCardData)] = []
         var existingGiftChanged: [(queueIndex: Int, data: SongCardData)] = []
         var newRowsNeedTexture: [(queueIndex: Int, data: SongCardData)] = []
 
-        for (i, song) in visibleSongs.enumerated() {
+        for (i, song) in allSongs.enumerated() {
             let queueIndex = startQueueIndex + i
             newOrder.append((queueIndex: queueIndex, data: song))
 
