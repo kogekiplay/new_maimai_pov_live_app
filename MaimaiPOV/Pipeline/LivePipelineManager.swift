@@ -186,7 +186,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     DispatchQueue.main.async {
                         if index >= lockedEnd {
                             self.songCardManager.reorderQueueByGiftValue()
-                            self.refreshDisplayedCardsIfNeeded()
+                            self.reorderRightPanel()
                         }
                         self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                     }
@@ -213,7 +213,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     if index >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
-                        self.refreshDisplayedCardsIfNeeded()
+                        self.reorderRightPanel()
                     }
                 }
             }
@@ -299,10 +299,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             )
 
             DispatchQueue.main.async {
-                self.addSongToQueue(cardData)
                 if giftVal > 0 {
+                    self.songCardManager.addSong(cardData)
+                    self.refreshLeftPanel()
                     self.songCardManager.reorderQueueByGiftValue()
-                    self.refreshDisplayedCardsIfNeeded()
+                    self.reorderRightPanel()
+                } else {
+                    self.addSongToQueue(cardData)
                 }
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
                 self.debug.log("[点歌] ✅ \(msg.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(candidates.matchKind?.rawValue ?? "?")]\(giftTag)")
@@ -333,7 +336,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中，SC金额累加到送礼池")
                     if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
-                        self.refreshDisplayedCardsIfNeeded()
+                        self.reorderRightPanel()
                     }
                 }
                 return
@@ -394,10 +397,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             )
 
             DispatchQueue.main.async {
-                self.addSongToQueue(cardData)
                 if giftVal > 0 {
+                    self.songCardManager.addSong(cardData)
+                    self.refreshLeftPanel()
                     self.songCardManager.reorderQueueByGiftValue()
-                    self.refreshDisplayedCardsIfNeeded()
+                    self.reorderRightPanel()
+                } else {
+                    self.addSongToQueue(cardData)
                 }
                 self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [🎁\(giftVal)]")
             }
@@ -412,7 +418,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     if index >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
-                        self.refreshDisplayedCardsIfNeeded()
+                        self.reorderRightPanel()
                     }
                     self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                 }
@@ -1100,6 +1106,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         refreshLeftPanel()
     }
 
+    func onSongRemoved(queueIndex: Int) {
+        rightPanelCompositor?.removeRow(queueIndex: queueIndex)
+        rightPanelRenderer?.invalidateRow(queueIndex: queueIndex)
+    }
+
     func triggerSongCardSwitch() {
         let skippedName = songCardManager.currentSong?.requesterName
 
@@ -1481,7 +1492,100 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
-    private func refreshRightPanel() {
+    private func reorderRightPanel() {
+        guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
+
+        let ci = songCardManager.currentIndex
+        let queue = songCardManager.queue
+        let startQueueIndex = ci + 2
+
+        guard startQueueIndex < queue.count else {
+            compositor.clearAll()
+            return
+        }
+
+        let visibleSongs = Array(queue[startQueueIndex...].prefix(compositor.maxVisibleRows))
+
+        var newOrder: [(queueIndex: Int, data: SongCardData)] = []
+        var needRenderIndices: [Int] = []
+
+        for (i, song) in visibleSongs.enumerated() {
+            let queueIndex = startQueueIndex + i
+            newOrder.append((queueIndex: queueIndex, data: song))
+
+            let existingData = compositor.getRowDataForQueueIndex(queueIndex)
+            let hasCachedTexture = renderer.getCachedRow(queueIndex: queueIndex) != nil
+
+            if existingData == nil || !hasCachedTexture {
+                needRenderIndices.append(queueIndex)
+            } else if let existing = existingData, existing.giftValue != song.giftValue {
+                needRenderIndices.append(queueIndex)
+            }
+        }
+
+        if needRenderIndices.isEmpty {
+            var allTextures: [Int: MTLTexture] = [:]
+            for item in newOrder {
+                if let cachedTex = renderer.getCachedRow(queueIndex: item.queueIndex) {
+                    allTextures[item.queueIndex] = cachedTex
+                }
+            }
+            compositor.reorderRows(newOrder: newOrder, textures: allTextures)
+            return
+        }
+
+        var updatedTextures: [Int: MTLTexture] = [:]
+        let group = DispatchGroup()
+        let lock = NSLock()
+
+        for queueIndex in needRenderIndices {
+            let songIndex = queueIndex - startQueueIndex
+            guard songIndex >= 0, songIndex < visibleSongs.count else { continue }
+            let song = visibleSongs[songIndex]
+
+            group.enter()
+            if let musicId = song.musicId {
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
+                    DispatchQueue.main.async {
+                        renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
+                            if let texture = texture {
+                                lock.lock()
+                                updatedTextures[queueIndex] = texture
+                                lock.unlock()
+                            }
+                            group.leave()
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
+                        if let texture = texture {
+                            lock.lock()
+                            updatedTextures[queueIndex] = texture
+                            lock.unlock()
+                        }
+                        group.leave()
+                    }
+                }
+            }
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            guard self != nil else { return }
+            var allTextures: [Int: MTLTexture] = [:]
+            for item in newOrder {
+                if let tex = updatedTextures[item.queueIndex] {
+                    allTextures[item.queueIndex] = tex
+                } else if let cachedTex = renderer.getCachedRow(queueIndex: item.queueIndex) {
+                    allTextures[item.queueIndex] = cachedTex
+                }
+            }
+            compositor.reorderRows(newOrder: newOrder, textures: allTextures)
+        }
+    }
+
+    func refreshRightPanel() {
         guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
 
         let ci = songCardManager.currentIndex

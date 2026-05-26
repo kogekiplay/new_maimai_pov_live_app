@@ -3,6 +3,7 @@ import Foundation
 protocol SongCardDataProvider: AnyObject {
     func onCurrentSongChanged(_ song: SongCardData)
     func onQueueUpdated(_ songs: [SongCardData])
+    func onSongRemoved(queueIndex: Int)
 }
 
 class SongCardManager: ObservableObject {
@@ -82,23 +83,29 @@ class SongCardManager: ObservableObject {
     func removeSong(at index: Int) {
         guard index >= 0, index < queue.count else { return }
         let removedName = queue[index].requesterName
+        let wasInRightPanel = index >= currentIndex + 2
         queue.remove(at: index)
         if let name = removedName {
             resetGiftPool(name: name)
         }
-        delegate?.onQueueUpdated(queue)
 
         if queue.isEmpty {
             currentIndex = -1
         } else if index < currentIndex {
             currentIndex = max(0, currentIndex - 1)
-            delegate?.onCurrentSongChanged(currentSong!)
         } else if index == currentIndex {
             if currentIndex >= queue.count {
-                queue.removeAll()
-                currentIndex = -1
-                delegate?.onQueueUpdated([])
-            } else {
+                currentIndex = queue.count - 1
+            }
+        }
+
+        if wasInRightPanel {
+            delegate?.onSongRemoved(queueIndex: index)
+        }
+        delegate?.onQueueUpdated(queue)
+
+        if !queue.isEmpty {
+            if index < currentIndex + 1 || index == currentIndex {
                 delegate?.onCurrentSongChanged(currentSong!)
             }
         }

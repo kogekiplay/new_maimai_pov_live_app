@@ -111,16 +111,16 @@ class QueueAPIHandler {
             }
 
             let ci = manager.currentIndex
-            let needsRefresh = index <= ci + 2
+            let wasInLockedArea = index <= ci + 1
 
             manager.removeSong(at: index)
 
             if manager.queue.isEmpty {
-                pipeline.songCardCompositor?.clearCards()
-                pipeline.refreshLeftPanel()
+                pipeline.songCardCompositor?.clearAll()
+                pipeline.leftPanelCompositor?.clearAll()
+                pipeline.rightPanelCompositor?.clearAll()
+            } else if wasInLockedArea {
                 pipeline.refreshRightPanel()
-            } else if needsRefresh {
-                pipeline.refreshDisplayedCardsIfNeeded()
             }
 
             success = true

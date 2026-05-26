@@ -133,6 +133,7 @@ class RightPanelCompositor {
 
         for i in 1..<rows.count {
             let targetPosY = rowPosY(rowListIndex: i - 1, scrollOffset: scrollOffset)
+            rows[i].queueIndex -= 1
             animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.4, delay: 0)
         }
 
@@ -243,6 +244,7 @@ class RightPanelCompositor {
 
         for i in (removeIndex + 1)..<rows.count {
             let targetPosY = rowPosY(rowListIndex: i - 1, scrollOffset: scrollOffset)
+            rows[i].queueIndex -= 1
             animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.4, delay: 0)
         }
     }
@@ -273,6 +275,10 @@ class RightPanelCompositor {
         return rows.count
     }
 
+    func getRowDataForQueueIndex(_ queueIndex: Int) -> SongCardData? {
+        return rows.first(where: { $0.queueIndex == queueIndex })?.data
+    }
+
     func updateAnimations() {
         let now = CACurrentMediaTime()
 
@@ -298,7 +304,6 @@ class RightPanelCompositor {
 
                 if rows[i].shouldRemoveAfterAnimation {
                     rows[i].texture = nil
-                    rows[i].shouldRemoveAfterAnimation = false
                 }
 
                 if !rows[i].pendingAnimations.isEmpty {
@@ -308,7 +313,7 @@ class RightPanelCompositor {
             }
         }
 
-        rows.removeAll { $0.shouldRemoveAfterAnimation && !$0.isAnimating && $0.texture == nil }
+        rows.removeAll { $0.texture == nil && !$0.isAnimating }
     }
 
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
