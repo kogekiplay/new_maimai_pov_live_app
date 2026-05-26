@@ -93,6 +93,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var canvasComposer: CanvasComposer?
     var leftPanelRenderer: LeftPanelRenderer?
     var leftPanelCompositor: LeftPanelCompositor?
+    var rightPanelRenderer: RightPanelRenderer?
+    var rightPanelCompositor: RightPanelCompositor?
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
     let giftPermissionManager = GiftPermissionManager()
@@ -504,6 +506,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
         }
 
+        self.rightPanelRenderer = RightPanelRenderer(device: device)
+        self.rightPanelCompositor = RightPanelCompositor(device: device)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.refreshRightPanel()
+        }
+
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
             width: Config.outputWidth,
@@ -717,6 +725,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     if let panel = self.leftPanelCompositor, panel.enabled {
                         panel.updateAnimations()
                         panel.encode(into: encoder, outputTexture: writeBuffer.texture)
+                    }
+
+                    if let rpc = self.rightPanelCompositor, rpc.enabled {
+                        rpc.updateAnimations()
+                        rpc.encode(into: encoder, outputTexture: writeBuffer.texture)
                     }
 
                     encoder.endEncoding()
@@ -1082,6 +1095,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func onQueueUpdated(_ songs: [SongCardData]) {
         refreshLeftPanel()
+        refreshRightPanel()
     }
 
     func triggerSongCardSwitch() {
@@ -1416,6 +1430,58 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             renderer.renderAnnouncement(Config.announcementText) { texture in
                 if let texture = texture {
                     compositor.setAnnouncement(texture: texture)
+                }
+            }
+        }
+    }
+
+    private func refreshRightPanel() {
+        guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
+
+        let ci = songCardManager.currentIndex
+        let queue = songCardManager.queue
+        let startQueueIndex = ci + 2
+
+        guard startQueueIndex < queue.count else {
+            compositor.clearAll()
+            return
+        }
+
+        let visibleSongs = Array(queue[startQueueIndex...].prefix(compositor.maxVisibleRows))
+
+        renderer.renderTitle { [weak self] texture in
+            guard let self = self else { return }
+            self.rightPanelCompositor?.updateTitleTexture(texture)
+
+            var covers: [Int: String] = [:]
+            let group = DispatchGroup()
+            let lock = NSLock()
+
+            for (i, song) in visibleSongs.enumerated() {
+                guard let musicId = song.musicId else { continue }
+                let qIdx = startQueueIndex + i
+                group.enter()
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
+                    lock.lock()
+                    covers[qIdx] = base64
+                    lock.unlock()
+                    group.leave()
+                }
+            }
+
+            group.notify(queue: .main) { [weak self] in
+                guard let self = self else { return }
+                renderer.renderVisibleRows(
+                    songs: visibleSongs,
+                    startQueueIndex: startQueueIndex,
+                    covers: covers
+                ) { [weak self] textures in
+                    guard let self = self else { return }
+                    self.rightPanelCompositor?.setRows(
+                        textures: textures,
+                        data: visibleSongs,
+                        startQueueIndex: startQueueIndex
+                    )
                 }
             }
         }
