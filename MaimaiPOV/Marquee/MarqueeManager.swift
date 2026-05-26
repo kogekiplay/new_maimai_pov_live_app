@@ -3,106 +3,85 @@ import Metal
 
 class MarqueeManager {
     private var queue: [MarqueeItem] = []
+    private var activeItems: [ActiveMarquee] = []
 
-    private var slots: [MarqueeSlot] = []
-    let maxSlots: Int = 3
-    let slotGap: Int = 8
+    struct ActiveMarquee {
+        let item: MarqueeItem
+        var scrollX: Float
+        var isFullyVisible: Bool
+    }
 
     let scrollSpeed: Float = Config.marqueeSpeed
     let barHeight: Int = 64
     let barBottomPadding: Int = 16
+    let itemGap: Float = 40
 
     var barY: Int { Config.outputHeight - barHeight - barBottomPadding }
 
-    struct MarqueeSlot {
-        var item: MarqueeItem
-        var scrollX: Float
-        var yPosition: Int
-        var state: MarqueeState
-
-        enum MarqueeState {
-            case rendering
-            case scrolling
-        }
-    }
-
-    init() {
-        slots = []
-    }
-
-    func slotY(for index: Int) -> Int {
-        return barY - index * (barHeight + slotGap)
-    }
-
     func enqueue(_ item: MarqueeItem) {
-        if slots.count < maxSlots {
-            let slotIndex = slots.count
-            let slot = MarqueeSlot(
-                item: item,
-                scrollX: 0,
-                yPosition: slotY(for: slotIndex),
-                state: .rendering
-            )
-            slots.append(slot)
+        if canStartNext() {
+            let startX = Float(Config.outputWidth)
+            let active = ActiveMarquee(item: item, scrollX: startX, isFullyVisible: false)
+            activeItems.append(active)
         } else {
             queue.append(item)
         }
     }
 
     func setCurrentTexture(_ texture: MTLTexture, contentWidth: Int, for itemId: UUID) {
-        guard let slotIndex = slots.firstIndex(where: { $0.item.id == itemId }) else { return }
-        slots[slotIndex].item.texture = texture
-        slots[slotIndex].item.contentWidth = contentWidth
-        if slots[slotIndex].state == .rendering {
-            slots[slotIndex].scrollX = Float(Config.outputWidth)
-            slots[slotIndex].state = .scrolling
+        if let index = activeItems.firstIndex(where: { $0.item.id == itemId }) {
+            activeItems[index].item.texture = texture
+            activeItems[index].item.contentWidth = contentWidth
         }
     }
 
     func updateAnimations() {
-        var completedIndices: [Int] = []
-
-        for i in 0..<slots.count {
-            let slot = slots[i]
-            if slot.state == .scrolling {
-                slots[i].scrollX -= scrollSpeed
-                if slots[i].scrollX < -Float(slots[i].item.contentWidth) {
-                    completedIndices.append(i)
-                }
+        for i in 0..<activeItems.count {
+            activeItems[i].scrollX -= scrollSpeed
+            if !activeItems[i].isFullyVisible,
+               let cw = activeItems[i].item.texture != nil ? activeItems[i].item.contentWidth : 0,
+               cw > 0,
+               activeItems[i].scrollX + Float(cw) <= Float(Config.outputWidth) {
+                activeItems[i].isFullyVisible = true
             }
         }
 
-        for i in completedIndices.reversed() {
-            slots.remove(at: i)
-            if let next = queue.first {
-                queue.removeFirst()
-                let newSlotIndex = i
-                let slot = MarqueeSlot(
-                    item: next,
-                    scrollX: 0,
-                    yPosition: slotY(for: newSlotIndex),
-                    state: .rendering
-                )
-                if newSlotIndex < slots.count {
-                    slots.insert(slot, at: newSlotIndex)
-                } else {
-                    slots.append(slot)
-                }
-            }
+        while let first = activeItems.first,
+              let cw = first.item.texture != nil ? first.item.contentWidth : 0,
+              cw > 0,
+              first.scrollX < -Float(cw) {
+            activeItems.removeFirst()
         }
 
-        for i in 0..<slots.count {
-            slots[i].yPosition = slotY(for: i)
+        tryDequeueNext()
+    }
+
+    private func canStartNext() -> Bool {
+        if activeItems.isEmpty { return true }
+        guard let last = activeItems.last else { return true }
+        return last.isFullyVisible
+    }
+
+    private func tryDequeueNext() {
+        guard !queue.isEmpty else { return }
+        guard canStartNext() else { return }
+
+        let next = queue.removeFirst()
+        let startX: Float
+        if let last = activeItems.last, let lastCW = last.item.texture != nil ? last.item.contentWidth : 0, lastCW > 0 {
+            startX = last.scrollX + Float(lastCW) + itemGap
+        } else {
+            startX = Float(Config.outputWidth)
         }
+        let active = ActiveMarquee(item: next, scrollX: startX, isFullyVisible: false)
+        activeItems.append(active)
     }
 
-    var slotsToRender: [(item: MarqueeItem, yPosition: Int)] {
-        return slots.filter { $0.state == .rendering && $0.item.texture == nil }
-            .map { (item: $0.item, yPosition: $0.yPosition) }
+    var itemsToRender: [MarqueeItem] {
+        return activeItems.filter { $0.item.texture == nil }.map { $0.item }
     }
 
-    var activeSlots: [(item: MarqueeItem, scrollX: Float, yPosition: Int)] {
-        return slots.filter { $0.state == .scrolling }
-            .map { (item: $0.item, scrollX: $0.scrollX, yPosition: $0.yPosition) }
+    var visibleItems: [(item: MarqueeItem, scrollX: Float)] {
+        return activeItems.filter { $0.item.texture != nil }.map { (item: $0.item, scrollX: $0.scrollX) }
     }
 }

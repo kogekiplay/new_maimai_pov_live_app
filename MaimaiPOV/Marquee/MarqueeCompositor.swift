@@ -27,11 +27,11 @@ class MarqueeCompositor {
     }
 
     func updateAnimations() {
-        let toRender = manager.slotsToRender
-        for entry in toRender {
-            let (texture, contentWidth) = renderer.render(text: entry.item.text, type: entry.item.type)
+        let toRender = manager.itemsToRender
+        for item in toRender {
+            let (texture, contentWidth) = renderer.render(text: item.text, type: item.type)
             if let texture = texture {
-                manager.setCurrentTexture(texture, contentWidth: contentWidth, for: entry.item.id)
+                manager.setCurrentTexture(texture, contentWidth: contentWidth, for: item.id)
             }
         }
         manager.updateAnimations()
@@ -40,16 +40,16 @@ class MarqueeCompositor {
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
         guard enabled else { return }
 
-        let activeSlots = manager.activeSlots
-        guard !activeSlots.isEmpty else { return }
+        let items = manager.visibleItems
+        guard !items.isEmpty else { return }
 
-        for slot in activeSlots {
-            guard let textTexture = slot.item.texture else { continue }
+        for entry in items {
+            guard let textTexture = entry.item.texture else { continue }
 
             var uniforms = MarqueeUniforms()
-            uniforms.scrollX = slot.scrollX
-            uniforms.textY = Float(slot.yPosition)
-            uniforms.textWidth = Float(slot.item.contentWidth)
+            uniforms.scrollX = entry.scrollX
+            uniforms.textY = Float(manager.barY)
+            uniforms.textWidth = Float(entry.item.contentWidth)
             uniforms.textHeight = Float(manager.barHeight)
             uniforms.opacity = 1.0
             uniforms.outWidth = Float(Config.outputWidth)
