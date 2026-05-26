@@ -1,4 +1,5 @@
 import Foundation
+import Metal
 
 class MarqueeManager {
     private var queue: [MarqueeItem] = []
