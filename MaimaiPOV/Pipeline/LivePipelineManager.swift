@@ -1443,13 +1443,19 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     private func addRightPanelRow(song: SongCardData) {
-        guard rightPanelRenderer != nil, rightPanelCompositor != nil else { return }
+        guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
 
         let ci = songCardManager.currentIndex
         let startQueueIndex = ci + 2
         let queueIndex = songCardManager.queue.count - 1
 
         guard queueIndex >= startQueueIndex else { return }
+
+        if !compositor.hasTitleTexture {
+            renderer.renderTitle { [weak self] texture in
+                self?.rightPanelCompositor?.updateTitleTexture(texture)
+            }
+        }
 
         if let musicId = song.musicId {
             CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
@@ -1458,7 +1464,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     self.rightPanelRenderer?.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { [weak self] _, texture in
                         guard let self = self, let texture = texture else { return }
                         self.rightPanelCompositor?.addRowAtBottom(texture: texture, data: song, queueIndex: queueIndex)
-                        self.rightPanelCompositor?.scrollToBottom(totalRows: self.songCardManager.queue.count - startQueueIndex)
                     }
                 }
             }
@@ -1468,7 +1473,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 self.rightPanelRenderer?.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { [weak self] _, texture in
                     guard let self = self, let texture = texture else { return }
                     self.rightPanelCompositor?.addRowAtBottom(texture: texture, data: song, queueIndex: queueIndex)
-                    self.rightPanelCompositor?.scrollToBottom(totalRows: self.songCardManager.queue.count - startQueueIndex)
                 }
             }
         }
@@ -1538,15 +1542,32 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             return
         }
 
-        let allSongs = Array(queue[startQueueIndex...])
-        let bottomQueueIndex = startQueueIndex + allSongs.count - 1
-        let bottomSong = allSongs.last
+        let rightPanelSongCount = queue.count - startQueueIndex
+        let currentRowCount = compositor.currentRowCount
+        let needsNewBottom = rightPanelSongCount > (currentRowCount - 1)
 
-        if let bottomSong = bottomSong, let musicId = bottomSong.musicId {
-            CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
-                guard let self = self else { return }
-                DispatchQueue.main.async {
-                    self.rightPanelRenderer?.renderRow(data: bottomSong, queueIndex: bottomQueueIndex, coverBase64: base64) { [weak self] _, texture in
+        if needsNewBottom {
+            let bottomQueueIndex = startQueueIndex + rightPanelSongCount - 1
+            let bottomSong = queue[bottomQueueIndex]
+
+            if let musicId = bottomSong.musicId {
+                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
+                    guard let self = self else { return }
+                    DispatchQueue.main.async {
+                        self.rightPanelRenderer?.renderRow(data: bottomSong, queueIndex: bottomQueueIndex, coverBase64: base64) { [weak self] _, texture in
+                            guard let self = self else { return }
+                            self.rightPanelCompositor?.switchToNext(
+                                newBottomRowTexture: texture,
+                                newBottomRowData: bottomSong,
+                                newBottomQueueIndex: bottomQueueIndex
+                            )
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.rightPanelRenderer?.renderRow(data: bottomSong, queueIndex: bottomQueueIndex, coverBase64: nil) { [weak self] _, texture in
                         guard let self = self else { return }
                         self.rightPanelCompositor?.switchToNext(
                             newBottomRowTexture: texture,
@@ -1554,18 +1575,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                             newBottomQueueIndex: bottomQueueIndex
                         )
                     }
-                }
-            }
-        } else if let bottomSong = bottomSong {
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.rightPanelRenderer?.renderRow(data: bottomSong, queueIndex: bottomQueueIndex, coverBase64: nil) { [weak self] _, texture in
-                    guard let self = self else { return }
-                    self.rightPanelCompositor?.switchToNext(
-                        newBottomRowTexture: texture,
-                        newBottomRowData: bottomSong,
-                        newBottomQueueIndex: bottomQueueIndex
-                    )
                 }
             }
         } else {

@@ -101,6 +101,10 @@ class RightPanelCompositor {
         titleTexture = texture
     }
 
+    var hasTitleTexture: Bool {
+        return titleTexture != nil
+    }
+
     func setRows(textures: [Int: MTLTexture], data: [SongCardData], startQueueIndex: Int) {
         interruptCurrentAnimations()
         rows.removeAll()
@@ -263,6 +267,10 @@ class RightPanelCompositor {
     func clearAll() {
         rows.removeAll()
         scrollOffset = 0
+    }
+
+    var currentRowCount: Int {
+        return rows.count
     }
 
     func updateAnimations() {
