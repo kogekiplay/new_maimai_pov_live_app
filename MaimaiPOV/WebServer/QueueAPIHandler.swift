@@ -115,7 +115,11 @@ class QueueAPIHandler {
 
             manager.removeSong(at: index)
 
-            if needsRefresh {
+            if manager.queue.isEmpty {
+                pipeline.songCardCompositor?.clearCards()
+                pipeline.refreshLeftPanel()
+                pipeline.refreshRightPanel()
+            } else if needsRefresh {
                 pipeline.refreshDisplayedCardsIfNeeded()
             }
 

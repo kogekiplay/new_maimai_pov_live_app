@@ -95,9 +95,10 @@ class SongCardManager: ObservableObject {
             delegate?.onCurrentSongChanged(currentSong!)
         } else if index == currentIndex {
             if currentIndex >= queue.count {
-                currentIndex = queue.count - 1
-            }
-            if currentIndex >= 0 {
+                queue.removeAll()
+                currentIndex = -1
+                delegate?.onQueueUpdated([])
+            } else {
                 delegate?.onCurrentSongChanged(currentSong!)
             }
         }

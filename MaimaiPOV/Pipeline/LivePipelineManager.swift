@@ -325,8 +325,16 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
 
             if songCardManager.hasSongInQueue(name: name) {
+                let coinValue = sc.price * 1000
+                songCardManager.userGiftPool[name, default: 0] += coinValue
+                songCardManager.updateGiftValue(name: name, delta: coinValue)
+                let lockedEnd = songCardManager.lockedEndIndex
                 DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中")
+                    self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中，SC金额累加到送礼池")
+                    if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
+                        self.songCardManager.reorderQueueByGiftValue()
+                        self.refreshDisplayedCardsIfNeeded()
+                    }
                 }
                 return
             }
@@ -1155,7 +1163,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if !compositor.cards.isEmpty {
                 compositor.switchToNext()
             }
-            songCardManager.clearQueue()
+            clearSongQueue()
             return
         }
 
