@@ -1118,7 +1118,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                                 if let name = skippedName {
                                     self.songCardManager.resetGiftPool(name: name)
                                 }
-                                self.refreshRightPanel()
+                                self.switchRightPanelToNext()
                             }
                         }
                     }
@@ -1132,7 +1132,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                             if let name = skippedName {
                                 self.songCardManager.resetGiftPool(name: name)
                             }
-                            self.refreshRightPanel()
+                            self.switchRightPanelToNext()
                         }
                     }
                 }
@@ -1146,7 +1146,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         if let name = skippedName {
                             self.songCardManager.resetGiftPool(name: name)
                         }
-                        self.refreshRightPanel()
+                        self.switchRightPanelToNext()
                     }
                 }
             }
@@ -1204,7 +1204,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             refreshLeftPanel()
         }
 
-        refreshRightPanel()
+        addRightPanelRow(song: song)
 
         guard let compositor = songCardCompositor else { return }
 
@@ -1443,6 +1443,38 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
+    private func addRightPanelRow(song: SongCardData) {
+        guard rightPanelRenderer != nil, rightPanelCompositor != nil else { return }
+
+        let ci = songCardManager.currentIndex
+        let startQueueIndex = ci + 2
+        let queueIndex = songCardManager.queue.count - 1
+
+        guard queueIndex >= startQueueIndex else { return }
+
+        if let musicId = song.musicId {
+            CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    self.rightPanelRenderer?.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { [weak self] _, texture in
+                        guard let self = self, let texture = texture else { return }
+                        self.rightPanelCompositor?.addRowAtBottom(texture: texture, data: song, queueIndex: queueIndex)
+                        self.rightPanelCompositor?.scrollToBottom(totalRows: self.songCardManager.queue.count - startQueueIndex)
+                    }
+                }
+            }
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.rightPanelRenderer?.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { [weak self] _, texture in
+                    guard let self = self, let texture = texture else { return }
+                    self.rightPanelCompositor?.addRowAtBottom(texture: texture, data: song, queueIndex: queueIndex)
+                    self.rightPanelCompositor?.scrollToBottom(totalRows: self.songCardManager.queue.count - startQueueIndex)
+                }
+            }
+        }
+    }
+
     private func refreshRightPanel() {
         guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
 
@@ -1492,6 +1524,53 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     )
                 }
             }
+        }
+    }
+
+    private func switchRightPanelToNext() {
+        guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
+
+        let ci = songCardManager.currentIndex
+        let queue = songCardManager.queue
+        let startQueueIndex = ci + 2
+
+        guard startQueueIndex < queue.count else {
+            compositor.clearAll()
+            return
+        }
+
+        let allSongs = Array(queue[startQueueIndex...])
+        let bottomQueueIndex = startQueueIndex + allSongs.count - 1
+        let bottomSong = allSongs.last
+
+        if let bottomSong = bottomSong, let musicId = bottomSong.musicId {
+            CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    self.rightPanelRenderer?.renderRow(data: bottomSong, queueIndex: bottomQueueIndex, coverBase64: base64) { [weak self] _, texture in
+                        guard let self = self else { return }
+                        self.rightPanelCompositor?.switchToNext(
+                            newBottomRowTexture: texture,
+                            newBottomRowData: bottomSong,
+                            newBottomQueueIndex: bottomQueueIndex
+                        )
+                    }
+                }
+            }
+        } else if let bottomSong = bottomSong {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.rightPanelRenderer?.renderRow(data: bottomSong, queueIndex: bottomQueueIndex, coverBase64: nil) { [weak self] _, texture in
+                    guard let self = self else { return }
+                    self.rightPanelCompositor?.switchToNext(
+                        newBottomRowTexture: texture,
+                        newBottomRowData: bottomSong,
+                        newBottomQueueIndex: bottomQueueIndex
+                    )
+                }
+            }
+        } else {
+            compositor.switchToNext(newBottomRowTexture: nil, newBottomRowData: nil, newBottomQueueIndex: -1)
         }
     }
 }
