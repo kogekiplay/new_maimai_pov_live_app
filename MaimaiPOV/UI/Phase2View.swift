@@ -525,14 +525,6 @@ struct Phase2View: View {
                 }
 
                 HStack {
-                    Text("点歌权限").font(.caption).frame(width: 55, alignment: .leading)
-                    Text("\(pipeline.giftPermissionManager.activePermissionCount) 人")
-                        .font(.caption)
-                        .foregroundColor(.yellow)
-                    Spacer()
-                }
-
-                HStack {
                     Text("测试模式").font(.caption).frame(width: 55, alignment: .leading)
                     Toggle("", isOn: $pipeline.songRequestTestMode)
                         .labelsHidden()

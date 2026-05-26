@@ -89,11 +89,6 @@ class WebServerManager {
             return self.queueHandler.remove(request: request)
         }
 
-        server["/api/queue/move"] = { [weak self] request in
-            guard let self = self else { return .internalServerError }
-            return self.queueHandler.move(request: request)
-        }
-
         server["/api/queue/add"] = { [weak self] request in
             guard let self = self else { return .internalServerError }
             return self.queueHandler.add(request: request)
@@ -107,26 +102,6 @@ class WebServerManager {
         server["/api/cover/:musicId"] = { [weak self] request in
             guard let self = self else { return .internalServerError }
             return self.serveCover(request: request)
-        }
-
-        server["/api/debug/permissions"] = { [weak self] request in
-            guard let self = self else { return .internalServerError }
-            switch request.method {
-            case "GET":
-                return self.debugHandler.getPermissions()
-            default:
-                return .badRequest(.text("Method not allowed"))
-            }
-        }
-
-        server["/api/debug/permissions/add"] = { [weak self] request in
-            guard let self = self else { return .internalServerError }
-            return self.debugHandler.addPermission(request: request)
-        }
-
-        server["/api/debug/permissions/clear"] = { [weak self] _ in
-            guard let self = self else { return .internalServerError }
-            return self.debugHandler.clearPermissions()
         }
 
         server["/api/debug/simulate/gift"] = { [weak self] request in

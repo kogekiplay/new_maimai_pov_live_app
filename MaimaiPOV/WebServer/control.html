@@ -35,11 +35,9 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 .card-info .difficulty{font-weight:600}
 .card-info .bpm{color:#6b8ba8}
 .card-info .requester{margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px}
-.card-actions{display:flex;flex-direction:column;justify-content:center;gap:3px;padding:6px 6px;flex-shrink:0}
+.card-actions{display:flex;align-items:center;justify-content:center;padding:6px 6px;flex-shrink:0}
 .card-actions button{width:26px;height:26px;border:none;border-radius:6px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:opacity 0.15s}
 .card-actions button:active{opacity:0.6}
-.btn-up{background:rgba(192,132,252,0.2);color:#c084fc}
-.btn-down{background:rgba(192,132,252,0.2);color:#c084fc}
 .btn-remove{background:rgba(246,72,97,0.2);color:#f64861}
 .bottom-bar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:8px;padding:12px 16px;background:rgba(26,10,46,0.95);backdrop-filter:blur(10px);z-index:10}
 .bottom-bar button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.15s}
@@ -83,15 +81,6 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 .debug-toggle .arrow.open{transform:rotate(180deg)}
 .debug-panel{display:none}
 .debug-panel.open{display:block}
-.perm-list{margin-bottom:12px}
-.perm-item{background:rgba(45,27,78,0.6);border-radius:8px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px;font-size:11px}
-.perm-item .perm-name{color:#f0e6ff;font-weight:600;min-width:60px}
-.perm-item .perm-chances{color:#8b7ba8}
-.perm-item .perm-chances span{font-weight:600}
-.perm-item .perm-normal{color:#22bb5b}
-.perm-item .perm-priority{color:#ffc107}
-.perm-item .perm-expiry{color:#6b8ba8;margin-left:auto;font-size:10px}
-.perm-empty{color:#6b5b8a;text-align:center;padding:12px;font-size:12px}
 .debug-row{display:flex;gap:6px;margin-bottom:8px;align-items:center}
 .debug-row label{font-size:11px;color:#8b7ba8;min-width:50px}
 .debug-row input,.debug-row select{flex:1;padding:6px 10px;border:1px solid rgba(192,132,252,0.3);border-radius:6px;background:rgba(45,27,78,0.6);color:#f0e6ff;font-size:12px;outline:none}
@@ -129,7 +118,6 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 <span class="arrow" id="debugArrow">▼</span>
 </div>
 <div class="debug-panel" id="debugPanel">
-<div class="perm-list" id="permList"><div class="perm-empty">加载中...</div></div>
 <div class="debug-row">
 <label>用户名</label>
 <input type="text" id="debugUsername" placeholder="输入用户名" />
@@ -149,8 +137,6 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 <button class="debug-btn debug-btn-sc" onclick="simSCSong()">🎤 模拟SC点歌</button>
 </div>
 <div class="debug-btns">
-<button class="debug-btn debug-btn-refresh" onclick="fetchPerms()">🔄 刷新权限</button>
-<button class="debug-btn debug-btn-clear" onclick="clearPerms()">🗑 清空权限</button>
 <button class="debug-btn debug-btn-refresh" onclick="fetchGiftPool()">🎁 刷新送礼池</button>
 </div>
 <div class="perm-list" id="giftPoolList" style="margin-top:8px"><div class="perm-empty">点击"刷新送礼池"查看</div></div>
@@ -272,8 +258,6 @@ if(s.giftValue>0)html+='<span style="color:#22bb5b;font-size:10px">🎁'+(s.gift
 html+='</div>';
 html+='</div>';
 html+='<div class="card-actions">';
-html+='<button class="btn-up" onclick="moveSong('+i+',\'up\')" '+(i===0?'disabled':'')+'>▲</button>';
-html+='<button class="btn-down" onclick="moveSong('+i+',\'down\')" '+(i===data.queue.length-1?'disabled':'')+'>▼</button>';
 html+='<button class="btn-remove" onclick="removeSong('+i+')">✕</button>';
 html+='</div>';
 html+='</div>';
@@ -320,7 +304,6 @@ xhr.send(body?JSON.stringify(body):'{}');
 function skipSong(){postAction('/api/queue/skip')}
 function clearQueue(){postAction('/api/queue/clear')}
 function removeSong(idx){postAction('/api/queue/remove',{index:idx})}
-function moveSong(idx,dir){postAction('/api/queue/move',{index:idx,direction:dir})}
 function doSearch(){
 var q=document.getElementById('searchInput').value.trim();
 if(!q)return;
@@ -415,42 +398,7 @@ arrow.classList.remove('open');
 }else{
 panel.classList.add('open');
 arrow.classList.add('open');
-fetchPerms();
 }
-}
-function fetchPerms(){
-var xhr=new XMLHttpRequest();
-xhr.open('GET','/api/debug/permissions',true);
-xhr.onload=function(){
-if(xhr.status===200){
-try{renderPerms(JSON.parse(xhr.responseText))}catch(e){}
-}
-};
-xhr.send();
-}
-function renderPerms(data){
-var container=document.getElementById('permList');
-if(!data.permissions||data.permissions.length===0){
-container.innerHTML='<div class="perm-empty">暂无活跃权限</div>';
-return;
-}
-var html='';
-for(var i=0;i<data.permissions.length;i++){
-var p=data.permissions[i];
-html+='<div class="perm-item">';
-html+='<span class="perm-name">'+escHtml(p.username||p.uid)+'</span>';
-html+='<span class="perm-chances">';
-if(p.remainingChances>0)html+='<span class="perm-normal">普通×'+p.remainingChances+'</span> ';
-if(p.priorityChances>0)html+='<span class="perm-priority">插队×'+p.priorityChances+'</span>';
-if(p.remainingChances<=0&&p.priorityChances<=0){
-if(p.accumulatedCoin>0)html+='<span style="color:#6b8ba8">累积'+p.accumulatedCoin+'币</span>';
-else html+='无次数';
-}
-html+='</span>';
-html+='<span class="perm-expiry">到期 '+escHtml(p.expiryDate||'')+'</span>';
-html+='</div>';
-}
-container.innerHTML=html;
 }
 function getDebugUsername(){
 return document.getElementById('debugUsername').value.trim()||'测试用户';
@@ -458,45 +406,29 @@ return document.getElementById('debugUsername').value.trim()||'测试用户';
 function simGift(){
 var name=getDebugUsername();
 postDebug('/api/debug/simulate/gift',{authorName:name,totalCoin:1000},function(){
-showToast('已模拟付费礼物 → +1普通权限');
-fetchPerms();
+showToast('已模拟付费礼物');
+fetchGiftPool();
 });
 }
 function simSC(){
 var name=getDebugUsername();
 postDebug('/api/debug/simulate/sc',{authorName:name,price:30,content:''},function(){
-showToast('已模拟SC≥30元 → +1插队权限');
-fetchPerms();
+showToast('已模拟SC≥30元');
+fetchGiftPool();
 });
 }
 function simSCSmall(){
 var name=getDebugUsername();
 postDebug('/api/debug/simulate/sc',{authorName:name,price:10,content:''},function(){
-showToast('已模拟SC<30元 → +1普通权限');
-fetchPerms();
+showToast('已模拟SC<30元');
+fetchGiftPool();
 });
 }
 function simMember(){
 var name=getDebugUsername();
 postDebug('/api/debug/simulate/member',{authorName:name},function(){
-showToast('已模拟上舰 → +1普通权限');
-fetchPerms();
-});
-}
-function addPerm(){
-var name=getDebugUsername();
-var normal=parseInt(document.getElementById('debugNormal').value)||0;
-var priority=parseInt(document.getElementById('debugPriority').value)||0;
-if(normal<=0&&priority<=0){showToast('请设置至少1次权限');return}
-postDebug('/api/debug/permissions/add',{uid:name,username:name,normalChances:normal,priorityChances:priority,source:'gift'},function(){
-showToast('已添加权限: 普通×'+normal+' 插队×'+priority);
-fetchPerms();
-});
-}
-function clearPerms(){
-postDebug('/api/debug/permissions/clear',{},function(){
-showToast('已清空所有权限');
-fetchPerms();
+showToast('已模拟上舰');
+fetchGiftPool();
 });
 }
 function simDanmaku(){

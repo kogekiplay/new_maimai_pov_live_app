@@ -4,75 +4,6 @@ import Swifter
 class DebugAPIHandler {
     weak var pipeline: LivePipelineManager?
 
-    func getPermissions() -> HttpResponse {
-        let sem = DispatchSemaphore(value: 0)
-        var result: [[String: Any]] = []
-
-        DispatchQueue.main.async { [weak self] in
-            guard let pipeline = self?.pipeline else {
-                sem.signal()
-                return
-            }
-            let perms = pipeline.giftPermissionManager.activePermissions()
-            let formatter = DateFormatter()
-            formatter.dateFormat = "HH:mm:ss"
-
-            for perm in perms {
-                result.append([
-                    "uid": perm.uid,
-                    "username": perm.username,
-                    "remainingChances": perm.remainingChances,
-                    "priorityChances": perm.priorityChances,
-                    "accumulatedCoin": perm.accumulatedCoin,
-                    "expiryDate": formatter.string(from: perm.expiryDate),
-                    "isExpired": perm.isExpired
-                ])
-            }
-            sem.signal()
-        }
-
-        sem.wait()
-        return .ok(.json(["permissions": result]))
-    }
-
-    func addPermission(request: HttpRequest) -> HttpResponse {
-        guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let uid = body["uid"] as? String else {
-            return .badRequest(.text("Missing 'uid'"))
-        }
-
-        let username = body["username"] as? String ?? uid
-        let normalChances = body["normalChances"] as? Int ?? 1
-        let priorityChances = body["priorityChances"] as? Int ?? 0
-        let sourceStr = body["source"] as? String ?? "gift"
-        let source = PermissionSource(rawValue: sourceStr) ?? .gift
-
-        let sem = DispatchSemaphore(value: 0)
-
-        DispatchQueue.main.async { [weak self] in
-            self?.pipeline?.giftPermissionManager.addPermission(
-                uid: uid, username: username, source: source,
-                normalChances: normalChances, priorityChances: priorityChances
-            )
-            sem.signal()
-        }
-
-        sem.wait()
-        return getPermissions()
-    }
-
-    func clearPermissions() -> HttpResponse {
-        let sem = DispatchSemaphore(value: 0)
-
-        DispatchQueue.main.async { [weak self] in
-            self?.pipeline?.giftPermissionManager.clearAll()
-            sem.signal()
-        }
-
-        sem.wait()
-        return .ok(.json(["success": true]))
-    }
-
     func simulateGift(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
               let authorName = body["authorName"] as? String else {
@@ -107,8 +38,6 @@ class DebugAPIHandler {
             )
 
             if let gift = gift {
-                pipeline.giftPermissionManager.handleGift(gift)
-
                 if gift.isPaidGift {
                     pipeline.songCardManager.userGiftPool[authorName, default: 0] += gift.totalCoin
                     if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {
@@ -171,8 +100,6 @@ class DebugAPIHandler {
             )
 
             if let sc = sc {
-                pipeline.giftPermissionManager.handleSuperChat(sc)
-
                 pipeline.handleSuperChatForSongRequest(sc)
 
                 result = [
@@ -224,8 +151,6 @@ class DebugAPIHandler {
             )
 
             if let member = member {
-                pipeline.giftPermissionManager.handleMember(member)
-
                 let coinValue = 198 * 1000
                 pipeline.songCardManager.userGiftPool[authorName, default: 0] += coinValue
                 if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {

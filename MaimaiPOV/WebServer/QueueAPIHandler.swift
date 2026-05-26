@@ -127,52 +127,6 @@ class QueueAPIHandler {
         return success ? getQueue() : .badRequest(.text("Invalid index"))
     }
 
-    func move(request: HttpRequest) -> HttpResponse {
-        guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let displayIndex = body["index"] as? Int,
-              let direction = body["direction"] as? String else {
-            return .badRequest(.text("Missing or invalid 'index' or 'direction'"))
-        }
-
-        guard direction == "up" || direction == "down" else {
-            return .badRequest(.text("Direction must be 'up' or 'down'"))
-        }
-
-        let sem = DispatchSemaphore(value: 0)
-        var success = false
-
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self, let pipeline = self.pipeline else {
-                sem.signal()
-                return
-            }
-            let index = self.realIndex(displayIndex)
-            let manager = pipeline.songCardManager
-            let ci = manager.currentIndex
-
-            let targetIndex = direction == "up" ? index - 1 : index + 1
-            guard index >= 0, index < manager.queue.count,
-                  targetIndex >= 0, targetIndex < manager.queue.count else {
-                sem.signal()
-                return
-            }
-
-            let needsRefresh = index <= ci + 2 || targetIndex <= ci + 2
-
-            manager.moveSong(at: index, direction: direction)
-
-            if needsRefresh {
-                pipeline.refreshDisplayedCardsIfNeeded()
-            }
-
-            success = true
-            sem.signal()
-        }
-
-        sem.wait()
-        return success ? getQueue() : .badRequest(.text("Cannot move song"))
-    }
-
     func add(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
               let musicId = body["musicId"] as? Int else {

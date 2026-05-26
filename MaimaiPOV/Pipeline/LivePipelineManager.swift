@@ -97,7 +97,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var rightPanelCompositor: RightPanelCompositor?
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
-    let giftPermissionManager = GiftPermissionManager()
     let songDatabase = SongDatabase()
     let danmakuParser = DanmakuParser()
     let webServerManager = WebServerManager()
@@ -174,7 +173,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         blivechatClient.onGift = { [weak self] msg in
             guard let self = self else { return }
-            self.giftPermissionManager.handleGift(msg)
             let coinType = msg.isPaidGift ? "付费" : "免费"
             DispatchQueue.main.async {
                 self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (\(coinType))")
@@ -198,7 +196,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         blivechatClient.onSuperChat = { [weak self] msg in
             guard let self = self else { return }
-            self.giftPermissionManager.handleSuperChat(msg)
             DispatchQueue.main.async {
                 self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
             }
@@ -207,7 +204,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         blivechatClient.onMember = { [weak self] msg in
             guard let self = self else { return }
-            self.giftPermissionManager.handleMember(msg)
             let name = msg.authorName
             let coinValue = 198 * 1000
             self.songCardManager.userGiftPool[name, default: 0] += coinValue
@@ -329,9 +325,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
 
             if songCardManager.hasSongInQueue(name: name) {
-                songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中，SC金额累积到送礼池")
+                    self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中")
                 }
                 return
             }
