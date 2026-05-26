@@ -287,7 +287,7 @@ class RightPanelCompositor {
     }
 
     var currentRowCount: Int {
-        return rows.count
+        return rows.filter { $0.texture != nil }.count
     }
 
     func getRowDataForId(_ id: UUID) -> SongCardData? {

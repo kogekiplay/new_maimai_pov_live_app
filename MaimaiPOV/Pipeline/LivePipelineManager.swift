@@ -299,14 +299,23 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             )
 
             DispatchQueue.main.async {
+                var entryData = cardData
+                entryData.giftValue = 0
+                self.addSongToQueue(entryData)
+
                 if giftVal > 0 {
-                    self.songCardManager.addSong(cardData)
-                    self.refreshLeftPanel()
-                    self.songCardManager.reorderQueueByGiftValue()
-                    self.reorderRightPanel()
-                } else {
-                    self.addSongToQueue(cardData)
+                    let giftAmount = giftVal
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                        guard let self = self else { return }
+                        self.songCardManager.updateGiftValue(name: name, delta: giftAmount)
+                        let lockedEnd = self.songCardManager.lockedEndIndex
+                        if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
+                            self.songCardManager.reorderQueueByGiftValue()
+                            self.reorderRightPanel()
+                        }
+                    }
                 }
+
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
                 self.debug.log("[点歌] ✅ \(msg.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(candidates.matchKind?.rawValue ?? "?")]\(giftTag)")
             }
@@ -397,14 +406,24 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             )
 
             DispatchQueue.main.async {
+                var entryData = cardData
+                entryData.giftValue = 0
+                self.addSongToQueue(entryData)
+
                 if giftVal > 0 {
-                    self.songCardManager.addSong(cardData)
-                    self.refreshLeftPanel()
-                    self.songCardManager.reorderQueueByGiftValue()
-                    self.reorderRightPanel()
-                } else {
-                    self.addSongToQueue(cardData)
+                    let giftAmount = giftVal
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                        guard let self = self else { return }
+                        self.songCardManager.updateGiftValue(name: name, delta: giftAmount)
+                        let lockedEnd = self.songCardManager.lockedEndIndex
+                        if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
+                            self.songCardManager.reorderQueueByGiftValue()
+                            self.reorderRightPanel()
+                        }
+                    }
                 }
+
+                let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
                 self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [🎁\(giftVal)]")
             }
 
