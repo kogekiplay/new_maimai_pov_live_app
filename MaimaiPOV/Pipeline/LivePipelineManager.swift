@@ -234,7 +234,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
-    private func postMarquee(_ text: String, type: MarqueeItem.MarqueeItemType) {
+    func postMarquee(_ text: String, type: MarqueeItem.MarqueeItemType) {
         guard let manager = marqueeManager else { return }
         let item = MarqueeItem(text: text, type: type)
         manager.enqueue(item)
