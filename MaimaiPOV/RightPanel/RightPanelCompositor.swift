@@ -103,7 +103,7 @@ class RightPanelCompositor {
     private var startGlobalOpacity: Float = 1.0
     private var globalOpacityAnimating: Bool = false
     private var globalOpacityAnimStartTime: CFTimeInterval = 0
-    private let globalOpacityAnimDuration: Float = 0.5
+    private var globalOpacityAnimDuration: Float = 0.5
 
     var currentScrollOffset: Float {
         return scrollOffset
