@@ -39,7 +39,7 @@ struct PanelCardState {
 
     var isAnimating: Bool = false
     var animStartTime: CFTimeInterval = 0
-    var animDuration: Float = 0.4
+    var animDuration: Float = 0.6
 
     var shouldRemoveAfterAnimation: Bool = false
     var pendingAnimations: [PanelAnimationStep] = []
@@ -204,7 +204,7 @@ class LeftPanelCompositor {
 
             currentSongState.isAnimating = true
             currentSongState.animStartTime = CACurrentMediaTime()
-            currentSongState.animDuration = 0.4
+            currentSongState.animDuration = 0.6
             currentSongState.shouldRemoveAfterAnimation = false
             currentSongState.pendingAnimations.removeAll()
         } else if !currentSongState.isAnimating {
@@ -237,8 +237,8 @@ class LeftPanelCompositor {
              nextSongState.targetOpacity = 1.0
 
              nextSongState.isAnimating = true
-             nextSongState.animStartTime = CACurrentMediaTime() + 0.1
-             nextSongState.animDuration = 0.4
+             nextSongState.animStartTime = CACurrentMediaTime() + 0.15
+             nextSongState.animDuration = 0.6
              nextSongState.shouldRemoveAfterAnimation = false
              nextSongState.pendingAnimations.removeAll()
          } else if !nextSongState.isAnimating {
@@ -265,7 +265,7 @@ class LeftPanelCompositor {
         outgoingStates.append(outgoingCurrent)
 
         var promotedNext = nextSongState
-        animateStateToSlot(&promotedNext, slot: Self.currentSongSlot, duration: 0.4, delay: 0.05)
+        animateStateToSlot(&promotedNext, slot: Self.currentSongSlot, duration: 0.6, delay: 0.075)
         currentSongState = promotedNext
 
         var newState = PanelCardState.atSlot(Self.nextSongSlot, texture: newNextTexture, data: newNextData)
@@ -282,8 +282,8 @@ class LeftPanelCompositor {
         newState.targetScale = Self.nextSongSlot.scale
         newState.targetOpacity = 1.0
         newState.isAnimating = true
-        newState.animStartTime = CACurrentMediaTime() + 0.1
-        newState.animDuration = 0.4
+        newState.animStartTime = CACurrentMediaTime() + 0.15
+        newState.animDuration = 0.6
         nextSongState = newState
     }
 
@@ -320,7 +320,7 @@ class LeftPanelCompositor {
         nextSongState.pendingAnimations.removeAll()
     }
 
-    private func animateStateToSlot(_ state: inout PanelCardState, slot: PanelSlot, duration: Float = 0.4, delay: Float = 0.0) {
+    private func animateStateToSlot(_ state: inout PanelCardState, slot: PanelSlot, duration: Float = 0.6, delay: Float = 0.0) {
         state.startPosX = state.currentPosX
         state.startPosY = state.currentPosY
         state.startScale = state.currentScale
@@ -338,7 +338,7 @@ class LeftPanelCompositor {
         state.pendingAnimations.removeAll()
     }
 
-    private func animateStateOutLeft(_ state: inout PanelCardState, duration: Float = 0.4) {
+    private func animateStateOutLeft(_ state: inout PanelCardState, duration: Float = 0.6) {
         state.startPosX = state.currentPosX
         state.startPosY = state.currentPosY
         state.startScale = state.currentScale

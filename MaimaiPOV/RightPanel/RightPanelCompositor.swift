@@ -23,7 +23,7 @@ struct RightPanelRowState {
 
     var isAnimating: Bool = false
     var animStartTime: CFTimeInterval = 0
-    var animDuration: Float = 0.4
+    var animDuration: Float = 0.6
 
     var shouldRemoveAfterAnimation: Bool = false
     var pendingAnimations: [RightPanelAnimationStep] = []
@@ -88,7 +88,7 @@ class RightPanelCompositor {
     private var targetScrollOffset: Float = 0
     private var startScrollOffset: Float = 0
     private var scrollAnimStartTime: CFTimeInterval = 0
-    private var scrollAnimDuration: Float = 0.3
+    private var scrollAnimDuration: Float = 0.45
     private var isScrollAnimating: Bool = false
     private var scrollCompletion: (() -> Void)?
 
@@ -111,7 +111,7 @@ class RightPanelCompositor {
     private var startGlobalOpacity: Float = 1.0
     private var globalOpacityAnimating: Bool = false
     private var globalOpacityAnimStartTime: CFTimeInterval = 0
-    private var globalOpacityAnimDuration: Float = 0.5
+    private var globalOpacityAnimDuration: Float = 0.75
 
     var currentScrollOffset: Float {
         return scrollOffset
@@ -174,13 +174,13 @@ class RightPanelCompositor {
         lastOperationTime = CACurrentMediaTime()
 
         if !rows.isEmpty {
-            animateRowOutRight(index: 0, duration: 0.4)
+            animateRowOutRight(index: 0, duration: 0.6)
         }
 
         for i in 1..<rows.count {
             let targetPosY = rowPosY(rowListIndex: i - 1, scrollOffset: scrollOffset)
             rows[i].queueIndex -= 1
-            animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.4, delay: 0)
+            animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.6, delay: 0)
         }
 
         if let texture = newBottomRowTexture, let data = newBottomRowData {
@@ -203,8 +203,8 @@ class RightPanelCompositor {
                 startOpacity: 0.0,
                 startScale: 1.0,
                 isAnimating: true,
-                animStartTime: CACurrentMediaTime() + 0.2,
-                animDuration: 0.3,
+                animStartTime: CACurrentMediaTime() + 0.3,
+                animDuration: 0.45,
                 shouldRemoveAfterAnimation: false,
                 pendingAnimations: []
             )
@@ -237,7 +237,7 @@ class RightPanelCompositor {
             startScale: 1.0,
             isAnimating: true,
             animStartTime: CACurrentMediaTime(),
-            animDuration: 0.4,
+            animDuration: 0.6,
             shouldRemoveAfterAnimation: false,
             pendingAnimations: []
         )
@@ -283,7 +283,7 @@ class RightPanelCompositor {
                 row.targetScale = 1.0
                 row.isAnimating = true
                 row.animStartTime = CACurrentMediaTime()
-                row.animDuration = 0.4
+                row.animDuration = 0.6
                 row.shouldRemoveAfterAnimation = false
                 row.pendingAnimations = []
 
@@ -291,13 +291,13 @@ class RightPanelCompositor {
                 if maxDistance > 0.001 && distance == maxDistance {
                     row.zOrder = 100
                     row.startScale = 1.0
-                    row.targetScale = 1.05
+                    row.targetScale = 1.20
                     let scaleBackStep = RightPanelAnimationStep(
                         targetPosX: normalPosX,
                         targetPosY: targetPosY,
                         targetOpacity: 1.0,
                         targetScale: 1.0,
-                        duration: 0.3,
+                        duration: 0.45,
                         delay: 0
                     )
                     row.pendingAnimations.append(scaleBackStep)
@@ -329,8 +329,8 @@ class RightPanelCompositor {
                     startOpacity: 0.0,
                     startScale: 1.0,
                     isAnimating: true,
-                    animStartTime: CACurrentMediaTime() + 0.15,
-                    animDuration: 0.35,
+                    animStartTime: CACurrentMediaTime() + 0.225,
+                    animDuration: 0.525,
                     shouldRemoveAfterAnimation: false,
                     pendingAnimations: []
                 )
@@ -347,16 +347,16 @@ class RightPanelCompositor {
 
         guard let removeIndex = rows.firstIndex(where: { $0.queueIndex == queueIndex }) else { return }
 
-        animateRowOutRight(index: removeIndex, duration: 0.4)
+        animateRowOutRight(index: removeIndex, duration: 0.6)
 
         for i in (removeIndex + 1)..<rows.count {
             let targetPosY = rowPosY(rowListIndex: i - 1, scrollOffset: scrollOffset)
             rows[i].queueIndex -= 1
-            animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.4, delay: 0)
+            animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.6, delay: 0)
         }
     }
 
-    func animateScrollTo(targetOffset: Float, duration: Float = 0.3, extraRows: Int = 0, completion: (() -> Void)? = nil) {
+    func animateScrollTo(targetOffset: Float, duration: Float = 0.45, extraRows: Int = 0, completion: (() -> Void)? = nil) {
         stopIdleScroll()
         lastOperationTime = CACurrentMediaTime()
 

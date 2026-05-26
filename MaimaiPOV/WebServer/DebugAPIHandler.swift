@@ -260,4 +260,36 @@ class DebugAPIHandler {
         let response: [String: Any] = ["giftPool": result]
         return .ok(.json(response))
     }
+
+    func simulateMarquee(request: HttpRequest) -> HttpResponse {
+        guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
+              let text = body["text"] as? String else {
+            return .badRequest(.text("Missing 'text'"))
+        }
+
+        let typeRaw = body["type"] as? Int ?? 0
+        let type = MarqueeItem.MarqueeItemType(rawValue: typeRaw) ?? .songSuccess
+
+        let sem = DispatchSemaphore(value: 0)
+        var result: [String: Any] = ["success": true]
+
+        DispatchQueue.main.async { [weak self] in
+            guard let pipeline = self?.pipeline else {
+                result = ["success": false, "error": "Pipeline not available"]
+                sem.signal()
+                return
+            }
+
+            pipeline.postMarquee(text, type: type)
+            result = [
+                "success": true,
+                "text": text,
+                "type": typeRaw
+            ]
+            sem.signal()
+        }
+
+        sem.wait()
+        return .ok(.json(result))
+    }
 }
