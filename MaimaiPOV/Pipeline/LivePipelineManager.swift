@@ -1493,7 +1493,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     private func reorderRightPanel() {
-        guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
+        guard let compositor = rightPanelCompositor else { return }
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
@@ -1507,53 +1507,32 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         let visibleSongs = Array(queue[startQueueIndex...].prefix(compositor.maxVisibleRows))
 
         var newOrder: [(queueIndex: Int, data: SongCardData)] = []
-        var needRenderIndices: [Int] = []
+        var needRenderItems: [(queueIndex: Int, data: SongCardData)] = []
 
         for (i, song) in visibleSongs.enumerated() {
             let queueIndex = startQueueIndex + i
             newOrder.append((queueIndex: queueIndex, data: song))
 
-            let existingData = compositor.getRowDataForQueueIndex(queueIndex)
-            let hasCachedTexture = renderer.getCachedRow(queueIndex: queueIndex) != nil
-
-            if existingData == nil || !hasCachedTexture {
-                needRenderIndices.append(queueIndex)
-            } else if let existing = existingData, existing.giftValue != song.giftValue {
-                needRenderIndices.append(queueIndex)
+            let existingData = compositor.getRowDataForId(song.id)
+            if existingData == nil || existingData!.giftValue != song.giftValue {
+                needRenderItems.append((queueIndex: queueIndex, data: song))
             }
         }
 
-        if needRenderIndices.isEmpty {
-            var allTextures: [Int: MTLTexture] = [:]
-            for item in newOrder {
-                if let cachedTex = renderer.getCachedRow(queueIndex: item.queueIndex) {
-                    allTextures[item.queueIndex] = cachedTex
-                }
-            }
-            compositor.reorderRows(newOrder: newOrder, textures: allTextures)
-            return
-        }
+        compositor.reorderRows(newOrder: newOrder, textures: [:])
 
-        var updatedTextures: [Int: MTLTexture] = [:]
-        let group = DispatchGroup()
-        let lock = NSLock()
+        guard let renderer = rightPanelRenderer, !needRenderItems.isEmpty else { return }
 
-        for queueIndex in needRenderIndices {
-            let songIndex = queueIndex - startQueueIndex
-            guard songIndex >= 0, songIndex < visibleSongs.count else { continue }
-            let song = visibleSongs[songIndex]
-
-            group.enter()
+        for item in needRenderItems {
+            let queueIndex = item.queueIndex
+            let song = item.data
             if let musicId = song.musicId {
                 CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
                     DispatchQueue.main.async {
                         renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
                             if let texture = texture {
-                                lock.lock()
-                                updatedTextures[queueIndex] = texture
-                                lock.unlock()
+                                compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
                             }
-                            group.leave()
                         }
                     }
                 }
@@ -1561,27 +1540,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
                         if let texture = texture {
-                            lock.lock()
-                            updatedTextures[queueIndex] = texture
-                            lock.unlock()
+                            compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
                         }
-                        group.leave()
                     }
                 }
             }
-        }
-
-        group.notify(queue: .main) { [weak self] in
-            guard self != nil else { return }
-            var allTextures: [Int: MTLTexture] = [:]
-            for item in newOrder {
-                if let tex = updatedTextures[item.queueIndex] {
-                    allTextures[item.queueIndex] = tex
-                } else if let cachedTex = renderer.getCachedRow(queueIndex: item.queueIndex) {
-                    allTextures[item.queueIndex] = cachedTex
-                }
-            }
-            compositor.reorderRows(newOrder: newOrder, textures: allTextures)
         }
     }
 

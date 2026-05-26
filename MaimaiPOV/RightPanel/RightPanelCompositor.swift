@@ -199,9 +199,10 @@ class RightPanelCompositor {
         var newRows: [RightPanelRowState] = []
         for (listIndex, item) in newOrder.enumerated() {
             let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: scrollOffset)
-            if let existingIndex = rows.firstIndex(where: { $0.queueIndex == item.queueIndex }) {
+            if let existingIndex = rows.firstIndex(where: { $0.data?.id == item.data.id }) {
                 var row = rows[existingIndex]
                 row.data = item.data
+                row.queueIndex = item.queueIndex
                 if let tex = textures[item.queueIndex] {
                     row.texture = tex
                 }
@@ -275,8 +276,14 @@ class RightPanelCompositor {
         return rows.count
     }
 
-    func getRowDataForQueueIndex(_ queueIndex: Int) -> SongCardData? {
-        return rows.first(where: { $0.queueIndex == queueIndex })?.data
+    func getRowDataForId(_ id: UUID) -> SongCardData? {
+        return rows.first(where: { $0.data?.id == id })?.data
+    }
+
+    func updateRowTexture(queueIndex: Int, texture: MTLTexture) {
+        if let index = rows.firstIndex(where: { $0.queueIndex == queueIndex }) {
+            rows[index].texture = texture
+        }
     }
 
     func updateAnimations() {
