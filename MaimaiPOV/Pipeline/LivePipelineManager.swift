@@ -155,21 +155,22 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         blivechatClient.onGift = { [weak self] msg in
             guard let self = self else { return }
-            let coinType = msg.isPaidGift ? "付费" : "免费"
+            let coinValue = max(msg.totalCoin, msg.totalFreeCoin)
             DispatchQueue.main.async {
-                self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (\(coinType))")
+                self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))")
             }
-            if msg.isPaidGift {
+            if coinValue > 0 {
                 let name = msg.authorName
-                self.songCardManager.userGiftPool[name, default: 0] += msg.totalCoin
+                self.songCardManager.userGiftPool[name, default: 0] += coinValue
                 if let index = self.songCardManager.findSongIndex(byName: name) {
-                    self.songCardManager.updateGiftValue(name: name, delta: msg.totalCoin)
+                    self.songCardManager.updateGiftValue(name: name, delta: coinValue)
                     let lockedEnd = self.songCardManager.lockedEndIndex
                     DispatchQueue.main.async {
                         if index >= lockedEnd {
                             self.songCardManager.reorderQueueByGiftValue()
                             self.reorderRightPanel()
                         }
+                        self.refreshLeftPanel()
                         self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                     }
                 }

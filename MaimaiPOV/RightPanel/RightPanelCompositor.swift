@@ -485,7 +485,10 @@ class RightPanelCompositor {
         let visibleMaxY: Float = 1.1
         let rowHeightNorm = Float(rowHeight) / Float(outHeight)
 
-        for i in 0..<rows.count {
+        let staticIndices = rows.indices.filter { !rows[$0].isAnimating }
+        let animatingIndices = rows.indices.filter { rows[$0].isAnimating }
+
+        for i in staticIndices + animatingIndices {
             let row = rows[i]
             guard let texture = row.texture, row.currentOpacity > 0.01 else { continue }
 
