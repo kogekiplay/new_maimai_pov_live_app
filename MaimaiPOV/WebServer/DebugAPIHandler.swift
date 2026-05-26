@@ -48,6 +48,7 @@ class DebugAPIHandler {
                             pipeline.reorderRightPanel()
                         }
                     }
+                    pipeline.refreshLeftPanel()
                 }
 
                 result = [
@@ -161,6 +162,7 @@ class DebugAPIHandler {
                         pipeline.reorderRightPanel()
                     }
                 }
+                pipeline.refreshLeftPanel()
 
                 result = [
                     "success": true,

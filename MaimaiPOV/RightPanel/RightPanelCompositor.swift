@@ -9,14 +9,17 @@ struct RightPanelRowState {
     var currentPosX: Float
     var currentPosY: Float
     var currentOpacity: Float
+    var currentScale: Float
 
     var targetPosX: Float
     var targetPosY: Float
     var targetOpacity: Float
+    var targetScale: Float
 
     var startPosX: Float
     var startPosY: Float
     var startOpacity: Float
+    var startScale: Float
 
     var isAnimating: Bool = false
     var animStartTime: CFTimeInterval = 0
@@ -24,6 +27,7 @@ struct RightPanelRowState {
 
     var shouldRemoveAfterAnimation: Bool = false
     var pendingAnimations: [RightPanelAnimationStep] = []
+    var zOrder: Int = 0
 
     static func atPosition(posX: Float, posY: Float, texture: MTLTexture? = nil, data: SongCardData? = nil, queueIndex: Int = -1) -> RightPanelRowState {
         return RightPanelRowState(
@@ -33,12 +37,15 @@ struct RightPanelRowState {
             currentPosX: posX,
             currentPosY: posY,
             currentOpacity: 1.0,
+            currentScale: 1.0,
             targetPosX: posX,
             targetPosY: posY,
             targetOpacity: 1.0,
+            targetScale: 1.0,
             startPosX: posX,
             startPosY: posY,
-            startOpacity: 1.0
+            startOpacity: 1.0,
+            startScale: 1.0
         )
     }
 }
@@ -47,6 +54,7 @@ struct RightPanelAnimationStep {
     let targetPosX: Float
     let targetPosY: Float
     let targetOpacity: Float
+    let targetScale: Float
     let duration: Float
     let delay: Float
 }
@@ -185,12 +193,15 @@ class RightPanelCompositor {
                 currentPosX: offScreenRightPosX,
                 currentPosY: targetPosY,
                 currentOpacity: 0.0,
+                currentScale: 1.0,
                 targetPosX: normalPosX,
                 targetPosY: targetPosY,
                 targetOpacity: 1.0,
+                targetScale: 1.0,
                 startPosX: offScreenRightPosX,
                 startPosY: targetPosY,
                 startOpacity: 0.0,
+                startScale: 1.0,
                 isAnimating: true,
                 animStartTime: CACurrentMediaTime() + 0.2,
                 animDuration: 0.3,
@@ -215,12 +226,15 @@ class RightPanelCompositor {
             currentPosX: offScreenRightPosX,
             currentPosY: targetPosY,
             currentOpacity: 0.0,
+            currentScale: 1.0,
             targetPosX: normalPosX,
             targetPosY: targetPosY,
             targetOpacity: 1.0,
+            targetScale: 1.0,
             startPosX: offScreenRightPosX,
             startPosY: targetPosY,
             startOpacity: 0.0,
+            startScale: 1.0,
             isAnimating: true,
             animStartTime: CACurrentMediaTime(),
             animDuration: 0.4,
@@ -235,6 +249,19 @@ class RightPanelCompositor {
         lastOperationTime = CACurrentMediaTime()
 
         print("[RightPanel] reorderRows called, newOrder.count=\(newOrder.count), existing rows=\(rows.count)")
+
+        var moveDistances: [UUID: Float] = [:]
+        for (listIndex, item) in newOrder.enumerated() {
+            let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: scrollOffset)
+            if let existingIndex = rows.firstIndex(where: { $0.data?.id == item.data.id }) {
+                let fromPosY = rows[existingIndex].currentPosY
+                let distance = abs(targetPosY - fromPosY)
+                moveDistances[item.data.id] = distance
+            }
+        }
+
+        let maxDistance = moveDistances.values.max() ?? 0
+
         var newRows: [RightPanelRowState] = []
         for (listIndex, item) in newOrder.enumerated() {
             let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: scrollOffset)
@@ -249,17 +276,40 @@ class RightPanelCompositor {
                 row.startPosX = row.currentPosX
                 row.startPosY = row.currentPosY
                 row.startOpacity = row.currentOpacity
+                row.startScale = row.currentScale
                 row.targetPosX = normalPosX
                 row.targetPosY = targetPosY
                 row.targetOpacity = 1.0
+                row.targetScale = 1.0
                 row.isAnimating = true
                 row.animStartTime = CACurrentMediaTime()
                 row.animDuration = 0.4
                 row.shouldRemoveAfterAnimation = false
                 row.pendingAnimations = []
+
+                let distance = moveDistances[item.data.id] ?? 0
+                if maxDistance > 0.001 && distance == maxDistance {
+                    row.zOrder = 100
+                    row.startScale = 1.0
+                    row.targetScale = 1.05
+                    let scaleBackStep = RightPanelAnimationStep(
+                        targetPosX: normalPosX,
+                        targetPosY: targetPosY,
+                        targetOpacity: 1.0,
+                        targetScale: 1.0,
+                        duration: 0.3,
+                        delay: 0
+                    )
+                    row.pendingAnimations.append(scaleBackStep)
+                } else if distance > 0.001 {
+                    row.zOrder = 50
+                } else {
+                    row.zOrder = 0
+                }
+
                 newRows.append(row)
                 let dy = abs(targetPosY - fromPosY)
-                print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) fromY=\(String(format:"%.4f",fromPosY)) toY=\(String(format:"%.4f",targetPosY)) dy=\(String(format:"%.4f",dy)) animating=true")
+                print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) fromY=\(String(format:"%.4f",fromPosY)) toY=\(String(format:"%.4f",targetPosY)) dy=\(String(format:"%.4f",dy)) zOrder=\(row.zOrder) animating=true")
             } else {
                 let texture = textures[item.queueIndex]
                 let row = RightPanelRowState(
@@ -269,12 +319,15 @@ class RightPanelCompositor {
                     currentPosX: offScreenRightPosX,
                     currentPosY: targetPosY,
                     currentOpacity: 0.0,
+                    currentScale: 1.0,
                     targetPosX: normalPosX,
                     targetPosY: targetPosY,
                     targetOpacity: 1.0,
+                    targetScale: 1.0,
                     startPosX: offScreenRightPosX,
                     startPosY: targetPosY,
                     startOpacity: 0.0,
+                    startScale: 1.0,
                     isAnimating: true,
                     animStartTime: CACurrentMediaTime() + 0.15,
                     animDuration: 0.35,
@@ -431,12 +484,18 @@ class RightPanelCompositor {
             rows[i].currentPosX = rows[i].startPosX + (rows[i].targetPosX - rows[i].startPosX) * eased
             rows[i].currentPosY = rows[i].startPosY + (rows[i].targetPosY - rows[i].startPosY) * eased
             rows[i].currentOpacity = rows[i].startOpacity + (rows[i].targetOpacity - rows[i].startOpacity) * eased
+            rows[i].currentScale = rows[i].startScale + (rows[i].targetScale - rows[i].startScale) * eased
 
             if progress >= 1.0 {
                 rows[i].currentPosX = rows[i].targetPosX
                 rows[i].currentPosY = rows[i].targetPosY
                 rows[i].currentOpacity = rows[i].targetOpacity
+                rows[i].currentScale = rows[i].targetScale
                 rows[i].isAnimating = false
+
+                if rows[i].pendingAnimations.isEmpty {
+                    rows[i].zOrder = 0
+                }
 
                 if rows[i].shouldRemoveAfterAnimation {
                     rows[i].texture = nil
@@ -485,10 +544,9 @@ class RightPanelCompositor {
         let visibleMaxY: Float = 1.1
         let rowHeightNorm = Float(rowHeight) / Float(outHeight)
 
-        let staticIndices = rows.indices.filter { !rows[$0].isAnimating }
-        let animatingIndices = rows.indices.filter { rows[$0].isAnimating }
+        let sortedIndices = rows.indices.sorted { rows[$0].zOrder < rows[$1].zOrder }
 
-        for i in staticIndices + animatingIndices {
+        for i in sortedIndices {
             let row = rows[i]
             guard let texture = row.texture, row.currentOpacity > 0.01 else { continue }
 
@@ -501,7 +559,7 @@ class RightPanelCompositor {
             var uniforms = SongCardUniforms()
             uniforms.posX = row.currentPosX
             uniforms.posY = row.currentPosY
-            uniforms.scale = rowScale
+            uniforms.scale = rowScale * row.currentScale
             uniforms.opacity = row.currentOpacity * globalOpacity
             uniforms.cardWidth = Float(RightPanelTemplate.rowWidth)
             uniforms.cardHeight = Float(rowHeight)
@@ -526,9 +584,11 @@ class RightPanelCompositor {
         rows[index].startPosX = rows[index].currentPosX
         rows[index].startPosY = rows[index].currentPosY
         rows[index].startOpacity = rows[index].currentOpacity
+        rows[index].startScale = rows[index].currentScale
         rows[index].targetPosX = step.targetPosX
         rows[index].targetPosY = step.targetPosY
         rows[index].targetOpacity = step.targetOpacity
+        rows[index].targetScale = step.targetScale
         rows[index].animDuration = step.duration
         rows[index].animStartTime = CACurrentMediaTime() + CFTimeInterval(step.delay)
         rows[index].isAnimating = true
@@ -537,7 +597,7 @@ class RightPanelCompositor {
     private func animateRowTo(index: Int, posX: Float, posY: Float, opacity: Float, duration: Float, delay: Float) {
         guard index < rows.count else { return }
         if delay > 0 {
-            let step = RightPanelAnimationStep(targetPosX: posX, targetPosY: posY, targetOpacity: opacity, duration: duration, delay: delay)
+            let step = RightPanelAnimationStep(targetPosX: posX, targetPosY: posY, targetOpacity: opacity, targetScale: 1.0, duration: duration, delay: delay)
             if rows[index].isAnimating {
                 rows[index].pendingAnimations.append(step)
             } else {
@@ -547,9 +607,11 @@ class RightPanelCompositor {
             rows[index].startPosX = rows[index].currentPosX
             rows[index].startPosY = rows[index].currentPosY
             rows[index].startOpacity = rows[index].currentOpacity
+            rows[index].startScale = rows[index].currentScale
             rows[index].targetPosX = posX
             rows[index].targetPosY = posY
             rows[index].targetOpacity = opacity
+            rows[index].targetScale = 1.0
             rows[index].animDuration = duration
             rows[index].animStartTime = CACurrentMediaTime()
             rows[index].isAnimating = true
@@ -586,8 +648,10 @@ class RightPanelCompositor {
                 rows[i].currentPosX = rows[i].targetPosX
                 rows[i].currentPosY = rows[i].targetPosY
                 rows[i].currentOpacity = rows[i].targetOpacity
+                rows[i].currentScale = rows[i].targetScale
                 rows[i].isAnimating = false
                 rows[i].pendingAnimations.removeAll()
+                rows[i].zOrder = 0
 
                 if rows[i].shouldRemoveAfterAnimation {
                     rows[i].texture = nil
@@ -611,6 +675,10 @@ class RightPanelCompositor {
             rows[i].currentOpacity = 1.0
             rows[i].targetOpacity = 1.0
             rows[i].startOpacity = 1.0
+            rows[i].currentScale = 1.0
+            rows[i].targetScale = 1.0
+            rows[i].startScale = 1.0
+            rows[i].zOrder = 0
         }
     }
 

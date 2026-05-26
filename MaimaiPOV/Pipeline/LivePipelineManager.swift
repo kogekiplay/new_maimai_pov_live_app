@@ -170,9 +170,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                             self.songCardManager.reorderQueueByGiftValue()
                             self.reorderRightPanel()
                         }
-                        self.refreshLeftPanel()
                         self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                     }
+                }
+                DispatchQueue.main.async {
+                    self.refreshLeftPanel()
                 }
             }
         }
@@ -198,6 +200,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         self.songCardManager.reorderQueueByGiftValue()
                         self.reorderRightPanel()
                     }
+                    self.refreshLeftPanel()
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.refreshLeftPanel()
                 }
             }
             DispatchQueue.main.async {
@@ -303,6 +310,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                             self.songCardManager.reorderQueueByGiftValue()
                             self.reorderRightPanel()
                         }
+                        self.refreshLeftPanel()
                     }
                 }
 
@@ -410,6 +418,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                             self.songCardManager.reorderQueueByGiftValue()
                             self.reorderRightPanel()
                         }
+                        self.refreshLeftPanel()
                     }
                 }
 
@@ -429,6 +438,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         self.songCardManager.reorderQueueByGiftValue()
                         self.reorderRightPanel()
                     }
+                    self.refreshLeftPanel()
                     self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                 }
             }
@@ -1185,7 +1195,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
-    private func refreshLeftPanel() {
+    func refreshLeftPanel() {
         let current = songCardManager.currentSong
         let next = songCardManager.nextSong
         renderLeftPanelCurrentSong(current)
