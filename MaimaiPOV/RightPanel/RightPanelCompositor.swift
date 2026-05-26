@@ -303,7 +303,7 @@ class RightPanelCompositor {
         }
     }
 
-    func animateScrollTo(targetOffset: Float, duration: Float = 0.3, completion: (() -> Void)? = nil) {
+    func animateScrollTo(targetOffset: Float, duration: Float = 0.3, extraRows: Int = 0, completion: (() -> Void)? = nil) {
         stopIdleScroll()
         lastOperationTime = CACurrentMediaTime()
 
@@ -314,7 +314,7 @@ class RightPanelCompositor {
             scrollCompletion = nil
         }
 
-        let maxOffset = Float(max(0, rows.count - maxVisibleRows))
+        let maxOffset = Float(max(0, rows.count + extraRows - maxVisibleRows))
         let clampedTarget = max(0, min(targetOffset, maxOffset))
 
         if abs(scrollOffset - clampedTarget) < 0.01 {

@@ -1222,7 +1222,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         let currentOffset = compositor.currentScrollOffset
 
         if currentOffset < maxOffset - 0.01 {
-            compositor.animateScrollTo(targetOffset: maxOffset, duration: 0.3) { [weak self] in
+            compositor.animateScrollTo(targetOffset: maxOffset, duration: 0.3, extraRows: 1) { [weak self] in
                 guard let self = self, self.rightPanelGeneration == gen else { return }
                 self.performAddRightPanelRow(song: song, queueIndex: queueIndex)
             }
@@ -1292,12 +1292,17 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             neededOffset = Float(targetScrollRow - compositor.maxVisibleRows + 1)
         }
 
-        if abs(neededOffset - currentOffset) > 0.01 {
-            compositor.animateScrollTo(targetOffset: neededOffset, duration: 0.3) { [weak self] in
-                self?.performReorderRightPanel()
+        let needsScroll = abs(neededOffset - currentOffset) > 0.01
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self else { return }
+            if needsScroll {
+                self.rightPanelCompositor?.animateScrollTo(targetOffset: neededOffset, duration: 0.3) { [weak self] in
+                    self?.performReorderRightPanel()
+                }
+            } else {
+                self.performReorderRightPanel()
             }
-        } else {
-            performReorderRightPanel()
         }
     }
 
