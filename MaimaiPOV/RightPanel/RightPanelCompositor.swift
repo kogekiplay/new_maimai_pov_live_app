@@ -102,6 +102,7 @@ class RightPanelCompositor {
     }
 
     func setRows(textures: [Int: MTLTexture], data: [SongCardData], startQueueIndex: Int) {
+        interruptCurrentAnimations()
         rows.removeAll()
         scrollOffset = 0
         for (i, songData) in data.enumerated() {
@@ -128,24 +129,32 @@ class RightPanelCompositor {
 
         for i in 1..<rows.count {
             let targetPosY = rowPosY(rowListIndex: i - 1, scrollOffset: scrollOffset)
-            animateRowTo(index: i, posX: rows[i].currentPosX, posY: targetPosY, opacity: rows[i].targetOpacity, duration: 0.4, delay: 0)
-            rows[i].queueIndex = rows[i].queueIndex
+            animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.4, delay: 0)
         }
 
         if let texture = newBottomRowTexture, let data = newBottomRowData {
-            let insertIndex = rows.count - 1
-            if insertIndex >= 0 {
-                let targetPosY = rowPosY(rowListIndex: insertIndex, scrollOffset: scrollOffset)
-                let newRow = RightPanelRowState.atPosition(
-                    posX: offScreenRightPosX,
-                    posY: targetPosY,
-                    texture: texture,
-                    data: data,
-                    queueIndex: newBottomQueueIndex
-                )
-                rows[insertIndex] = newRow
-                animateRowTo(index: insertIndex, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.3, delay: 0.2)
-            }
+            let newRowIndex = rows.count
+            let targetPosY = rowPosY(rowListIndex: newRowIndex - 1, scrollOffset: scrollOffset)
+            let newRow = RightPanelRowState(
+                texture: texture,
+                data: data,
+                queueIndex: newBottomQueueIndex,
+                currentPosX: offScreenRightPosX,
+                currentPosY: targetPosY,
+                currentOpacity: 0.0,
+                targetPosX: normalPosX,
+                targetPosY: targetPosY,
+                targetOpacity: 1.0,
+                startPosX: offScreenRightPosX,
+                startPosY: targetPosY,
+                startOpacity: 0.0,
+                isAnimating: true,
+                animStartTime: CACurrentMediaTime() + 0.2,
+                animDuration: 0.3,
+                shouldRemoveAfterAnimation: false,
+                pendingAnimations: []
+            )
+            rows.append(newRow)
         }
 
         scrollOffset = 0
@@ -230,7 +239,7 @@ class RightPanelCompositor {
 
         for i in (removeIndex + 1)..<rows.count {
             let targetPosY = rowPosY(rowListIndex: i - 1, scrollOffset: scrollOffset)
-            animateRowTo(index: i, posX: rows[i].currentPosX, posY: targetPosY, opacity: rows[i].targetOpacity, duration: 0.4, delay: 0)
+            animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.4, delay: 0)
         }
     }
 
@@ -263,6 +272,8 @@ class RightPanelCompositor {
             guard rows[i].isAnimating else { continue }
 
             let elapsed = Float(now - rows[i].animStartTime)
+            if elapsed < 0 { continue }
+
             var progress = elapsed / rows[i].animDuration
             progress = min(max(progress, 0), 1)
             let eased = easeOutCubic(progress)
@@ -321,8 +332,7 @@ class RightPanelCompositor {
             }
         }
 
-        for i in 0..<min(rows.count, maxVisibleRows + 2) {
-            guard i < rows.count else { break }
+        for i in 0..<rows.count {
             let row = rows[i]
             guard let texture = row.texture, row.currentOpacity > 0.01 else { continue }
 

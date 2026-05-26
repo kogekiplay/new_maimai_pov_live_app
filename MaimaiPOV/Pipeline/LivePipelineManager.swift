@@ -1095,7 +1095,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func onQueueUpdated(_ songs: [SongCardData]) {
         refreshLeftPanel()
-        refreshRightPanel()
     }
 
     func triggerSongCardSwitch() {
