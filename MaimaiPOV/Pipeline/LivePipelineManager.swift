@@ -151,14 +151,14 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             guard let self = self else { return }
             self.latestDanmaku = "\(msg.authorName): \(msg.content)"
             self.danmakuCount += 1
-            self.debug.log("[弹幕] \(msg.authorName): \(msg.content)")
+            DispatchQueue.main.async { self.debug.log("[弹幕] \(msg.authorName): \(msg.content)") }
             self.handleDanmakuForSongRequest(msg)
         }
 
         blivechatClient.onGift = { [weak self] msg in
             guard let self = self else { return }
             let coinValue = max(msg.totalCoin, msg.totalFreeCoin)
-            self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))")
+            DispatchQueue.main.async { self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))") }
             self.postMarquee("🎁 感谢 \(msg.authorName) 送出 \(msg.giftName) ×\(msg.num)", type: .gift)
             if coinValue > 0 {
                 let name = msg.authorName
@@ -169,7 +169,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     if index >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
                     }
-                    self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
+                    DispatchQueue.main.async { self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子") }
                 } else {
                     self.scheduleRefreshLeftPanel()
                 }
@@ -178,7 +178,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         blivechatClient.onSuperChat = { [weak self] msg in
             guard let self = self else { return }
-            self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
+            DispatchQueue.main.async { self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)") }
             self.handleSuperChatForSongRequest(msg)
         }
 
@@ -196,13 +196,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             } else {
                 self.scheduleRefreshLeftPanel()
             }
-            self.debug.log("[上舰] \(msg.authorName)")
+            DispatchQueue.main.async { self.debug.log("[上舰] \(msg.authorName)") }
             self.postMarquee("⭐ \(msg.authorName) 上舰了!", type: .member)
         }
 
         blivechatClient.onError = { [weak self] error in
             guard let self = self else { return }
-            self.debug.log("[blivechat错误] code=\(error.code) \(error.message)")
+            DispatchQueue.main.async { self.debug.log("[blivechat错误] code=\(error.code) \(error.message)") }
         }
 
         blivechatClient.onReconnectLog = { [weak self] message in

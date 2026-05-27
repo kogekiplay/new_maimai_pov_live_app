@@ -1,5 +1,6 @@
 import Metal
 import CoreGraphics
+import UIKit
 
 final class TextureHelper {
     static let shared = TextureHelper()
