@@ -397,13 +397,26 @@ class LeftPanelCompositor {
         uniforms.outWidth = Float(outWidth)
         uniforms.outHeight = Float(outHeight)
 
+        let cardPixelW = Float(outWidth) * state.currentScale
+        let cardPixelH = cardPixelW * (Float(state.cardHeight) / Float(state.cardWidth))
+        let centerX = uniforms.posX * Float(outWidth)
+        let centerY = uniforms.posY * Float(outHeight)
+        let originX = max(0, Int(centerX - cardPixelW / 2.0))
+        let originY = max(0, Int(centerY - cardPixelH / 2.0))
+        let gridW = min(outWidth, Int(centerX + cardPixelW / 2.0)) - originX
+        let gridH = min(outHeight, Int(centerY + cardPixelH / 2.0)) - originY
+
+        guard gridW > 0 && gridH > 0 else { return }
+
+        uniforms.originX = Float(originX)
+        uniforms.originY = Float(originY)
         memcpy(uniformsBuffers[bufferIndex].contents(), &uniforms, MemoryLayout<SongCardUniforms>.stride)
 
         encoder.setTexture(outputTexture, index: 0)
         encoder.setTexture(texture, index: 1)
         encoder.setBuffer(uniformsBuffers[bufferIndex], offset: 0, index: 0)
 
-        let gridSize = MTLSize(width: outWidth, height: outHeight, depth: 1)
+        let gridSize = MTLSize(width: gridW, height: gridH, depth: 1)
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: tgSize)
     }
 }

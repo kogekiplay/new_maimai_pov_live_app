@@ -4,6 +4,7 @@ class CoverImageLoader {
     static let shared = CoverImageLoader()
 
     private let memoryCache = NSCache<NSString, UIImage>()
+    private var base64Cache: [Int: String] = [:]
     private let diskCacheDir: URL
 
     private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
@@ -37,14 +38,25 @@ class CoverImageLoader {
     }
 
     func loadCoverBase64(musicId: Int, completion: @escaping (String?) -> Void) {
+        if let cached = base64Cache[musicId] {
+            completion(cached)
+            return
+        }
+
         if let cached = loadFromDiskCache(musicId: musicId) {
             let base64 = imageToBase64(cached)
+            if let base64 = base64 {
+                base64Cache[musicId] = base64
+            }
             completion(base64)
             return
         }
 
         if let cached = memoryCache.object(forKey: "\(musicId)" as NSString) {
             let base64 = imageToBase64(cached)
+            if let base64 = base64 {
+                base64Cache[musicId] = base64
+            }
             completion(base64)
             return
         }
@@ -74,6 +86,9 @@ class CoverImageLoader {
                 self.memoryCache.setObject(image, forKey: "\(musicId)" as NSString)
                 self.saveToDiskCache(image: image, musicId: musicId)
                 let base64 = self.imageToBase64(image)
+                if let base64 = base64 {
+                    self.base64Cache[musicId] = base64
+                }
                 completion(base64)
             } else {
                 self.tryFormat(musicId: musicId, formatIndex: formatIndex + 1, completion: completion)

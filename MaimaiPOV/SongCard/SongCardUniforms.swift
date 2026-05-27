@@ -9,4 +9,6 @@ struct SongCardUniforms {
     var cardHeight: Float = 0
     var outWidth: Float = Float(Config.outputWidth)
     var outHeight: Float = Float(Config.outputHeight)
+    var originX: Float = 0
+    var originY: Float = 0
 }

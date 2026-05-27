@@ -10,6 +10,8 @@ struct SongCardUniforms {
     float cardHeight;
     float outWidth;
     float outHeight;
+    float originX;
+    float originY;
 };
 
 kernel void songCardBlend(
@@ -18,7 +20,9 @@ kernel void songCardBlend(
     constant SongCardUniforms& u [[buffer(0)]],
     uint2 gid [[thread_position_in_grid]])
 {
-    if (gid.x >= uint(u.outWidth) || gid.y >= uint(u.outHeight)) return;
+    float2 pixelPos = float2(gid.x + u.originX, gid.y + u.originY);
+
+    if (pixelPos.x >= u.outWidth || pixelPos.y >= u.outHeight) return;
 
     float cardPixelW = u.outWidth * u.scale;
     float cardPixelH = cardPixelW * (u.cardHeight / u.cardWidth);
@@ -27,8 +31,8 @@ kernel void songCardBlend(
     float left = centerX - cardPixelW / 2.0;
     float top = centerY - cardPixelH / 2.0;
 
-    float relX = (float(gid.x) - left) / cardPixelW;
-    float relY = (float(gid.y) - top) / cardPixelH;
+    float relX = (pixelPos.x - left) / cardPixelW;
+    float relY = (pixelPos.y - top) / cardPixelH;
 
     if (relX < 0.0 || relX > 1.0 || relY < 0.0 || relY > 1.0) return;
 
@@ -38,10 +42,11 @@ kernel void songCardBlend(
     float alpha = card.a * u.opacity;
     if (alpha < 0.001) return;
 
-    float4 background = outputTexture.read(gid);
+    uint2 writePos = uint2(pixelPos.x, pixelPos.y);
+    float4 background = outputTexture.read(writePos);
     float4 result = float4(
         card.rgb * alpha + background.rgb * (1.0 - alpha),
         1.0
     );
-    outputTexture.write(result, gid);
+    outputTexture.write(result, writePos);
 }

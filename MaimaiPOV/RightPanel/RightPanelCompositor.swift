@@ -529,13 +529,24 @@ class RightPanelCompositor {
             uniforms.outWidth = Float(outWidth)
             uniforms.outHeight = Float(outHeight)
 
-            if uniformsBuffers.count > 0 {
+            let cardPixelW = Float(outWidth) * rowScale
+            let cardPixelH = cardPixelW * (Float(titleHeight) / Float(RightPanelTemplate.titleWidth))
+            let centerX = uniforms.posX * Float(outWidth)
+            let centerY = uniforms.posY * Float(outHeight)
+            let originX = max(0, Int(centerX - cardPixelW / 2.0))
+            let originY = max(0, Int(centerY - cardPixelH / 2.0))
+            let gridW = min(outWidth, Int(centerX + cardPixelW / 2.0)) - originX
+            let gridH = min(outHeight, Int(centerY + cardPixelH / 2.0)) - originY
+
+            if gridW > 0 && gridH > 0 && uniformsBuffers.count > 0 {
+                uniforms.originX = Float(originX)
+                uniforms.originY = Float(originY)
                 memcpy(uniformsBuffers[0].contents(), &uniforms, MemoryLayout<SongCardUniforms>.stride)
                 encoder.setTexture(outputTexture, index: 0)
                 encoder.setTexture(titleTex, index: 1)
                 encoder.setBuffer(uniformsBuffers[0], offset: 0, index: 0)
 
-                let gridSize = MTLSize(width: outWidth, height: outHeight, depth: 1)
+                let gridSize = MTLSize(width: gridW, height: gridH, depth: 1)
                 encoder.dispatchThreads(gridSize, threadsPerThreadgroup: tgSize)
             }
         }
@@ -556,23 +567,37 @@ class RightPanelCompositor {
 
             let bufferIndex = (i % (uniformsBuffers.count - 1)) + 1
 
+            let effectiveScale = rowScale * row.currentScale
             var uniforms = SongCardUniforms()
             uniforms.posX = row.currentPosX
             uniforms.posY = row.currentPosY
-            uniforms.scale = rowScale * row.currentScale
+            uniforms.scale = effectiveScale
             uniforms.opacity = row.currentOpacity * globalOpacity
             uniforms.cardWidth = Float(RightPanelTemplate.rowWidth)
             uniforms.cardHeight = Float(rowHeight)
             uniforms.outWidth = Float(outWidth)
             uniforms.outHeight = Float(outHeight)
 
-            memcpy(uniformsBuffers[bufferIndex].contents(), &uniforms, MemoryLayout<SongCardUniforms>.stride)
-            encoder.setTexture(outputTexture, index: 0)
-            encoder.setTexture(texture, index: 1)
-            encoder.setBuffer(uniformsBuffers[bufferIndex], offset: 0, index: 0)
+            let cardPixelW = Float(outWidth) * effectiveScale
+            let cardPixelH = cardPixelW * (Float(rowHeight) / Float(RightPanelTemplate.rowWidth))
+            let centerX = uniforms.posX * Float(outWidth)
+            let centerY = uniforms.posY * Float(outHeight)
+            let originX = max(0, Int(centerX - cardPixelW / 2.0))
+            let originY = max(0, Int(centerY - cardPixelH / 2.0))
+            let gridW = min(outWidth, Int(centerX + cardPixelW / 2.0)) - originX
+            let gridH = min(outHeight, Int(centerY + cardPixelH / 2.0)) - originY
 
-            let gridSize = MTLSize(width: outWidth, height: outHeight, depth: 1)
-            encoder.dispatchThreads(gridSize, threadsPerThreadgroup: tgSize)
+            if gridW > 0 && gridH > 0 {
+                uniforms.originX = Float(originX)
+                uniforms.originY = Float(originY)
+                memcpy(uniformsBuffers[bufferIndex].contents(), &uniforms, MemoryLayout<SongCardUniforms>.stride)
+                encoder.setTexture(outputTexture, index: 0)
+                encoder.setTexture(texture, index: 1)
+                encoder.setBuffer(uniformsBuffers[bufferIndex], offset: 0, index: 0)
+
+                let gridSize = MTLSize(width: gridW, height: gridH, depth: 1)
+                encoder.dispatchThreads(gridSize, threadsPerThreadgroup: tgSize)
+            }
         }
     }
 
