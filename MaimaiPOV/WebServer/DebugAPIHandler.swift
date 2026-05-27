@@ -50,7 +50,8 @@ class DebugAPIHandler {
                     } else {
                         pipeline.scheduleRefreshLeftPanel()
                     }
-                    pipeline.postMarquee("🎁 感谢 \(authorName) 送出 \(gift.giftName) ×\(gift.num)", type: .gift)
+                    let prefix = "🎁 感谢 \(authorName) 送出 \(gift.giftName)"
+                    pipeline.postMarquee("\(prefix) ×\(gift.num)", type: .gift, mergeKey: "gift_\(authorName)_\(gift.giftName)", mergeCount: gift.num, textPrefix: prefix)
                     pipeline.debug.log("[礼物] \(authorName) 送出 \(gift.giftName) ×\(gift.num) (\(coinValue)币)")
                 }
 
@@ -274,6 +275,9 @@ class DebugAPIHandler {
 
         let typeRaw = body["type"] as? Int ?? 0
         let type = MarqueeItem.MarqueeItemType(rawValue: typeRaw) ?? .songSuccess
+        let mergeKey = body["mergeKey"] as? String
+        let mergeCount = body["mergeCount"] as? Int ?? 1
+        let textPrefix = body["textPrefix"] as? String
 
         let sem = DispatchSemaphore(value: 0)
         var result: [String: Any] = ["success": true]
@@ -285,11 +289,13 @@ class DebugAPIHandler {
                 return
             }
 
-            pipeline.postMarquee(text, type: type)
+            pipeline.postMarquee(text, type: type, mergeKey: mergeKey, mergeCount: mergeCount, textPrefix: textPrefix)
             result = [
                 "success": true,
                 "text": text,
-                "type": typeRaw
+                "type": typeRaw,
+                "mergeKey": mergeKey ?? NSNull(),
+                "mergeCount": mergeCount
             ]
             sem.signal()
         }
