@@ -66,6 +66,8 @@ class RightPanelCompositor {
 
     var enabled: Bool = true
 
+    private var stateLock = os_unfair_lock_s()
+
     let panelX: Int = Config.outputWidth - 420
     let panelWidth: Int = 420
     let panelHeight: Int = Config.outputHeight
@@ -143,7 +145,9 @@ class RightPanelCompositor {
     }
 
     func updateTitleTexture(_ texture: MTLTexture?) {
+        os_unfair_lock_lock(&stateLock)
         titleTexture = texture
+        os_unfair_lock_unlock(&stateLock)
     }
 
     var hasTitleTexture: Bool {
@@ -151,6 +155,7 @@ class RightPanelCompositor {
     }
 
     func setRows(textures: [Int: MTLTexture], data: [SongCardData], startQueueIndex: Int) {
+        os_unfair_lock_lock(&stateLock)
         interruptCurrentAnimations()
         rows.removeAll()
         scrollOffset = 0
@@ -168,9 +173,11 @@ class RightPanelCompositor {
             )
             rows.append(rowState)
         }
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func switchToNext(newBottomRowTexture: MTLTexture?, newBottomRowData: SongCardData?, newBottomQueueIndex: Int) {
+        os_unfair_lock_lock(&stateLock)
         interruptCurrentAnimations()
         lastOperationTime = CACurrentMediaTime()
 
@@ -211,16 +218,18 @@ class RightPanelCompositor {
             )
             rows.append(newRow)
         }
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func addRowAtBottom(texture: MTLTexture, data: SongCardData, queueIndex: Int) {
+        os_unfair_lock_lock(&stateLock)
         if isScrollAnimating {
             scrollOffset = targetScrollOffset
             isScrollAnimating = false
             scrollCompletion = nil
             updateRowPositionsForScroll()
         }
-        stopIdleScroll()
+        _stopIdleScrollLocked()
         lastOperationTime = CACurrentMediaTime()
 
         let listIndex = rows.count
@@ -249,9 +258,11 @@ class RightPanelCompositor {
             pendingAnimations: []
         )
         rows.append(newRow)
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func reorderRows(newOrder: [(queueIndex: Int, data: SongCardData)], textures: [Int: MTLTexture], targetScrollOffset: Float? = nil) {
+        os_unfair_lock_lock(&stateLock)
         interruptCurrentAnimations(preservePosition: true)
         lastOperationTime = CACurrentMediaTime()
 
@@ -361,13 +372,15 @@ class RightPanelCompositor {
             }
         }
         rows = newRows
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func removeRow(queueIndex: Int) {
+        os_unfair_lock_lock(&stateLock)
         interruptCurrentAnimations()
         lastOperationTime = CACurrentMediaTime()
 
-        guard let removeIndex = rows.firstIndex(where: { $0.queueIndex == queueIndex }) else { return }
+        guard let removeIndex = rows.firstIndex(where: { $0.queueIndex == queueIndex }) else { os_unfair_lock_unlock(&stateLock); return }
 
         animateRowOutRight(index: removeIndex, duration: 0.6)
 
@@ -376,10 +389,12 @@ class RightPanelCompositor {
             rows[i].queueIndex -= 1
             animateRowTo(index: i, posX: normalPosX, posY: targetPosY, opacity: 1.0, duration: 0.6, delay: 0)
         }
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func animateScrollTo(targetOffset: Float, duration: Float = 0.45, extraRows: Int = 0, completion: (() -> Void)? = nil) {
-        stopIdleScroll()
+        os_unfair_lock_lock(&stateLock)
+        _stopIdleScrollLocked()
         lastOperationTime = CACurrentMediaTime()
 
         if let pending = pendingScrollOffset {
@@ -401,6 +416,7 @@ class RightPanelCompositor {
         if abs(scrollOffset - clampedTarget) < 0.01 {
             scrollOffset = clampedTarget
             updateRowPositionsForScroll()
+            os_unfair_lock_unlock(&stateLock)
             completion?()
             return
         }
@@ -411,17 +427,26 @@ class RightPanelCompositor {
         scrollAnimDuration = duration
         isScrollAnimating = true
         scrollCompletion = completion
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func startIdleScroll() {
-        guard rows.count > maxVisibleRows else { return }
+        os_unfair_lock_lock(&stateLock)
+        guard rows.count > maxVisibleRows else { os_unfair_lock_unlock(&stateLock); return }
         isIdleScrolling = true
         idleScrollPhase = .waiting
         lastOperationTime = CACurrentMediaTime()
         idleScrollLastTime = CACurrentMediaTime()
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func stopIdleScroll() {
+        os_unfair_lock_lock(&stateLock)
+        _stopIdleScrollLocked()
+        os_unfair_lock_unlock(&stateLock)
+    }
+
+    private func _stopIdleScrollLocked() {
         isIdleScrolling = false
         idleScrollPhase = .waiting
         if globalOpacityAnimating {
@@ -432,32 +457,48 @@ class RightPanelCompositor {
     }
 
     func clearAll() {
+        os_unfair_lock_lock(&stateLock)
         rows.removeAll()
         scrollOffset = 0
         pendingScrollOffset = nil
         isScrollAnimating = false
         scrollCompletion = nil
-        stopIdleScroll()
+        _stopIdleScrollLocked()
+        os_unfair_lock_unlock(&stateLock)
     }
 
-    var currentRowCount: Int {
-        return rows.filter { $0.texture != nil }.count
+    func currentRowCount() -> Int {
+        os_unfair_lock_lock(&stateLock)
+        let count = rows.filter { $0.texture != nil }.count
+        os_unfair_lock_unlock(&stateLock)
+        return count
     }
 
     func getRowDataForId(_ id: UUID) -> SongCardData? {
-        return rows.first(where: { $0.data?.id == id })?.data
+        os_unfair_lock_lock(&stateLock)
+        let result = rows.first(where: { $0.data?.id == id })?.data
+        os_unfair_lock_unlock(&stateLock)
+        return result
     }
 
     func listIndexForSong(id: UUID) -> Int? {
-        return rows.firstIndex(where: { $0.data?.id == id })
+        os_unfair_lock_lock(&stateLock)
+        let result = rows.firstIndex(where: { $0.data?.id == id })
+        os_unfair_lock_unlock(&stateLock)
+        return result
     }
 
     func isRowVisible(listIndex: Int) -> Bool {
-        return listIndex >= Int(scrollOffset) && listIndex < Int(scrollOffset) + maxVisibleRows
+        os_unfair_lock_lock(&stateLock)
+        let result = listIndex >= Int(scrollOffset) && listIndex < Int(scrollOffset) + maxVisibleRows
+        os_unfair_lock_unlock(&stateLock)
+        return result
     }
 
     func scrollOffsetNeededForRow(listIndex: Int) -> Float {
+        os_unfair_lock_lock(&stateLock)
         let current = scrollOffset
+        os_unfair_lock_unlock(&stateLock)
         if listIndex < Int(current) {
             return Float(listIndex)
         } else if listIndex >= Int(current) + maxVisibleRows {
@@ -467,13 +508,18 @@ class RightPanelCompositor {
     }
 
     func updateRowTexture(queueIndex: Int, texture: MTLTexture) {
+        os_unfair_lock_lock(&stateLock)
         if let index = rows.firstIndex(where: { $0.queueIndex == queueIndex }) {
             rows[index].texture = texture
         }
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func updateAnimations() {
         let now = CACurrentMediaTime()
+        var pendingCompletion: (() -> Void)?
+
+        os_unfair_lock_lock(&stateLock)
 
         if isScrollAnimating {
             let elapsed = Float(now - scrollAnimStartTime)
@@ -486,9 +532,8 @@ class RightPanelCompositor {
                 scrollOffset = targetScrollOffset
                 isScrollAnimating = false
                 updateRowPositionsForScroll()
-                let completion = scrollCompletion
+                pendingCompletion = scrollCompletion
                 scrollCompletion = nil
-                completion?()
             }
         }
 
@@ -562,16 +607,26 @@ class RightPanelCompositor {
             pendingScrollOffset = nil
             updateRowPositionsForScroll()
         }
+
+        os_unfair_lock_unlock(&stateLock)
+
+        pendingCompletion?()
     }
 
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
         guard enabled else { return }
 
+        os_unfair_lock_lock(&stateLock)
+        let localTitleTexture = titleTexture
+        let localRows = rows
+        let localGlobalOpacity = globalOpacity
+        os_unfair_lock_unlock(&stateLock)
+
         encoder.setComputePipelineState(pipelineState)
 
         let tgSize = MTLSize(width: 16, height: 16, depth: 1)
 
-        if let titleTex = titleTexture {
+        if let titleTex = localTitleTexture {
             var uniforms = SongCardUniforms()
             uniforms.posX = normalPosX
             uniforms.posY = titlePosY()
@@ -608,10 +663,10 @@ class RightPanelCompositor {
         let visibleMaxY: Float = 1.1
         let rowHeightNorm = Float(rowHeight) / Float(outHeight)
 
-        let sortedIndices = rows.indices.sorted { rows[$0].zOrder < rows[$1].zOrder }
+        let sortedIndices = localRows.indices.sorted { localRows[$0].zOrder < localRows[$1].zOrder }
 
         for i in sortedIndices {
-            let row = rows[i]
+            let row = localRows[i]
             guard let texture = row.texture, row.currentOpacity > 0.01 else { continue }
 
             let rowTop = row.currentPosY - rowHeightNorm / 2.0
@@ -625,7 +680,7 @@ class RightPanelCompositor {
             uniforms.posX = row.currentPosX
             uniforms.posY = row.currentPosY
             uniforms.scale = effectiveScale
-            uniforms.opacity = row.currentOpacity * globalOpacity
+            uniforms.opacity = row.currentOpacity * localGlobalOpacity
             uniforms.cardWidth = Float(RightPanelTemplate.rowWidth)
             uniforms.cardHeight = Float(rowHeight)
             uniforms.outWidth = Float(outWidth)
@@ -732,7 +787,7 @@ class RightPanelCompositor {
             updateRowPositionsForScroll()
         }
 
-        stopIdleScroll()
+        _stopIdleScrollLocked()
 
         for i in rows.indices {
             if rows[i].isAnimating {

@@ -104,6 +104,7 @@ class DebugInfoManager: ObservableObject {
     }
 
     private var stagingData: FrameDebugData?
+    private var stagingLock = os_unfair_lock_s()
     private var flushTimer: Timer?
 
     private let timeFormatter: DateFormatter = {
@@ -122,15 +123,19 @@ class DebugInfoManager: ObservableObject {
     }
 
     func stageFrameData(_ data: FrameDebugData) {
+        os_unfair_lock_lock(&stagingLock)
         stagingData = data
+        os_unfair_lock_unlock(&stagingLock)
     }
 
     func stageLagData(ms: Double, audioDepth: Int) {
+        os_unfair_lock_lock(&stagingLock)
         if stagingData == nil {
             stagingData = FrameDebugData()
         }
         stagingData!.pipelineLagMs = ms
         stagingData!.audioQueueDepth = audioDepth
+        os_unfair_lock_unlock(&stagingLock)
     }
 
     func startFlushTimer(interval: TimeInterval = 0.5) {
@@ -145,7 +150,11 @@ class DebugInfoManager: ObservableObject {
     }
 
     private func flushStagingToPublished() {
-        guard let data = stagingData else { return }
+        os_unfair_lock_lock(&stagingLock)
+        let data = stagingData
+        os_unfair_lock_unlock(&stagingLock)
+
+        guard let data = data else { return }
 
         if shouldThrottle {
             pipelineLagMs = data.pipelineLagMs

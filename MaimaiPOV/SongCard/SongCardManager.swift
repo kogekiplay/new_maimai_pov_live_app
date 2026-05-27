@@ -115,7 +115,9 @@ class SongCardManager: ObservableObject {
 
         if !queue.isEmpty {
             if index < currentIndex + 1 || index == currentIndex {
-                delegate?.onCurrentSongChanged(currentSong!)
+                if let song = currentSong {
+                    delegate?.onCurrentSongChanged(song)
+                }
             }
         }
     }

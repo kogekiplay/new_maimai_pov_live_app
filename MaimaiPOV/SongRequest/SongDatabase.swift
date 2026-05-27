@@ -356,7 +356,7 @@ class SongDatabase {
         if targetDiffNum == nil {
             for i in stride(from: 4, through: 0, by: -1) {
                 if let n = song.notes.first(where: { $0.difficulty.intVal == i && $0.isEnable }) {
-                    let idx = song.notes.firstIndex(where: { $0.difficulty.intVal == i && $0.isEnable })!
+                    guard let idx = song.notes.firstIndex(where: { $0.difficulty.intVal == i && $0.isEnable }) else { continue }
                     return NoteResult(
                         diffName: diffNumToName[i] ?? "master",
                         level: n.levelValue,
@@ -372,7 +372,7 @@ class SongDatabase {
 
         for i in stride(from: diffNum, through: 0, by: -1) {
             if let n = song.notes.first(where: { $0.difficulty.intVal == i && $0.isEnable }) {
-                let idx = song.notes.firstIndex(where: { $0.difficulty.intVal == i && $0.isEnable })!
+                guard let idx = song.notes.firstIndex(where: { $0.difficulty.intVal == i && $0.isEnable }) else { continue }
                 return NoteResult(
                     diffName: diffNumToName[i] ?? "master",
                     level: n.levelValue,

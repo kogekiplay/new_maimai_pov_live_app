@@ -73,6 +73,8 @@ class LeftPanelCompositor {
 
     var enabled: Bool = true
 
+    private var stateLock = os_unfair_lock_s()
+
     private var currentSongState: PanelCardState
     private var nextSongState: PanelCardState
     private var announcementState: PanelCardState
@@ -135,12 +137,14 @@ class LeftPanelCompositor {
 
     func updateAnimations() {
         let currentTime = CACurrentMediaTime()
+        os_unfair_lock_lock(&stateLock)
         updateCardState(&currentSongState, currentTime: currentTime)
         updateCardState(&nextSongState, currentTime: currentTime)
         for i in outgoingStates.indices {
             updateCardState(&outgoingStates[i], currentTime: currentTime)
         }
         outgoingStates.removeAll { $0.texture == nil && !$0.isAnimating }
+        os_unfair_lock_unlock(&stateLock)
     }
 
     private func updateCardState(_ state: inout PanelCardState, currentTime: CFTimeInterval) {
@@ -182,6 +186,7 @@ class LeftPanelCompositor {
     }
 
     func setCurrentSong(texture: MTLTexture?, data: SongCardData?, animate: Bool = true) {
+        os_unfair_lock_lock(&stateLock)
         let hadTexture = currentSongState.texture != nil
         currentSongState.texture = texture
         currentSongState.data = data
@@ -213,9 +218,11 @@ class LeftPanelCompositor {
              currentSongState.currentScale = Self.currentSongSlot.scale
              currentSongState.currentOpacity = 1.0
          }
+         os_unfair_lock_unlock(&stateLock)
      }
 
     func setNextSong(texture: MTLTexture?, data: SongCardData?, animate: Bool = true) {
+         os_unfair_lock_lock(&stateLock)
          let hadTexture = nextSongState.texture != nil
          nextSongState.texture = texture
          nextSongState.data = data
@@ -247,9 +254,11 @@ class LeftPanelCompositor {
              nextSongState.currentScale = Self.nextSongSlot.scale
              nextSongState.currentOpacity = 1.0
          }
+         os_unfair_lock_unlock(&stateLock)
      }
 
     func setAnnouncement(texture: MTLTexture?) {
+        os_unfair_lock_lock(&stateLock)
         announcementState.texture = texture
         if !announcementState.isAnimating {
             announcementState.currentPosX = Self.announcementSlot.posX
@@ -257,9 +266,11 @@ class LeftPanelCompositor {
             announcementState.currentScale = Self.announcementSlot.scale
             announcementState.currentOpacity = 1.0
         }
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func switchToNext(newNextTexture: MTLTexture?, newNextData: SongCardData?) {
+        os_unfair_lock_lock(&stateLock)
         var outgoingCurrent = currentSongState
         animateStateOutLeft(&outgoingCurrent)
         outgoingStates.append(outgoingCurrent)
@@ -285,9 +296,11 @@ class LeftPanelCompositor {
         newState.animStartTime = CACurrentMediaTime() + 0.15
         newState.animDuration = 0.6
         nextSongState = newState
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func clearAll() {
+        os_unfair_lock_lock(&stateLock)
         if currentSongState.texture != nil {
             var outgoing = currentSongState
             animateStateOutLeft(&outgoing)
@@ -298,9 +311,11 @@ class LeftPanelCompositor {
             animateStateOutLeft(&outgoing)
             outgoingStates.append(outgoing)
         }
+        os_unfair_lock_unlock(&stateLock)
     }
 
     func resetToEmpty() {
+        os_unfair_lock_lock(&stateLock)
         currentSongState.texture = nil
         currentSongState.data = nil
         currentSongState.currentPosX = Self.currentSongSlot.posX
@@ -318,6 +333,7 @@ class LeftPanelCompositor {
         nextSongState.currentOpacity = 0.0
         nextSongState.isAnimating = false
         nextSongState.pendingAnimations.removeAll()
+        os_unfair_lock_unlock(&stateLock)
     }
 
     private func animateStateToSlot(_ state: inout PanelCardState, slot: PanelSlot, duration: Float = 0.6, delay: Float = 0.0) {
@@ -359,24 +375,31 @@ class LeftPanelCompositor {
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
         guard enabled else { return }
 
+        os_unfair_lock_lock(&stateLock)
+        let currentSnap = currentSongState
+        let nextSnap = nextSongState
+        let announcementSnap = announcementState
+        let outgoingSnap = outgoingStates
+        os_unfair_lock_unlock(&stateLock)
+
         encoder.setComputePipelineState(pipelineState)
 
         let tgSize = MTLSize(width: 16, height: 16, depth: 1)
 
-        if let texture = currentSongState.texture, currentSongState.currentOpacity > 0.01 {
-            encodeCard(encoder, state: currentSongState, texture: texture, bufferIndex: 0, outputTexture: outputTexture, tgSize: tgSize)
+        if let texture = currentSnap.texture, currentSnap.currentOpacity > 0.01 {
+            encodeCard(encoder, state: currentSnap, texture: texture, bufferIndex: 0, outputTexture: outputTexture, tgSize: tgSize)
         }
 
-        if let texture = nextSongState.texture, nextSongState.currentOpacity > 0.01 {
-            encodeCard(encoder, state: nextSongState, texture: texture, bufferIndex: 1, outputTexture: outputTexture, tgSize: tgSize)
+        if let texture = nextSnap.texture, nextSnap.currentOpacity > 0.01 {
+            encodeCard(encoder, state: nextSnap, texture: texture, bufferIndex: 1, outputTexture: outputTexture, tgSize: tgSize)
         }
 
-        if let texture = announcementState.texture, announcementState.currentOpacity > 0.01 {
-            encodeCard(encoder, state: announcementState, texture: texture, bufferIndex: 2, outputTexture: outputTexture, tgSize: tgSize)
+        if let texture = announcementSnap.texture, announcementSnap.currentOpacity > 0.01 {
+            encodeCard(encoder, state: announcementSnap, texture: texture, bufferIndex: 2, outputTexture: outputTexture, tgSize: tgSize)
         }
 
-        for i in outgoingStates.indices {
-            let state = outgoingStates[i]
+        for i in outgoingSnap.indices {
+            let state = outgoingSnap[i]
             if let texture = state.texture, state.currentOpacity > 0.01 {
                 let bufferIndex = 3 + i
                 if bufferIndex < uniformsBuffers.count {

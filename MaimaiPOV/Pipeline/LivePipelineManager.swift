@@ -1393,10 +1393,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             newOrder.append((queueIndex: queueIndex, data: song))
 
             let existingData = compositor.getRowDataForId(song.id)
-            if existingData == nil {
+            if let existing = existingData {
+                if existing.giftValue != song.giftValue {
+                    existingGiftChanged.append((queueIndex: queueIndex, data: song))
+                }
+            } else {
                 newRowsNeedTexture.append((queueIndex: queueIndex, data: song))
-            } else if existingData!.giftValue != song.giftValue {
-                existingGiftChanged.append((queueIndex: queueIndex, data: song))
             }
         }
 
@@ -1580,7 +1582,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         let rightPanelSongCount = queue.count - startQueueIndex
-        let currentRowCount = compositor.currentRowCount
+        let currentRowCount = compositor.currentRowCount()
         let needsNewBottom = rightPanelSongCount > (currentRowCount - 1)
 
         if needsNewBottom {
