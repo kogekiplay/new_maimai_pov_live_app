@@ -1,9 +1,10 @@
 import Foundation
 
 protocol SongCardDataProvider: AnyObject {
-    func onCurrentSongChanged(_ song: SongCardData)
+    func onCurrentSongChanged(_ song: SongCardData?)
     func onQueueUpdated(_ songs: [SongCardData])
     func onSongRemoved(queueIndex: Int)
+    func onGiftValueChanged(_ song: SongCardData, queueIndex: Int)
 }
 
 class SongCardManager: ObservableObject {
@@ -115,6 +116,7 @@ class SongCardManager: ObservableObject {
         queue.removeAll()
         currentIndex = -1
         userGiftPool.removeAll()
+        delegate?.onCurrentSongChanged(nil)
         delegate?.onQueueUpdated([])
     }
 
@@ -135,6 +137,7 @@ class SongCardManager: ObservableObject {
     func updateGiftValue(name: String, delta: Int) -> Bool {
         guard let index = findSongIndex(byName: name) else { return false }
         queue[index].giftValue = userGiftPool[name] ?? queue[index].giftValue + delta
+        delegate?.onGiftValueChanged(queue[index], queueIndex: index)
         return true
     }
 
