@@ -116,9 +116,9 @@ class RTMPStreamManager: ObservableObject {
             var videoSettings = VideoCodecSettings(
                 videoSize: resolution.size,
                 bitRate: bitrateBps,
-                profileLevel: codec.profileLevel,
                 maxKeyFrameIntervalDuration: 2
             )
+            videoSettings.profileLevel = codec.profileLevel
             videoSettings.allowFrameReordering = false
             videoSettings.dataRateLimits = [Double(bitrateBps) / 8.0 * 2.0, 1.0]
             await stream.setVideoSettings(videoSettings)
