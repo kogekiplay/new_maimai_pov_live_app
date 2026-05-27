@@ -413,6 +413,7 @@ struct Phase2View: View {
             rtmpUrlRow
             streamKeyRow
             resolutionRow
+            codecRow
             bitrateRow
             streamButtonRow
         }
@@ -909,6 +910,35 @@ struct Phase2View: View {
                     .font(.system(size: 9))
                     .foregroundColor(.gray)
             }
+        }
+    }
+
+    private var codecRow: some View {
+        HStack {
+            Text("Codec").font(.caption).frame(width: 55, alignment: .leading)
+            Picker("", selection: Binding(
+                get: { pipeline.streamManager.streamCodec },
+                set: { newCodec in
+                    let oldCodec = pipeline.streamManager.streamCodec
+                    pipeline.streamManager.streamCodec = newCodec
+                    Config.streamCodec = newCodec
+                    if !pipeline.streamManager.isStreaming &&
+                        pipeline.streamManager.videoBitrate == oldCodec.recommendedBitrateKbps {
+                        pipeline.streamManager.videoBitrate = newCodec.recommendedBitrateKbps
+                        Config.streamBitrate = newCodec.recommendedBitrateKbps
+                    }
+                }
+            )) {
+                ForEach(StreamCodec.allCases, id: \.self) { codec in
+                    Text(codec.rawValue).tag(codec)
+                }
+            }
+            .pickerStyle(.segmented)
+            .disabled(pipeline.streamManager.isStreaming)
+            Spacer()
+            Text(pipeline.streamManager.streamCodec == .hevc ? "省带宽" : "兼容好")
+                .font(.system(size: 9))
+                .foregroundColor(.gray)
         }
     }
 

@@ -16,10 +16,30 @@ enum StreamResolution: String, CaseIterable {
     }
 }
 
+enum StreamCodec: String, CaseIterable {
+    case h264 = "H.264"
+    case hevc = "H.265"
+
+    var profileLevel: String {
+        switch self {
+        case .h264: return kVTProfileLevel_H264_High_AutoLevel as String
+        case .hevc: return kVTProfileLevel_HEVC_Main_AutoLevel as String
+        }
+    }
+
+    var recommendedBitrateKbps: Int {
+        switch self {
+        case .h264: return 4000
+        case .hevc: return 2500
+        }
+    }
+}
+
 class RTMPStreamManager: ObservableObject {
     @Published var isStreaming: Bool = false
     @Published var streamStatus: String = "Idle"
     @Published var streamResolution: StreamResolution = .r720p
+    @Published var streamCodec: StreamCodec = Config.streamCodec
     @Published var videoBitrate: Int = Config.streamBitrate
 
     private struct AudioSyncEntry {
@@ -87,6 +107,7 @@ class RTMPStreamManager: ObservableObject {
         let stream = RTMPStream(connection: connection)
 
         let resolution = streamResolution
+        let codec = streamCodec
         let bitrate = videoBitrate
 
         let bitrateBps = bitrate * 1000
@@ -95,7 +116,7 @@ class RTMPStreamManager: ObservableObject {
             var videoSettings = VideoCodecSettings(
                 videoSize: resolution.size,
                 bitRate: bitrateBps,
-                profileLevel: kVTProfileLevel_H264_High_AutoLevel as String,
+                profileLevel: codec.profileLevel,
                 maxKeyFrameIntervalDuration: 2
             )
             videoSettings.allowFrameReordering = false

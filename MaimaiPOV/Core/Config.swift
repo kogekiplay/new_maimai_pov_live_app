@@ -461,6 +461,15 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: streamBitrateKey) }
     }
 
+    static let defaultStreamCodec: String = StreamCodec.h264.rawValue
+    static var streamCodec: StreamCodec {
+        get {
+            let rawValue = UserDefaults.standard.string(forKey: streamCodecKey) ?? defaultStreamCodec
+            return StreamCodec(rawValue: rawValue) ?? .h264
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: streamCodecKey) }
+    }
+
     static let defaultMarqueeSpeed: Float = 3.0
     static var marqueeSpeed: Float {
         get {
@@ -517,6 +526,7 @@ enum Config {
     private static let guardDurationMinutesKey = "com.maimai.guardDurationMinutes"
     private static let autoFocusEnabledKey = "com.maimai.autoFocusEnabled"
     private static let streamBitrateKey = "com.maimai.streamBitrate"
+    private static let streamCodecKey = "com.maimai.streamCodec"
     private static let marqueeSpeedKey = "com.maimai.marqueeSpeed"
 
     // Video encoding
