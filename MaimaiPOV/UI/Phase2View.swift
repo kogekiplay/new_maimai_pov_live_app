@@ -112,7 +112,7 @@ struct Phase2View: View {
             ZStack {
                 if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
                     if let texture = pipeline.previewTexture {
-                        MetalView(device: pipeline.device, texture: texture, previewEnabled: pipeline.previewEnabled)
+                        MetalView(device: pipeline.device, texture: texture, previewEnabled: pipeline.previewEnabled, commandQueue: pipeline.sharedCommandQueue)
                             .aspectRatio(pipeline.isCropActive ? CGFloat(Config.outputWidth) / CGFloat(Config.outputHeight) : 3.0 / 4.0, contentMode: .fit)
                     }
                 } else if pipeline.camera.cameraAuthorized {

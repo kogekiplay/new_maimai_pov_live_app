@@ -5,9 +5,10 @@ struct MetalView: UIViewRepresentable {
     let device: MTLDevice
     let texture: MTLTexture?
     var previewEnabled: Bool = true
+    var commandQueue: MTLCommandQueue?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(device: device)
+        Coordinator(device: device, commandQueue: commandQueue)
     }
 
     func makeUIView(context: Context) -> MTKView {
@@ -46,9 +47,9 @@ struct MetalView: UIViewRepresentable {
         weak var currentTexture: MTLTexture?
         var previewEnabled: Bool = true
 
-        init(device: MTLDevice) {
+        init(device: MTLDevice, commandQueue: MTLCommandQueue? = nil) {
             self.device = device
-            self.commandQueue = device.makeCommandQueue()!
+            self.commandQueue = commandQueue ?? device.makeCommandQueue()!
 
             let library = device.makeDefaultLibrary()
             if let vf = library?.makeFunction(name: "vertex_main"),

@@ -346,10 +346,12 @@ extension CameraCaptureManager: AVCaptureVideoDataOutputSampleBufferDelegate,
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        if output is AVCaptureAudioDataOutput {
-            handleAudioSample(sampleBuffer)
-        } else {
-            handleVideoSample(sampleBuffer)
+        autoreleasepool {
+            if output is AVCaptureAudioDataOutput {
+                handleAudioSample(sampleBuffer)
+            } else {
+                handleVideoSample(sampleBuffer)
+            }
         }
     }
 

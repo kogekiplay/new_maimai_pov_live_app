@@ -2,7 +2,6 @@ import Metal
 
 class CanvasComposer {
     let device: MTLDevice
-    private let commandQueue: MTLCommandQueue
     private let pipelineState: MTLComputePipelineState
     private let uniformsBuffer: MTLBuffer
 
@@ -20,9 +19,8 @@ class CanvasComposer {
     var bgColorG: Float = 0.06
     var bgColorB: Float = 0.12
 
-    init?(device: MTLDevice, commandQueue: MTLCommandQueue) {
+    init?(device: MTLDevice) {
         self.device = device
-        self.commandQueue = commandQueue
 
         guard let library = device.makeDefaultLibrary(),
               let kernel = library.makeFunction(name: "cropAndCompose"),

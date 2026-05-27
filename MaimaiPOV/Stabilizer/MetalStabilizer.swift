@@ -15,6 +15,8 @@ class MetalStabilizer {
 
     private var cachedYTexture: MTLTexture?
     private var cachedCbcrTexture: MTLTexture?
+    private var cachedYCVMetalTexture: CVMetalTexture?
+    private var cachedCbcrCVMetalTexture: CVMetalTexture?
 
     private var lastCommandBuffer: MTLCommandBuffer?
     private var completionSemaphore: DispatchSemaphore?
@@ -242,6 +244,11 @@ class MetalStabilizer {
             format, width, height, planeIndex, &cvTexture
         )
         guard ret == kCVReturnSuccess, let cvTex = cvTexture else { return nil }
+        if planeIndex == 0 {
+            cachedYCVMetalTexture = cvTex
+        } else {
+            cachedCbcrCVMetalTexture = cvTex
+        }
         return CVMetalTextureGetTexture(cvTex)
     }
 }

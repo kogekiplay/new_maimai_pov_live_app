@@ -121,7 +121,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     private var frameCount: Int = 0
     private var streamFrameCount: Int = 0
     private var fpsTimer: Timer?
-    private var temperatureTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     private var yoloPreviewFrameCount: Int = 0
     private var lastStabOnlyMs: Double = 0
@@ -495,16 +494,16 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     private func observeBlivechatState() {
-        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
-            guard let self = self else { timer.invalidate(); return }
-            let state = self.blivechatClient.connectionState
-            if state != self.blivechatConnectionState {
+        blivechatClient.$connectionState
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                guard let self = self else { return }
                 self.blivechatConnectionState = state
+                if case .disconnected = state, self.blivechatClient.isManuallyDisconnected {
+                    return
+                }
             }
-            if case .disconnected = state, self.blivechatClient.isManuallyDisconnected {
-                timer.invalidate()
-            }
-        }
+            .store(in: &cancellables)
     }
 
     @MainActor func start() {
@@ -525,7 +524,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         debug.lensType = selectedLens.rawValue
         debug.log("Pipeline initialized: \(selectedLens.rawValue)")
 
-        self.canvasComposer = CanvasComposer(device: device, commandQueue: sharedCommandQueue)
+        self.canvasComposer = CanvasComposer(device: device)
 
         self.overlayCompositor = OverlayCompositor(device: device)
         self.overlayCompositor?.enabled = overlayEnabled
@@ -599,6 +598,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         camera.onVideoFrame = { [weak self] pixelBuffer, alignedTime in
             let pipelineEnterTime = CACurrentMediaTime()
             self?.pipelineQueue.async {
+                autoreleasepool {
                 guard let self = self else { return }
                 self.frameCount += 1
                 guard let stab = self.stabilizer, stab.stabilizerEnabled else { return }
@@ -792,6 +792,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     }
                     cmdBuf.commit()
                 }
+                }
             }
         }
 
@@ -801,7 +802,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         startFPSTimer()
-        startTemperatureTimer()
         debug.startFlushTimer()
     }
 
@@ -810,7 +810,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         camera.stopRunning()
         MotionManager.shared.stopUpdates()
         stopFPSTimer()
-        stopTemperatureTimer()
         DispatchQueue.main.async {
             self.debug.stopFlushTimer()
         }
@@ -1017,24 +1016,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func loadOverlayImage(_ image: UIImage) {
         overlayCompositor?.loadImage(image)
-    }
-
-    private func startTemperatureTimer() {
-        temperatureTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            self?.updateDeviceTemperature()
-        }
-        updateDeviceTemperature()
-    }
-
-    private func stopTemperatureTimer() {
-        temperatureTimer?.invalidate()
-        temperatureTimer = nil
-    }
-
-    private func updateDeviceTemperature() {
-        DispatchQueue.main.async { [weak self] in
-            self?.debug.deviceTemperature = 0.0
-        }
     }
 
     func onCurrentSongChanged(_ song: SongCardData?) {
@@ -1409,7 +1390,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         var renderedTextures: [Int: MTLTexture] = [:]
         let group = DispatchGroup()
-        let lock = NSLock()
 
         for item in newRowsNeedTexture {
             group.enter()
@@ -1420,9 +1400,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     DispatchQueue.main.async {
                         renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
                             if let texture = texture {
-                                lock.lock()
                                 renderedTextures[queueIndex] = texture
-                                lock.unlock()
                             }
                             group.leave()
                         }
@@ -1432,9 +1410,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
                         if let texture = texture {
-                            lock.lock()
                             renderedTextures[queueIndex] = texture
-                            lock.unlock()
                         }
                         group.leave()
                     }

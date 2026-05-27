@@ -92,7 +92,8 @@ class RTMPStreamManager: ObservableObject {
             await stream.setVideoSettings(VideoCodecSettings(
                 videoSize: resolution.size,
                 bitRate: bitrate * 1000,
-                profileLevel: kVTProfileLevel_H264_Main_4_0 as String
+                profileLevel: kVTProfileLevel_H264_High_4_0 as String,
+                maxKeyFrameIntervalDuration: 2
             ))
             await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
         }
