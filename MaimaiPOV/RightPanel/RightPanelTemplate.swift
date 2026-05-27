@@ -83,20 +83,21 @@ struct RightPanelTemplate {
   }
 
   /* 难度渐变背景 */
-  .diff-basic { background: linear-gradient(135deg, rgba(34,187,91,0.25), rgba(24,160,74,0.15)); }
-  .diff-advanced { background: linear-gradient(135deg, rgba(251,156,44,0.25), rgba(224,133,32,0.15)); }
-  .diff-expert { background: linear-gradient(135deg, rgba(246,72,97,0.25), rgba(217,61,83,0.15)); }
-  .diff-master { background: linear-gradient(135deg, rgba(158,69,224,0.25), rgba(133,56,196,0.15)); }
-  .diff-remaster { background: linear-gradient(135deg, rgba(219,170,255,0.3), rgba(246,178,255,0.2)); }
-  .diff-utage { background: linear-gradient(135deg, rgba(255,105,180,0.25), rgba(224,85,157,0.15)); }
+  .diff-basic { background: linear-gradient(135deg, rgba(34,187,91,0.55), rgba(24,160,74,0.45)); }
+  .diff-advanced { background: linear-gradient(135deg, rgba(251,156,44,0.55), rgba(224,133,32,0.45)); }
+  .diff-expert { background: linear-gradient(135deg, rgba(246,72,97,0.55), rgba(217,61,83,0.45)); }
+  .diff-master { background: linear-gradient(135deg, rgba(158,69,224,0.55), rgba(133,56,196,0.45)); }
+  .diff-remaster { background: linear-gradient(135deg, rgba(219,170,255,0.6), rgba(246,178,255,0.5)); }
+  .diff-utage { background: linear-gradient(135deg, rgba(255,105,180,0.55), rgba(224,85,157,0.45)); }
   .cover-area {
     width: 80px;
     height: 80px;
     border-radius: 8px;
     overflow: hidden;
     flex-shrink: 0;
-    border: 2px solid rgba(255,255,255,0.12);
-    background: rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.5);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
   .cover {
     width: 100%;
@@ -127,6 +128,7 @@ struct RightPanelTemplate {
     overflow: hidden;
     text-overflow: ellipsis;
     letter-spacing: 0.4px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.3);
   }
   .meta-row {
     display: flex;
