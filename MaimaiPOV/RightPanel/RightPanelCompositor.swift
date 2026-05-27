@@ -382,6 +382,12 @@ class RightPanelCompositor {
         stopIdleScroll()
         lastOperationTime = CACurrentMediaTime()
 
+        if let pending = pendingScrollOffset {
+            scrollOffset = pending
+            pendingScrollOffset = nil
+            updateRowPositionsForScroll()
+        }
+
         if isScrollAnimating {
             scrollOffset = targetScrollOffset
             isScrollAnimating = false
@@ -440,6 +446,24 @@ class RightPanelCompositor {
 
     func getRowDataForId(_ id: UUID) -> SongCardData? {
         return rows.first(where: { $0.data?.id == id })?.data
+    }
+
+    func listIndexForSong(id: UUID) -> Int? {
+        return rows.firstIndex(where: { $0.data?.id == id })
+    }
+
+    func isRowVisible(listIndex: Int) -> Bool {
+        return listIndex >= Int(scrollOffset) && listIndex < Int(scrollOffset) + maxVisibleRows
+    }
+
+    func scrollOffsetNeededForRow(listIndex: Int) -> Float {
+        let current = scrollOffset
+        if listIndex < Int(current) {
+            return Float(listIndex)
+        } else if listIndex >= Int(current) + maxVisibleRows {
+            return Float(listIndex - maxVisibleRows + 1)
+        }
+        return current
     }
 
     func updateRowTexture(queueIndex: Int, texture: MTLTexture) {

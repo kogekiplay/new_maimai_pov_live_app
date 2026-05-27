@@ -1336,9 +1336,49 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             neededOffset = Float(targetScrollRow - compositor.maxVisibleRows + 1)
         }
 
+        var preScrollSongId: UUID? = nil
+        var maxUpwardMovement = 0
+        for (newIndex, song) in allSongs.enumerated() {
+            if let oldIndex = compositor.listIndexForSong(id: song.id) {
+                let movement = oldIndex - newIndex
+                if movement > maxUpwardMovement {
+                    maxUpwardMovement = movement
+                    preScrollSongId = song.id
+                }
+            }
+        }
+
+        if let scrollId = preScrollSongId,
+           let oldListIndex = compositor.listIndexForSong(id: scrollId) {
+            if !compositor.isRowVisible(listIndex: oldListIndex) {
+                let oldNeededOffset = compositor.scrollOffsetNeededForRow(listIndex: oldListIndex)
+
+                let gen = rightPanelGeneration
+                compositor.animateScrollTo(targetOffset: oldNeededOffset, duration: 0.3) { [weak self] in
+                    guard let self = self else { return }
+                    guard self.rightPanelGeneration == gen else { return }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                        guard let self = self else { return }
+                        guard self.rightPanelGeneration == gen else { return }
+
+                        let currentAfterPreScroll = self.rightPanelCompositor?.currentScrollOffset ?? currentOffset
+                        let targetScrollOffset = abs(neededOffset - currentAfterPreScroll) > 0.01 ? neededOffset : nil
+                        self.doReorderRightPanel(
+                            compositor: compositor,
+                            renderer: renderer,
+                            allSongs: allSongs,
+                            startQueueIndex: startQueueIndex,
+                            targetScrollOffset: targetScrollOffset
+                        )
+                    }
+                }
+                return
+            }
+        }
+
         let needsScroll = abs(neededOffset - currentOffset) > 0.01
         let targetScrollOffset = needsScroll ? neededOffset : nil
-
         doReorderRightPanel(compositor: compositor, renderer: renderer, allSongs: allSongs, startQueueIndex: startQueueIndex, targetScrollOffset: targetScrollOffset)
     }
 
