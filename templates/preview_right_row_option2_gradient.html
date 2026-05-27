@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>右侧队列行 - 方案2: 渐变卡片底色 (420x120px)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .preview-container {
+    text-align: center;
+  }
+  .preview-label {
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  /* ========== 方案2: 渐变卡片底色 ========== */
+  .row-wrapper {
+    width: 420px;
+    height: 120px;
+  }
+  .row-container {
+    width: 420px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    position: relative;
+  }
+
+  /* 整个卡片使用渐变背景 */
+  .row-body {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 难度渐变背景 - 半透明版本 */
+  .diff-basic { background: linear-gradient(135deg, rgba(34,187,91,0.25), rgba(24,160,74,0.15)); }
+  .diff-advanced { background: linear-gradient(135deg, rgba(251,156,44,0.25), rgba(224,133,32,0.15)); }
+  .diff-expert { background: linear-gradient(135deg, rgba(246,72,97,0.25), rgba(217,61,83,0.15)); }
+  .diff-master { background: linear-gradient(135deg, rgba(158,69,224,0.25), rgba(133,56,196,0.15)); }
+  .diff-remaster { background: linear-gradient(135deg, rgba(219,170,255,0.3), rgba(246,178,255,0.2)); }
+  .diff-utage { background: linear-gradient(135deg, rgba(255,105,180,0.25), rgba(224,85,157,0.15)); }
+
+  /* 封面区域 */
+  .cover-area {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.3);
+  }
+  .cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .cover-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  }
+
+  /* 信息区域 */
+  .info-area {
+    flex: 1;
+    margin-left: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    overflow: hidden;
+    padding-right: 10px;
+  }
+  .song-name {
+    color: #fff;
+    font-size: 23px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.4px;
+  }
+  .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .chart-badge {
+    font-size: 13px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 3px;
+    color: white;
+    letter-spacing: 0.7px;
+    flex-shrink: 0;
+  }
+  .chart-standard { background: rgba(255,255,255,0.18); }
+  .chart-dx { background: rgba(255,80,80,0.6); }
+  .chart-utage { background: rgba(255,105,180,0.6); }
+  .level-text {
+    color: rgba(255,255,255,0.8);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* 底部行 */
+  .bottom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .gift-value {
+    color: #FFD700;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .requester {
+    color: rgba(255,255,255,0.55);
+    font-size: 16px;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<!-- 示例1: Master难度 + DX图表 + 礼物 -->
+<div class="preview-container">
+  <div class="preview-label">方案2: Master + 渐变底色</div>
+  <div class="row-wrapper">
+    <div class="row-container">
+      <div class="row-body diff-master">
+        <div class="cover-area">
+          <img class="cover" src="https://picsum.photos/80/80?random=1" alt="cover">
+        </div>
+        <div class="info-area">
+          <div class="song-name">ギルドロップス</div>
+          <div class="meta-row">
+            <span class="chart-badge chart-dx">DX</span>
+            <span class="level-text">LV 13.7</span>
+          </div>
+          <div class="bottom-row">
+            <span class="gift-value">🎁 ¥9.99</span>
+            <span class="requester">by 张三</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 示例2: Re:MASTER难度 -->
+<div class="preview-container">
+  <div class="preview-label">方案2: Re:MASTER + 渐变底色</div>
+  <div class="row-wrapper">
+    <div class="row-container">
+      <div class="row-body diff-remaster">
+        <div class="cover-area">
+          <img class="cover" src="https://picsum.photos/80/80?random=2" alt="cover">
+        </div>
+        <div class="info-area">
+          <div class="song-name">Vibrant Evolution</div>
+          <div class="meta-row">
+            <span class="chart-badge chart-standard">STD</span>
+            <span class="level-text">LV 14.5</span>
+          </div>
+          <div class="bottom-row">
+            <span class="requester">by 李四</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 示例3: Expert难度 -->
+<div class="preview-container">
+  <div class="preview-label">方案2: Expert + 渐变底色</div>
+  <div class="row-wrapper">
+    <div class="row-container">
+      <div class="row-body diff-expert">
+        <div class="cover-area">
+          <div class="cover-placeholder"></div>
+        </div>
+        <div class="info-area">
+          <div class="song-name">春眠</div>
+          <div class="meta-row">
+            <span class="chart-badge chart-dx">DX</span>
+            <span class="level-text">LV 12.2</span>
+          </div>
+          <div class="bottom-row">
+            <span class="requester">by 王五</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 示例4: Basic难度 -->
+<div class="preview-container">
+  <div class="preview-label">方案2: Basic + 渐变底色</div>
+  <div class="row-wrapper">
+    <div class="row-container">
+      <div class="row-body diff-basic">
+        <div class="cover-area">
+          <img class="cover" src="https://picsum.photos/80/80?random=4" alt="cover">
+        </div>
+        <div class="info-area">
+          <div class="song-name">初音ミクの消失</div>
+          <div class="meta-row">
+            <span class="chart-badge chart-standard">STD</span>
+            <span class="level-text">LV 5.0</span>
+          </div>
+          <div class="bottom-row">
+            <span class="gift-value">🎁 ¥19.99</span>
+            <span class="requester">by 赵六</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 示例5: Advanced难度 -->
+<div class="preview-container">
+  <div class="preview-label">方案2: Advanced + 渐变底色</div>
+  <div class="row-wrapper">
+    <div class="row-container">
+      <div class="row-body diff-advanced">
+        <div class="cover-area">
+          <img class="cover" src="https://picsum.photos/80/80?random=5" alt="cover">
+        </div>
+        <div class="info-area">
+          <div class="song-name">Alice in Musicland</div>
+          <div class="meta-row">
+            <span class="chart-badge chart-dx">DX</span>
+            <span class="level-text">LV 9.4</span>
+          </div>
+          <div class="bottom-row">
+            <span class="requester">by 孙七</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

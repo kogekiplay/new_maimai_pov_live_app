@@ -268,12 +268,10 @@ class RightPanelCompositor {
             let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: effectiveTargetScrollOffset)
             if let existingIndex = rows.firstIndex(where: { $0.data?.id == item.data.id }) {
                 let fromPosY = rows[existingIndex].currentPosY
-                let distance = abs(targetPosY - fromPosY)
+                let distance = max(0, fromPosY - targetPosY)
                 moveDistances[item.data.id] = distance
             }
         }
-
-        let maxDistance = moveDistances.values.max() ?? 0
 
         var newRows: [RightPanelRowState] = []
         for (listIndex, item) in newOrder.enumerated() {
@@ -301,7 +299,10 @@ class RightPanelCompositor {
                 row.pendingAnimations = []
 
                 let distance = moveDistances[item.data.id] ?? 0
-                if maxDistance > 0.001 && distance == maxDistance {
+                let isMovingUp = targetPosY < row.startPosY - 0.001
+                let isMovingDown = targetPosY > row.startPosY + 0.001
+
+                if isMovingUp && distance > 0.001 {
                     row.zOrder = 100
                     let scaleStep = RightPanelAnimationStep(
                         targetPosX: normalPosX,
@@ -322,7 +323,7 @@ class RightPanelCompositor {
                     row.targetScale = 1.20
                     row.animDuration = 0.45
                     row.pendingAnimations = [scaleBackStep]
-                } else if distance > 0.001 {
+                } else if isMovingDown {
                     row.zOrder = 50
                 } else {
                     row.zOrder = 0

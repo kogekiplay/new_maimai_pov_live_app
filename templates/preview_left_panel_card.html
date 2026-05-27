@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>左侧大卡片 - 预览模板 (420x432px)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px;
+    gap: 60px;
+  }
+  .preview-container {
+    text-align: center;
+  }
+  .preview-label {
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  /* ========== 左侧大卡片样式 (420x432px) ========== */
+  .card-wrapper {
+    width: 420px;
+    height: 432px;
+  }
+  .card-container {
+    width: 420px;
+    height: 432px;
+  }
+  .card {
+    width: 420px;
+    height: 432px;
+    position: relative;
+    border-radius: 18px;
+    padding: 4px;
+    overflow: visible;
+  }
+  .card-body {
+    background: #111;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 难度渐变背景 */
+  .diff-basic { background: linear-gradient(135deg, #22bb5b, #18a04a); }
+  .diff-advanced { background: linear-gradient(135deg, #fb9c2c, #e08520); }
+  .diff-expert { background: linear-gradient(135deg, #f64861, #d93d53); }
+  .diff-master { background: linear-gradient(135deg, #9e45e0, #8538c4); }
+  .diff-remaster { background: linear-gradient(135deg, #dbaaff, #f6b2ff, #dbaaff); }
+  .diff-utage { background: linear-gradient(135deg, #ff69b4, #e0559d); }
+
+  /* 头部栏 */
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 4px 10px 0;
+    position: relative;
+    z-index: 2;
+  }
+  .difficulty-badge {
+    font-size: 36px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: 1.8px;
+    line-height: 1;
+    -webkit-text-stroke: 1.4px rgba(0,0,0,0.5);
+    paint-order: stroke fill;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.7), 0 0 20px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+  }
+  .level-badge {
+    color: white;
+    line-height: 1;
+    transform: translateY(-2px);
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    -webkit-text-stroke: 0.8px rgba(0,0,0,0.4);
+    paint-order: stroke fill;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.65), 0 0 14px rgba(0,0,0,0.25);
+  }
+  .level-lv { font-size: 20px; font-weight: 800; }
+  .level-num { font-size: 36px; font-weight: 900; }
+  .level-dec { font-size: 24px; font-weight: 700; }
+
+  /* 封面区域 */
+  .cover-area {
+    padding: 2px 10px 2px;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cover-wrapper {
+    width: 280px;
+    height: 280px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.08);
+  }
+  .cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .cover-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  }
+
+  /* 信息栏 */
+  .info-bar {
+    padding: 6px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .song-name {
+    color: #fff;
+    font-size: 34px;
+    font-weight: 800;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.6px;
+  }
+  .meta-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+  }
+  .chart-badge {
+    font-size: 15px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 4px;
+    color: white;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .chart-standard { background: rgba(255,255,255,0.12); }
+  .chart-dx { background: rgba(255,80,80,0.55); }
+  .chart-utage { background: rgba(255,105,180,0.55); }
+  .requester-label {
+    color: #ffd93d;
+    font-size: 26px;
+    font-weight: 800;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+  }
+  .gift-value {
+    color: #FFD700;
+    font-size: 22px;
+    font-weight: 700;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+
+<!-- 示例1: Master难度 + DX图表 -->
+<div class="preview-container">
+  <div class="preview-label">示例1: Master 13.7 + DX</div>
+  <div class="card-wrapper">
+    <div class="card-container">
+      <div class="card diff-master">
+        <div class="card-body">
+          <div class="header-bar">
+            <span class="difficulty-badge">MAS</span>
+            <span class="level-badge">
+              <span class="level-lv">LV</span>
+              <span class="level-num">13</span>
+              <span class="level-dec">.7</span>
+            </span>
+          </div>
+          <div class="cover-area">
+            <div class="cover-wrapper">
+              <img class="cover" src="https://picsum.photos/280/280?random=1" alt="cover">
+            </div>
+          </div>
+          <div class="info-bar">
+            <div class="song-name">ギルドロップス</div>
+            <div class="meta-row">
+              <span class="chart-badge chart-dx">DX</span>
+              <span class="requester-label">by 张三</span>
+              <span class="gift-value">🎁 ¥9.99</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 示例2: Re:MASTER难度 + STD图表 -->
+<div class="preview-container">
+  <div class="preview-label">示例2: Re:MASTER 14.5 + STD</div>
+  <div class="card-wrapper">
+    <div class="card-container">
+      <div class="card diff-remaster">
+        <div class="card-body">
+          <div class="header-bar">
+            <span class="difficulty-badge">Re:M</span>
+            <span class="level-badge">
+              <span class="level-lv">LV</span>
+              <span class="level-num">14</span>
+              <span class="level-dec">.5</span>
+            </span>
+          </div>
+          <div class="cover-area">
+            <div class="cover-wrapper">
+              <img class="cover" src="https://picsum.photos/280/280?random=2" alt="cover">
+            </div>
+          </div>
+          <div class="info-bar">
+            <div class="song-name">Vibrant Evolution</div>
+            <div class="meta-row">
+              <span class="chart-badge chart-standard">STD</span>
+              <span class="requester-label">by 李四</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 示例3: Expert难度 -->
+<div class="preview-container">
+  <div class="preview-label">示例3: Expert 12.2 + DX</div>
+  <div class="card-wrapper">
+    <div class="card-container">
+      <div class="card diff-expert">
+        <div class="card-body">
+          <div class="header-bar">
+            <span class="difficulty-badge">EXP</span>
+            <span class="level-badge">
+              <span class="level-lv">LV</span>
+              <span class="level-num">12</span>
+              <span class="level-dec">.2</span>
+            </span>
+          </div>
+          <div class="cover-area">
+            <div class="cover-wrapper">
+              <div class="cover-placeholder"></div>
+            </div>
+          </div>
+          <div class="info-bar">
+            <div class="song-name">春眠</div>
+            <div class="meta-row">
+              <span class="chart-badge chart-dx">DX</span>
+              <span class="requester-label">by 王五</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
