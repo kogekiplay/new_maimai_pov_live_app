@@ -6,31 +6,17 @@ class MarqueeRenderer {
 
     private let fontSize: CGFloat = 28
     private let paddingH: CGFloat = 24
-    private let paddingV: CGFloat = 10
     private let cornerRadius: CGFloat = 12
     private let maxTextureWidth: Int = 1800
     private let barHeight: Int = 64
-
-    private var textureCache: [String: MTLTexture] = [:]
-    private var widthCache: [String: Int] = [:]
-    private var cacheLock = os_unfair_lock_s()
 
     init(device: MTLDevice) {
         self.device = device
     }
 
     func render(text: String, type: MarqueeItem.MarqueeItemType) -> (MTLTexture?, Int) {
-        let cacheKey = "\(type.rawValue)_\(text)"
-
-        os_unfair_lock_lock(&cacheLock)
-        if let cachedTexture = textureCache[cacheKey], let cachedWidth = widthCache[cacheKey] {
-            os_unfair_lock_unlock(&cacheLock)
-            return (cachedTexture, cachedWidth)
-        }
-        os_unfair_lock_unlock(&cacheLock)
-
         if Thread.isMainThread {
-            return renderOnMainThread(text: text, type: type, cacheKey: cacheKey)
+            return renderOnMainThread(text: text, type: type)
         }
 
         let sem = DispatchSemaphore(value: 0)
@@ -41,7 +27,7 @@ class MarqueeRenderer {
                 sem.signal()
                 return
             }
-            result = self.renderOnMainThread(text: text, type: type, cacheKey: cacheKey)
+            result = self.renderOnMainThread(text: text, type: type)
             sem.signal()
         }
 
@@ -49,7 +35,7 @@ class MarqueeRenderer {
         return result
     }
 
-    private func renderOnMainThread(text: String, type: MarqueeItem.MarqueeItemType, cacheKey: String) -> (MTLTexture?, Int) {
+    private func renderOnMainThread(text: String, type: MarqueeItem.MarqueeItemType) -> (MTLTexture?, Int) {
         let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
@@ -91,12 +77,6 @@ class MarqueeRenderer {
         UIGraphicsEndImageContext()
 
         let texture = TextureHelper.shared.cgImageToTexture(cgImage, device: device)
-        if let texture = texture {
-            os_unfair_lock_lock(&cacheLock)
-            textureCache[cacheKey] = texture
-            widthCache[cacheKey] = textureWidth
-            os_unfair_lock_unlock(&cacheLock)
-        }
         return (texture, textureWidth)
     }
 }
