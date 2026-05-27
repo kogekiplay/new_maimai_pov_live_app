@@ -17,6 +17,8 @@ class RightPanelRenderer {
     private var cachedTitleTexture: MTLTexture?
     private let maxCacheSize = 20
 
+    private var renderGeneration: Int = 0
+
     init(device: MTLDevice) {
         self.device = device
 
@@ -45,7 +47,7 @@ class RightPanelRenderer {
             return
         }
         let html = RightPanelTemplate.renderTitle()
-        renderHTML(html, webView: titleWebView, width: titleWidth, height: titleHeight) { [weak self] texture in
+        renderHTML(html, webView: titleWebView, width: titleWidth, height: titleHeight, expectedGeneration: nil) { [weak self] texture in
             if let texture = texture {
                 self?.cachedTitleTexture = texture
             }
@@ -59,9 +61,15 @@ class RightPanelRenderer {
             completion(queueIndex, cached)
             return
         }
+        renderGeneration += 1
+        let currentGen = renderGeneration
         let html = RightPanelTemplate.renderRow(data: data, coverBase64: coverBase64)
-        renderHTML(html, webView: rowWebView, width: rowWidth, height: rowHeight) { [weak self] texture in
+        renderHTML(html, webView: rowWebView, width: rowWidth, height: rowHeight, expectedGeneration: currentGen) { [weak self] texture in
             guard let self = self else {
+                completion(queueIndex, nil)
+                return
+            }
+            if self.renderGeneration != currentGen {
                 completion(queueIndex, nil)
                 return
             }
@@ -92,6 +100,9 @@ class RightPanelRenderer {
             return
         }
 
+        renderGeneration += 1
+        let batchGen = renderGeneration
+
         func renderNext(index: Int) {
             guard index < rowsToRender.count else {
                 completion(results)
@@ -103,8 +114,11 @@ class RightPanelRenderer {
             let key = cacheKey(for: item.song)
 
             let html = RightPanelTemplate.renderRow(data: item.song, coverBase64: coverBase64)
-            renderHTML(html, webView: rowWebView, width: rowWidth, height: rowHeight) { [weak self] texture in
+            renderHTML(html, webView: rowWebView, width: rowWidth, height: rowHeight, expectedGeneration: batchGen) { [weak self] texture in
                 guard let self = self else { return }
+                if self.renderGeneration != batchGen {
+                    return
+                }
                 if let texture = texture {
                     results[item.queueIndex] = texture
                     self.rowTextureCache[key] = texture
@@ -149,11 +163,15 @@ class RightPanelRenderer {
         }
     }
 
-    private func renderHTML(_ html: String, webView: WKWebView, width: Int, height: Int, completion: @escaping (MTLTexture?) -> Void) {
+    private func renderHTML(_ html: String, webView: WKWebView, width: Int, height: Int, expectedGeneration: Int?, completion: @escaping (MTLTexture?) -> Void) {
         webView.loadHTMLString(html, baseURL: nil)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             guard let self = self else {
+                completion(nil)
+                return
+            }
+            if let gen = expectedGeneration, self.renderGeneration != gen {
                 completion(nil)
                 return
             }
