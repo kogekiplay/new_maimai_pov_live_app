@@ -46,11 +46,12 @@ class DebugAPIHandler {
                         let lockedEnd = pipeline.songCardManager.lockedEndIndex
                         if index >= lockedEnd {
                             pipeline.songCardManager.reorderQueueByGiftValue()
-                            pipeline.reorderRightPanel()
                         }
+                    } else {
+                        pipeline.scheduleRefreshLeftPanel()
                     }
-                    pipeline.refreshLeftPanel()
                     pipeline.postMarquee("🎁 感谢 \(authorName) 送出 \(gift.giftName) ×\(gift.num)", type: .gift)
+                    pipeline.debug.log("[礼物] \(authorName) 送出 \(gift.giftName) ×\(gift.num) (\(coinValue)币)")
                 }
 
                 result = [
@@ -161,11 +162,12 @@ class DebugAPIHandler {
                     let lockedEnd = pipeline.songCardManager.lockedEndIndex
                     if index >= lockedEnd {
                         pipeline.songCardManager.reorderQueueByGiftValue()
-                        pipeline.reorderRightPanel()
                     }
+                } else {
+                    pipeline.scheduleRefreshLeftPanel()
                 }
-                pipeline.refreshLeftPanel()
                 pipeline.postMarquee("⭐ \(authorName) 上舰了!", type: .member)
+                pipeline.debug.log("[上舰] \(authorName) 上舰了!")
 
                 result = [
                     "success": true,

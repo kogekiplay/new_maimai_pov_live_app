@@ -143,6 +143,32 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 <h3 style="margin:12px 0 6px;color:#ba68c8">📢 公告编辑</h3>
 <textarea id="announcementText" rows="3" style="width:100%;background:#1a1a2e;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:8px;font-size:14px;resize:vertical" placeholder="输入公告内容..."></textarea>
 <button class="debug-btn debug-btn-refresh" onclick="updateAnnouncement()" style="margin-top:6px">📢 更新公告</button>
+<h3 style="margin:12px 0 6px;color:#ff6b9d">🔥 压力测试</h3>
+<div class="debug-row">
+<label>时长(秒)</label>
+<input type="number" id="stressDuration" value="300" min="30" max="1800" />
+</div>
+<div class="debug-row">
+<label>弹幕/秒</label>
+<input type="number" id="stressDanmakuRate" value="3" min="0" max="20" />
+</div>
+<div class="debug-row">
+<label>礼物/秒</label>
+<input type="number" id="stressGiftRate" value="1" min="0" max="10" />
+</div>
+<div class="debug-row">
+<label>SC/秒</label>
+<input type="number" id="stressSCRate" value="0.3" min="0" max="5" step="0.1" />
+</div>
+<div class="debug-row">
+<label>切歌间隔(秒)</label>
+<input type="number" id="stressSkipInterval" value="60" min="10" max="300" />
+</div>
+<div class="debug-btns">
+<button class="debug-btn" style="background:linear-gradient(135deg,#ff6b9d,#ff9c6d);color:#fff" onclick="startStressTest()">🔥 开始压力测试</button>
+<button class="debug-btn debug-btn-clear" onclick="stopStressTest()">⏹ 停止</button>
+</div>
+<div id="stressStatus" style="font-size:11px;color:#8b7ba8;margin-top:6px"></div>
 </div>
 </div>
 <div class="bottom-bar">
@@ -520,6 +546,103 @@ showToast('公告已更新');
 showToast('更新失败');
 }
 });
+}
+var stressTestRunning=false;
+var stressTestTimers=[];
+var stressStats={danmaku:0,gift:0,sc:0,skip:0,errors:0};
+var stressSongNames=['打上花火','Lemon','红莲华','残酷天使的行动纲领','Only My Railgun','Butter-Fly','魂之轮回','God knows...','Don\'t say "lazy"','Cry Baby','KICK BACK','残響散歌','アイドル','怪物','夜に駆ける','群青','うっせぇわ','ドライフラワー','Shape of You','Shin Takarajima','ファンサ','シャルル','ロキ','テオ','ハレハレヤ','ビターチョコデコレーション','命に嫌われている','クライマー','フォニイ','エンヴィーベイビー','きゅうくらりん','グッバイ宣言','シリウス','メリュー','ヴァンパイア','キリギリス','キャットラビング','デビルジョー','マリーゴールド','レオ','ピーターパン','フライミー','ストリーミングハート','スーサイドパレード','アンノウン','マチガイサガシ','コスモポップ','ヒバナ','アストロ'];
+var stressUserNames=['小明的歌单','舞萌DX玩家','音游大佬','点歌达人','maimai爱好者','节奏大师','打歌人','萌新玩家','大佬来了','氪金战士','白嫖怪','舰长大人','SC狂魔','弹幕姬','直播间常客','路过的','新观众','老粉','铁粉','土豪哥'];
+function stressRand(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function stressRandInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+function stressSend(url,body,type){
+var xhr=new XMLHttpRequest();
+xhr.open('POST',url,true);
+xhr.setRequestHeader('Content-Type','application/json');
+xhr.onload=function(){
+if(xhr.status===200){
+stressStats[type]=(stressStats[type]||0)+1;
+}else{
+stressStats.errors++;
+}
+updateStressStatus();
+};
+xhr.onerror=function(){stressStats.errors++;updateStressStatus()};
+xhr.send(JSON.stringify(body));
+}
+function updateStressStatus(){
+var el=document.getElementById('stressStatus');
+if(!stressTestRunning){return}
+var elapsed=((Date.now()-stressStartTime)/1000).toFixed(0);
+el.innerHTML='⏱ '+elapsed+'s | 💬 弹幕:'+stressStats.danmaku+' 🎁 礼物:'+stressStats.gift+' 💰 SC:'+stressStats.sc+' ⏭ 切歌:'+stressStats.skip+' ❌ 错误:'+stressStats.errors;
+}
+var stressStartTime=0;
+function startStressTest(){
+if(stressTestRunning){showToast('压力测试已在运行');return}
+stressTestRunning=true;
+stressStats={danmaku:0,gift:0,sc:0,skip:0,errors:0};
+stressStartTime=Date.now();
+var duration=parseInt(document.getElementById('stressDuration').value)||300;
+var danmakuRate=parseFloat(document.getElementById('stressDanmakuRate').value)||3;
+var giftRate=parseFloat(document.getElementById('stressGiftRate').value)||1;
+var scRate=parseFloat(document.getElementById('stressSCRate').value)||0.3;
+var skipInterval=parseInt(document.getElementById('stressSkipInterval').value)||60;
+showToast('压力测试开始! '+duration+'秒');
+if(danmakuRate>0){
+var danmakuMs=Math.max(100,Math.round(1000/danmakuRate));
+var t1=setInterval(function(){
+if(!stressTestRunning)return;
+var name=stressRand(stressUserNames);
+var song=stressRand(stressSongNames);
+var cmds=['点歌 '+song,'!点歌 '+song];
+var content=stressRand(cmds);
+stressSend('/api/debug/simulate/danmaku',{authorName:name,content:content},'danmaku');
+},danmakuMs);
+stressTestTimers.push(t1);
+}
+if(giftRate>0){
+var giftMs=Math.max(200,Math.round(1000/giftRate));
+var t2=setInterval(function(){
+if(!stressTestRunning)return;
+var name=stressRand(stressUserNames);
+var coins=[1000,2000,5000,10000,50000,100000];
+var coin=stressRand(coins);
+stressSend('/api/debug/simulate/gift',{authorName:name,totalCoin:coin},'gift');
+},giftMs);
+stressTestTimers.push(t2);
+}
+if(scRate>0){
+var scMs=Math.max(500,Math.round(1000/scRate));
+var t3=setInterval(function(){
+if(!stressTestRunning)return;
+var name=stressRand(stressUserNames);
+var prices=[10,30,50,100,200,500];
+var price=stressRand(prices);
+var song=stressRand(stressSongNames);
+var scContents=['点歌 '+song,'','加油！','太好听了','再来一首','点歌'+song];
+var content=stressRand(scContents);
+stressSend('/api/debug/simulate/sc',{authorName:name,price:price,content:content},'sc');
+},scMs);
+stressTestTimers.push(t3);
+}
+if(skipInterval>0){
+var t4=setInterval(function(){
+if(!stressTestRunning)return;
+stressSend('/api/queue/skip',{},'skip');
+},skipInterval*1000);
+stressTestTimers.push(t4);
+}
+var t5=setTimeout(function(){stopStressTest()},duration*1000);
+stressTestTimers.push(t5);
+updateStressStatus();
+}
+function stopStressTest(){
+stressTestRunning=false;
+for(var i=0;i<stressTestTimers.length;i++){clearInterval(stressTestTimers[i]);clearTimeout(stressTestTimers[i])}
+stressTestTimers=[];
+var el=document.getElementById('stressStatus');
+var elapsed=((Date.now()-stressStartTime)/1000).toFixed(0);
+el.innerHTML='✅ 测试结束! 用时'+elapsed+'秒 | 💬 弹幕:'+stressStats.danmaku+' 🎁 礼物:'+stressStats.gift+' 💰 SC:'+stressStats.sc+' ⏭ 切歌:'+stressStats.skip+' ❌ 错误:'+stressStats.errors;
+showToast('压力测试已停止');
 }
 </script>
 </body>
