@@ -520,8 +520,6 @@ enum Config {
     private static let marqueeSpeedKey = "com.maimai.marqueeSpeed"
 
     // Video encoding
-    static let videoBitrate: Int = 4_000_000
-    static let videoMaxKeyFrameInterval = 120
     static let videoFPS: Int = 60
 
     // Audio encoding
