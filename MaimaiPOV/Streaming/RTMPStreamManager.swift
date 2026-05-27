@@ -92,15 +92,16 @@ class RTMPStreamManager: ObservableObject {
         let bitrateBps = bitrate * 1000
 
         Task {
-            await stream.setVideoSettings(VideoCodecSettings(
+            var videoSettings = VideoCodecSettings(
                 videoSize: resolution.size,
                 bitRate: bitrateBps,
                 profileLevel: kVTProfileLevel_H264_High_AutoLevel as String,
-                maxKeyFrameIntervalDuration: 2,
-                expectedFrameRate: Float64(Config.videoFPS),
-                allowFrameReordering: false,
-                dataRateLimits: [bitrateBps / 8 * 2, 1]
-            ))
+                maxKeyFrameIntervalDuration: 2
+            )
+            videoSettings.allowFrameReordering = false
+            videoSettings.dataRateLimits = [Double(bitrateBps) / 8.0 * 2.0, 1.0]
+            videoSettings.expectedFrameRate = Double(Config.videoFPS)
+            await stream.setVideoSettings(videoSettings)
             await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
         }
 
