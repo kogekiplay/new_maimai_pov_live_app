@@ -9,6 +9,8 @@ struct MarqueeUniforms {
     float opacity;
     float outWidth;
     float outHeight;
+    float originX;
+    float originY;
 };
 
 kernel void marqueeBlend(
@@ -17,18 +19,20 @@ kernel void marqueeBlend(
     constant MarqueeUniforms& u [[buffer(0)]],
     uint2 gid [[thread_position_in_grid]])
 {
-    if (gid.x >= uint(u.outWidth) || gid.y >= uint(u.outHeight)) return;
+    float2 pixelPos = float2(gid.x + u.originX, gid.y + u.originY);
+
+    if (pixelPos.x >= u.outWidth || pixelPos.y >= u.outHeight) return;
 
     float textLeft = u.scrollX;
     float textRight = u.scrollX + u.textWidth;
     float textTop = u.textY;
     float textBottom = u.textY + u.textHeight;
 
-    if (float(gid.x) < textLeft || float(gid.x) >= textRight ||
-        float(gid.y) < textTop || float(gid.y) >= textBottom) return;
+    if (pixelPos.x < textLeft || pixelPos.x >= textRight ||
+        pixelPos.y < textTop || pixelPos.y >= textBottom) return;
 
-    float relX = (float(gid.x) - textLeft) / u.textWidth;
-    float relY = (float(gid.y) - textTop) / u.textHeight;
+    float relX = (pixelPos.x - textLeft) / u.textWidth;
+    float relY = (pixelPos.y - textTop) / u.textHeight;
 
     if (relX < 0.0 || relX > 1.0 || relY < 0.0 || relY > 1.0) return;
 
@@ -38,10 +42,11 @@ kernel void marqueeBlend(
     float alpha = textPixel.a * u.opacity;
     if (alpha < 0.001) return;
 
-    float4 background = outputTexture.read(gid);
+    uint2 writePos = uint2(pixelPos.x, pixelPos.y);
+    float4 background = outputTexture.read(writePos);
     float4 result = float4(
         textPixel.rgb * alpha + background.rgb * (1.0 - alpha),
         1.0
     );
-    outputTexture.write(result, gid);
+    outputTexture.write(result, writePos);
 }

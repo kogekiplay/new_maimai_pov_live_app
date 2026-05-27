@@ -8,4 +8,6 @@ struct MarqueeUniforms {
     var opacity: Float = 1.0
     var outWidth: Float = Float(Config.outputWidth)
     var outHeight: Float = Float(Config.outputHeight)
+    var originX: Float = 0
+    var originY: Float = 0
 }

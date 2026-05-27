@@ -173,6 +173,25 @@ class OverlayCompositor {
         uniforms.outWidth = Float(outWidth)
         uniforms.outHeight = Float(outHeight)
 
+        let overlayPixelW = Float(outWidth) * scale
+        let overlayPixelH = overlayPixelW * (Float(overlayTex.height) / Float(overlayTex.width))
+        let centerX = posX * Float(outWidth)
+        let centerY = posY * Float(outHeight)
+
+        let absCos = abs(cos(rotation))
+        let absSin = abs(sin(rotation))
+        let halfW = overlayPixelW / 2.0 * absCos + overlayPixelH / 2.0 * absSin
+        let halfH = overlayPixelW / 2.0 * absSin + overlayPixelH / 2.0 * absCos
+
+        let originX = max(0, Int(centerX - halfW))
+        let originY = max(0, Int(centerY - halfH))
+        let gridW = min(outWidth, Int(centerX + halfW)) - originX
+        let gridH = min(outHeight, Int(centerY + halfH)) - originY
+
+        guard gridW > 0 && gridH > 0 else { return }
+
+        uniforms.originX = Float(originX)
+        uniforms.originY = Float(originY)
         memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<OverlayUniforms>.stride)
 
         encoder.setComputePipelineState(pipelineState)
@@ -181,7 +200,7 @@ class OverlayCompositor {
         encoder.setBuffer(uniformsBuffer, offset: 0, index: 0)
 
         let tgSize = MTLSize(width: 16, height: 16, depth: 1)
-        let gridSize = MTLSize(width: outWidth, height: outHeight, depth: 1)
+        let gridSize = MTLSize(width: gridW, height: gridH, depth: 1)
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: tgSize)
     }
 }

@@ -11,6 +11,8 @@ struct OverlayUniforms {
     float overlayHeight;
     float outWidth;
     float outHeight;
+    float originX;
+    float originY;
 };
 
 kernel void overlayBlend(
@@ -19,15 +21,17 @@ kernel void overlayBlend(
     constant OverlayUniforms& u [[buffer(0)]],
     uint2 gid [[thread_position_in_grid]])
 {
-    if (gid.x >= uint(u.outWidth) || gid.y >= uint(u.outHeight)) return;
+    float2 pixelPos = float2(gid.x + u.originX, gid.y + u.originY);
+
+    if (pixelPos.x >= u.outWidth || pixelPos.y >= u.outHeight) return;
 
     float overlayPixelW = u.outWidth * u.scale;
     float overlayPixelH = overlayPixelW * (u.overlayHeight / u.overlayWidth);
     float centerX = u.posX * u.outWidth;
     float centerY = u.posY * u.outHeight;
 
-    float dx = float(gid.x) - centerX;
-    float dy = float(gid.y) - centerY;
+    float dx = pixelPos.x - centerX;
+    float dy = pixelPos.y - centerY;
 
     float cosR = cos(u.rotation);
     float sinR = sin(u.rotation);
@@ -46,10 +50,11 @@ kernel void overlayBlend(
     float alpha = overlay.a * u.opacity;
     if (alpha < 0.001) return;
 
-    float4 background = outputTexture.read(gid);
+    uint2 writePos = uint2(pixelPos.x, pixelPos.y);
+    float4 background = outputTexture.read(writePos);
     float4 result = float4(
         overlay.rgb * alpha + background.rgb * (1.0 - alpha),
         1.0
     );
-    outputTexture.write(result, gid);
+    outputTexture.write(result, writePos);
 }
