@@ -74,7 +74,6 @@ struct RightPanelTemplate {
   .row-body {
     width: 100%;
     height: 100%;
-    background: rgba(26,26,46,0.9);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -82,27 +81,22 @@ struct RightPanelTemplate {
     position: relative;
     overflow: hidden;
   }
-  .diff-bar {
-    position: absolute;
-    right: 0;
-    top: 0;
-    width: 4px;
-    height: 100%;
-    border-radius: 0 10px 10px 0;
-  }
-  .diff-bar-basic { background: linear-gradient(180deg, #22bb5b, #18a04a); }
-  .diff-bar-advanced { background: linear-gradient(180deg, #fb9c2c, #e08520); }
-  .diff-bar-expert { background: linear-gradient(180deg, #f64861, #d93d53); }
-  .diff-bar-master { background: linear-gradient(180deg, #9e45e0, #8538c4); }
-  .diff-bar-remaster { background: linear-gradient(180deg, #dbaaff, #f6b2ff); }
-  .diff-bar-utage { background: linear-gradient(180deg, #ff69b4, #e0559d); }
+
+  /* 难度渐变背景 */
+  .diff-basic { background: linear-gradient(135deg, rgba(34,187,91,0.25), rgba(24,160,74,0.15)); }
+  .diff-advanced { background: linear-gradient(135deg, rgba(251,156,44,0.25), rgba(224,133,32,0.15)); }
+  .diff-expert { background: linear-gradient(135deg, rgba(246,72,97,0.25), rgba(217,61,83,0.15)); }
+  .diff-master { background: linear-gradient(135deg, rgba(158,69,224,0.25), rgba(133,56,196,0.15)); }
+  .diff-remaster { background: linear-gradient(135deg, rgba(219,170,255,0.3), rgba(246,178,255,0.2)); }
+  .diff-utage { background: linear-gradient(135deg, rgba(255,105,180,0.25), rgba(224,85,157,0.15)); }
   .cover-area {
     width: 80px;
     height: 80px;
     border-radius: 8px;
     overflow: hidden;
     flex-shrink: 0;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.3);
   }
   .cover {
     width: 100%;
@@ -117,66 +111,65 @@ struct RightPanelTemplate {
   }
   .info-area {
     flex: 1;
-    margin-left: 12px;
+    margin-left: 14px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 4px;
+    gap: 5px;
     overflow: hidden;
-    padding-right: 8px;
+    padding-right: 10px;
   }
   .song-name {
     color: #fff;
-    font-size: 18px;
+    font-size: 23px;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.4px;
   }
   .meta-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
   .chart-badge {
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 800;
-    padding: 1px 6px;
+    padding: 2px 8px;
     border-radius: 3px;
     color: white;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.7px;
     flex-shrink: 0;
   }
-  .chart-standard { background: rgba(255,255,255,0.12); }
-  .chart-dx { background: rgba(255,80,80,0.55); }
-  .chart-utage { background: rgba(255,105,180,0.55); }
+  .chart-standard { background: rgba(255,255,255,0.18); }
+  .chart-dx { background: rgba(255,80,80,0.6); }
+  .chart-utage { background: rgba(255,105,180,0.6); }
   .level-text {
-    color: rgba(255,255,255,0.7);
-    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+    font-size: 16px;
     font-weight: 600;
   }
   .bottom-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
   .gift-value {
     color: #FFD700;
-    font-size: 12px;
+    font-size: 17px;
     font-weight: 600;
   }
   .requester {
-    color: rgba(255,255,255,0.45);
-    font-size: 12px;
+    color: rgba(255,255,255,0.55);
+    font-size: 16px;
     font-weight: 500;
   }
 </style>
 </head>
 <body>
 <div class="row-container">
-  <div class="row-body">
-    <div class="diff-bar {{DIFF_BAR_CLASS}}"></div>
+  <div class="row-body {{DIFF_CLASS}}">
     <div class="cover-area">
       {{COVER_HTML}}
     </div>
@@ -202,7 +195,7 @@ struct RightPanelTemplate {
     }
 
     static func renderRow(data: SongCardData, coverBase64: String? = nil) -> String {
-        let diffBarClass = Self.diffBarClass(data.difficulty)
+        let diffClass = Self.diffClass(data.difficulty)
         let chartClass = Self.chartBadgeClass(data.chartType)
         let chartType = Self.chartTypeDisplay(data.chartType)
         let level = data.level ?? ""
@@ -222,7 +215,7 @@ struct RightPanelTemplate {
         let giftHTML = Self.giftValueHTML(data.giftValue)
 
         return rowHTML
-            .replacingOccurrences(of: "{{DIFF_BAR_CLASS}}", with: diffBarClass)
+            .replacingOccurrences(of: "{{DIFF_CLASS}}", with: diffClass)
             .replacingOccurrences(of: "{{COVER_HTML}}", with: coverHTML)
             .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName)
             .replacingOccurrences(of: "{{CHART_CLASS}}", with: chartClass)
@@ -238,14 +231,14 @@ struct RightPanelTemplate {
         return "<span class=\"gift-value\">🎁 ¥\(String(format: "%.2f", rmb))</span>"
     }
 
-    private static func diffBarClass(_ difficulty: String?) -> String {
-        guard let diff = difficulty?.lowercased() else { return "diff-bar-master" }
-        if diff.contains("basic") { return "diff-bar-basic" }
-        if diff.contains("advanced") { return "diff-bar-advanced" }
-        if diff.contains("expert") { return "diff-bar-expert" }
-        if diff.contains("remaster") || diff.contains("re:master") { return "diff-bar-remaster" }
-        if diff.contains("utage") { return "diff-bar-utage" }
-        return "diff-bar-master"
+    private static func diffClass(_ difficulty: String?) -> String {
+        guard let diff = difficulty?.lowercased() else { return "diff-master" }
+        if diff.contains("basic") { return "diff-basic" }
+        if diff.contains("advanced") { return "diff-advanced" }
+        if diff.contains("expert") { return "diff-expert" }
+        if diff.contains("remaster") || diff.contains("re:master") { return "diff-remaster" }
+        if diff.contains("utage") { return "diff-utage" }
+        return "diff-master"
     }
 
     private static func chartBadgeClass(_ chartType: String?) -> String {

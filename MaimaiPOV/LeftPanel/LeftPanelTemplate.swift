@@ -56,14 +56,14 @@ struct LeftPanelTemplate {
     z-index: 2;
   }
   .difficulty-badge {
-    font-size: 30px;
+    font-size: 36px;
     font-weight: 900;
     color: white;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.8px;
     line-height: 1;
-    -webkit-text-stroke: 1.2px rgba(0,0,0,0.5);
+    -webkit-text-stroke: 1.4px rgba(0,0,0,0.5);
     paint-order: stroke fill;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.7), 0 0 16px rgba(0,0,0,0.3);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.7), 0 0 20px rgba(0,0,0,0.3);
     transform: translateY(-2px);
   }
   .level-badge {
@@ -77,9 +77,9 @@ struct LeftPanelTemplate {
     paint-order: stroke fill;
     text-shadow: 0 2px 8px rgba(0,0,0,0.65), 0 0 14px rgba(0,0,0,0.25);
   }
-  .level-lv { font-size: 16px; font-weight: 800; }
-  .level-num { font-size: 30px; font-weight: 900; }
-  .level-dec { font-size: 20px; font-weight: 700; }
+  .level-lv { font-size: 20px; font-weight: 800; }
+  .level-num { font-size: 36px; font-weight: 900; }
+  .level-dec { font-size: 24px; font-weight: 700; }
   .cover-area {
     padding: 2px 10px 2px;
     position: relative;
@@ -108,34 +108,34 @@ struct LeftPanelTemplate {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
   }
   .info-bar {
-    padding: 4px 10px 8px;
+    padding: 6px 10px 10px;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 5px;
   }
   .song-name {
     color: #fff;
-    font-size: 28px;
+    font-size: 34px;
     font-weight: 800;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
   }
   .meta-row {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
   .chart-badge {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 800;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border-radius: 4px;
     color: white;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
     flex-shrink: 0;
   }
   .chart-standard { background: rgba(255,255,255,0.12); }
@@ -143,15 +143,15 @@ struct LeftPanelTemplate {
   .chart-utage { background: rgba(255,105,180,0.55); }
   .requester-label {
     color: #ffd93d;
-    font-size: 20px;
+    font-size: 26px;
     font-weight: 800;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
   }
   .gift-value {
     color: #FFD700;
-    font-size: 16px;
+    font-size: 22px;
     font-weight: 700;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
   }
 </style>
 </head>
