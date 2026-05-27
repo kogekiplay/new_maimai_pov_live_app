@@ -83,6 +83,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var marqueeRenderer: MarqueeRenderer?
     var marqueeCompositor: MarqueeCompositor?
     private var rightPanelGeneration: Int = 0
+    private var refreshLeftPanelWorkItem: DispatchWorkItem?
+    private var reorderRightPanelWorkItem: DispatchWorkItem?
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
     let songDatabase = SongDatabase()
@@ -172,13 +174,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     DispatchQueue.main.async {
                         if index >= lockedEnd {
                             self.songCardManager.reorderQueueByGiftValue()
-                            self.reorderRightPanel()
+                            self.scheduleReorderRightPanel()
                         }
                         self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                     }
                 }
                 DispatchQueue.main.async {
-                    self.refreshLeftPanel()
+                    self.scheduleRefreshLeftPanel()
                 }
             }
         }
@@ -202,13 +204,13 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     if index >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
-                        self.reorderRightPanel()
+                        self.scheduleReorderRightPanel()
                     }
-                    self.refreshLeftPanel()
+                    self.scheduleRefreshLeftPanel()
                 }
             } else {
                 DispatchQueue.main.async {
-                    self.refreshLeftPanel()
+                    self.scheduleRefreshLeftPanel()
                 }
             }
             DispatchQueue.main.async {
@@ -323,9 +325,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         let lockedEnd = self.songCardManager.lockedEndIndex
                         if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
                             self.songCardManager.reorderQueueByGiftValue()
-                            self.reorderRightPanel()
+                            self.scheduleReorderRightPanel()
                         }
-                        self.refreshLeftPanel()
+                        self.scheduleRefreshLeftPanel()
                     }
                 }
 
@@ -360,9 +362,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     self.postMarquee("❌ \(name) 已有歌曲在队列中", type: .songFailure)
                     if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
-                        self.reorderRightPanel()
+                        self.scheduleReorderRightPanel()
                     }
-                    self.refreshLeftPanel()
+                    self.scheduleRefreshLeftPanel()
                 }
                 return
             }
@@ -437,9 +439,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         let lockedEnd = self.songCardManager.lockedEndIndex
                         if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
                             self.songCardManager.reorderQueueByGiftValue()
-                            self.reorderRightPanel()
+                            self.scheduleReorderRightPanel()
                         }
-                        self.refreshLeftPanel()
+                        self.scheduleRefreshLeftPanel()
                     }
                 }
 
@@ -458,9 +460,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     if index >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
-                        self.reorderRightPanel()
+                        self.scheduleReorderRightPanel()
                     }
-                    self.refreshLeftPanel()
+                    self.scheduleRefreshLeftPanel()
                     self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                 }
             }
@@ -1051,7 +1053,6 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func onQueueUpdated(_ songs: [SongCardData]) {
-        refreshLeftPanel()
     }
 
     func onSongRemoved(queueIndex: Int) {
@@ -1117,35 +1118,27 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func addSongToQueue(_ song: SongCardData) {
         songCardManager.addSong(song)
-
-        if leftPanelCompositor != nil {
-            refreshLeftPanel()
-        }
-
         addRightPanelRow(song: song)
+        scheduleRefreshLeftPanel()
     }
 
     func addSongAtNextToQueue(_ song: SongCardData) {
         songCardManager.addSongAtNext(song)
-        if leftPanelCompositor != nil {
-            refreshLeftPanel()
-        }
+        scheduleRefreshLeftPanel()
         refreshRightPanel()
     }
 
     func updateSongQueue(_ songs: [SongCardData]) {
         songCardManager.updateQueue(songs)
-
-        if leftPanelCompositor != nil {
-            refreshLeftPanel()
-        }
-
+        scheduleRefreshLeftPanel()
         refreshRightPanel()
     }
 
     func clearSongQueue() {
         leftPanelCompositor?.clearAll()
         rightPanelCompositor?.clearAll()
+        rightPanelRenderer?.invalidateCache()
+        leftPanelRenderer?.invalidateCache()
         songCardManager.clearQueue()
         if leftPanelCompositor != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
@@ -1229,6 +1222,28 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
+    func scheduleRefreshLeftPanel(delay: TimeInterval = 0.1) {
+        refreshLeftPanelWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.refreshLeftPanel()
+        }
+        refreshLeftPanelWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    func scheduleReorderRightPanel() {
+        reorderRightPanelWorkItem?.cancel()
+        rightPanelGeneration += 1
+        let currentGeneration = rightPanelGeneration
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            guard self.rightPanelGeneration == currentGeneration else { return }
+            self.performReorderRightPanel()
+        }
+        reorderRightPanelWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
+    }
+
     func refreshLeftPanel() {
         let current = songCardManager.currentSong
         let next = songCardManager.nextSong
@@ -1306,8 +1321,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func reorderRightPanel() {
-        rightPanelGeneration += 1
+        scheduleReorderRightPanel()
+    }
+
+    private func performReorderRightPanel() {
         guard let compositor = rightPanelCompositor else { return }
+        guard let renderer = rightPanelRenderer else { return }
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
@@ -1339,32 +1358,16 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         let needsScroll = abs(neededOffset - currentOffset) > 0.01
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self = self else { return }
-            if needsScroll {
-                self.rightPanelCompositor?.animateScrollTo(targetOffset: neededOffset, duration: 0.3) { [weak self] in
-                    self?.performReorderRightPanel()
-                }
-            } else {
-                self.performReorderRightPanel()
+        if needsScroll {
+            rightPanelCompositor?.animateScrollTo(targetOffset: neededOffset, duration: 0.3) { [weak self] in
+                self?.doReorderRightPanel(compositor: compositor, renderer: renderer, allSongs: allSongs, startQueueIndex: startQueueIndex)
             }
+        } else {
+            doReorderRightPanel(compositor: compositor, renderer: renderer, allSongs: allSongs, startQueueIndex: startQueueIndex)
         }
     }
 
-    private func performReorderRightPanel() {
-        guard let compositor = rightPanelCompositor else { return }
-        guard let renderer = rightPanelRenderer else { return }
-
-        let ci = songCardManager.currentIndex
-        let queue = songCardManager.queue
-        let startQueueIndex = ci + 2
-
-        guard startQueueIndex < queue.count else {
-            compositor.clearAll()
-            return
-        }
-
-        let allSongs = Array(queue[startQueueIndex...])
+    private func doReorderRightPanel(compositor: RightPanelCompositor, renderer: RightPanelRenderer, allSongs: [SongCardData], startQueueIndex: Int) {
 
         var newOrder: [(queueIndex: Int, data: SongCardData)] = []
         var existingGiftChanged: [(queueIndex: Int, data: SongCardData)] = []
@@ -1552,6 +1555,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     private func performSwitchToNext() {
         guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
+
+        rightPanelRenderer?.invalidateCache()
+        leftPanelRenderer?.invalidateCache()
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue

@@ -14,6 +14,11 @@ class LeftPanelRenderer {
     private let announcementWidth: Int
     private let announcementHeight: Int
 
+    private var cachedCurrentSongTexture: MTLTexture?
+    private var cachedCurrentSongKey: String?
+    private var cachedNextSongTexture: MTLTexture?
+    private var cachedNextSongKey: String?
+
     init(device: MTLDevice) {
         self.device = device
         self.songCardWidth = LeftPanelTemplate.songCardWidth
@@ -43,29 +48,65 @@ class LeftPanelRenderer {
         announcementWebView.scrollView.isScrollEnabled = false
     }
 
+    private func cacheKey(for data: SongCardData?) -> String {
+        guard let data = data else { return "_empty_" }
+        return "\(data.requesterName ?? "")_\(data.songName)_\(data.giftValue)"
+    }
+
     func renderCurrentSong(_ data: SongCardData?, coverBase64: String?, completion: @escaping (MTLTexture?) -> Void) {
+        let key = cacheKey(for: data)
+        if cachedCurrentSongKey == key, let cached = cachedCurrentSongTexture {
+            completion(cached)
+            return
+        }
+
         let html: String
         if let data = data {
             html = LeftPanelTemplate.renderSongCard(data: data, coverBase64: coverBase64)
         } else {
             html = LeftPanelTemplate.renderEmptyState()
         }
-        renderHTML(html, webView: currentSongWebView, width: songCardWidth, height: songCardHeight, completion: completion)
+        renderHTML(html, webView: currentSongWebView, width: songCardWidth, height: songCardHeight) { [weak self] texture in
+            if let texture = texture {
+                self?.cachedCurrentSongTexture = texture
+                self?.cachedCurrentSongKey = key
+            }
+            completion(texture)
+        }
     }
 
     func renderNextSong(_ data: SongCardData?, coverBase64: String?, completion: @escaping (MTLTexture?) -> Void) {
+        let key = cacheKey(for: data)
+        if cachedNextSongKey == key, let cached = cachedNextSongTexture {
+            completion(cached)
+            return
+        }
+
         let html: String
         if let data = data {
             html = LeftPanelTemplate.renderSongCard(data: data, coverBase64: coverBase64)
         } else {
             html = LeftPanelTemplate.renderEmptyState()
         }
-        renderHTML(html, webView: nextSongWebView, width: songCardWidth, height: songCardHeight, completion: completion)
+        renderHTML(html, webView: nextSongWebView, width: songCardWidth, height: songCardHeight) { [weak self] texture in
+            if let texture = texture {
+                self?.cachedNextSongTexture = texture
+                self?.cachedNextSongKey = key
+            }
+            completion(texture)
+        }
     }
 
     func renderAnnouncement(_ text: String, completion: @escaping (MTLTexture?) -> Void) {
         let html = LeftPanelTemplate.renderAnnouncement(text: text)
         renderHTML(html, webView: announcementWebView, width: announcementWidth, height: announcementHeight, completion: completion)
+    }
+
+    func invalidateCache() {
+        cachedCurrentSongTexture = nil
+        cachedCurrentSongKey = nil
+        cachedNextSongTexture = nil
+        cachedNextSongKey = nil
     }
 
     private func renderHTML(_ html: String, webView: WKWebView, width: Int, height: Int, completion: @escaping (MTLTexture?) -> Void) {
