@@ -112,19 +112,6 @@ class RTMPStreamManager: ObservableObject {
 
         let bitrateBps = bitrate * 1000
 
-        Task {
-            var videoSettings = VideoCodecSettings(
-                videoSize: resolution.size,
-                bitRate: bitrateBps,
-                maxKeyFrameIntervalDuration: 2
-            )
-            videoSettings.profileLevel = codec.profileLevel
-            videoSettings.allowFrameReordering = false
-            videoSettings.dataRateLimits = [Double(bitrateBps) / 8.0 * 2.0, 1.0]
-            await stream.setVideoSettings(videoSettings)
-            await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
-        }
-
         lock.lock()
         self.connection = connection
         self.stream = stream
@@ -146,6 +133,17 @@ class RTMPStreamManager: ObservableObject {
         setupStatusMonitoring(connection: connection, stream: stream)
 
         Task { [weak self] in
+            var videoSettings = VideoCodecSettings(
+                videoSize: resolution.size,
+                bitRate: bitrateBps,
+                maxKeyFrameIntervalDuration: 2
+            )
+            videoSettings.profileLevel = codec.profileLevel
+            videoSettings.allowFrameReordering = false
+            videoSettings.dataRateLimits = [Double(bitrateBps) / 8.0 * 2.0, 1.0]
+            await stream.setVideoSettings(videoSettings)
+            await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
+
             do {
                 _ = try await connection.connect(rtmpUrl)
                 _ = try await stream.publish(streamKey)
