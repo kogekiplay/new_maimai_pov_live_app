@@ -1,8 +1,15 @@
 import Foundation
 
+enum QueueChange {
+    case added(index: Int)
+    case removed(index: Int)
+    case reordered
+    case fullRefresh
+}
+
 protocol SongCardDataProvider: AnyObject {
     func onCurrentSongChanged(_ song: SongCardData?)
-    func onQueueUpdated(_ songs: [SongCardData])
+    func onQueueUpdated(_ songs: [SongCardData], change: QueueChange)
     func onSongRemoved(queueIndex: Int)
     func onGiftValueChanged(_ song: SongCardData, queueIndex: Int)
 }
@@ -39,7 +46,7 @@ class SongCardManager: ObservableObject {
 
     func addSong(_ song: SongCardData) {
         queue.append(song)
-        delegate?.onQueueUpdated(queue)
+        delegate?.onQueueUpdated(queue, change: .added(index: queue.count - 1))
 
         if currentIndex < 0 {
             currentIndex = 0
@@ -52,14 +59,15 @@ class SongCardManager: ObservableObject {
             queue.append(song)
             currentIndex = 0
             delegate?.onCurrentSongChanged(song)
+            delegate?.onQueueUpdated(queue, change: .added(index: 0))
         } else {
             var insertIndex = currentIndex + 1
             while insertIndex < queue.count && queue[insertIndex].isPriority {
                 insertIndex += 1
             }
             queue.insert(song, at: insertIndex)
+            delegate?.onQueueUpdated(queue, change: .added(index: insertIndex))
         }
-        delegate?.onQueueUpdated(queue)
     }
 
     func switchToNext() {
@@ -75,7 +83,7 @@ class SongCardManager: ObservableObject {
     func updateQueue(_ songs: [SongCardData]) {
         queue = songs
         currentIndex = songs.isEmpty ? -1 : 0
-        delegate?.onQueueUpdated(queue)
+        delegate?.onQueueUpdated(queue, change: .fullRefresh)
         if let first = songs.first {
             delegate?.onCurrentSongChanged(first)
         }
@@ -103,7 +111,7 @@ class SongCardManager: ObservableObject {
         if wasInRightPanel {
             delegate?.onSongRemoved(queueIndex: index)
         }
-        delegate?.onQueueUpdated(queue)
+        delegate?.onQueueUpdated(queue, change: .removed(index: index))
 
         if !queue.isEmpty {
             if index < currentIndex + 1 || index == currentIndex {
@@ -117,7 +125,7 @@ class SongCardManager: ObservableObject {
         currentIndex = -1
         userGiftPool.removeAll()
         delegate?.onCurrentSongChanged(nil)
-        delegate?.onQueueUpdated([])
+        delegate?.onQueueUpdated([], change: .fullRefresh)
     }
 
     func findSongIndex(byName name: String) -> Int? {
@@ -158,6 +166,6 @@ class SongCardManager: ObservableObject {
         }
 
         queue.replaceSubrange(lockedEnd..., with: sortable)
-        delegate?.onQueueUpdated(queue)
+        delegate?.onQueueUpdated(queue, change: .reordered)
     }
 }

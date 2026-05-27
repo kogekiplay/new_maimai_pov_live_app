@@ -292,21 +292,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             )
 
             DispatchQueue.main.async {
-                var entryData = cardData
-                entryData.giftValue = 0
-                self.addSongToQueue(entryData)
-
-                if giftVal > 0 {
-                    let giftAmount = giftVal
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                        guard let self = self else { return }
-                        self.songCardManager.updateGiftValue(name: name, delta: giftAmount)
-                        let lockedEnd = self.songCardManager.lockedEndIndex
-                        if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
-                            self.songCardManager.reorderQueueByGiftValue()
-                        }
-                    }
-                }
+                self.addSongToQueue(cardData)
 
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
                 self.debug.log("[点歌] ✅ \(msg.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(candidates.matchKind?.rawValue ?? "?")]\(giftTag)")
@@ -402,21 +388,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             )
 
             DispatchQueue.main.async {
-                var entryData = cardData
-                entryData.giftValue = 0
-                self.addSongToQueue(entryData)
-
-                if giftVal > 0 {
-                    let giftAmount = giftVal
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                        guard let self = self else { return }
-                        self.songCardManager.updateGiftValue(name: name, delta: giftAmount)
-                        let lockedEnd = self.songCardManager.lockedEndIndex
-                        if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
-                            self.songCardManager.reorderQueueByGiftValue()
-                        }
-                    }
-                }
+                self.addSongToQueue(cardData)
 
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
                 self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [🎁\(giftVal)]")
@@ -1005,9 +977,18 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         renderLeftPanelNextSong(songCardManager.nextSong)
     }
 
-    func onQueueUpdated(_ songs: [SongCardData]) {
+    func onQueueUpdated(_ songs: [SongCardData], change: QueueChange) {
         scheduleRefreshLeftPanel()
-        scheduleReorderRightPanel()
+        switch change {
+        case .added:
+            break
+        case .removed:
+            scheduleReorderRightPanel()
+        case .reordered:
+            scheduleReorderRightPanel()
+        case .fullRefresh:
+            refreshRightPanel()
+        }
     }
 
     func onSongRemoved(queueIndex: Int) {
@@ -1076,8 +1057,17 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func addSongToQueue(_ song: SongCardData) {
-        songCardManager.addSong(song)
-        addRightPanelRow(song: song)
+        if song.giftValue > 0 {
+            songCardManager.addSong(song)
+            songCardManager.reorderQueueByGiftValue()
+            reorderRightPanelWorkItem?.cancel()
+            rightPanelGeneration += 1
+            ensureTitleTexture()
+            performReorderRightPanel()
+        } else {
+            songCardManager.addSong(song)
+            addRightPanelRow(song: song)
+        }
     }
 
     func addSongAtNextToQueue(_ song: SongCardData) {
@@ -1280,9 +1270,18 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         scheduleReorderRightPanel()
     }
 
+    private func ensureTitleTexture() {
+        guard let compositor = rightPanelCompositor, !compositor.hasTitleTexture, let renderer = rightPanelRenderer else { return }
+        renderer.renderTitle { [weak self] texture in
+            self?.rightPanelCompositor?.updateTitleTexture(texture)
+        }
+    }
+
     private func performReorderRightPanel() {
         guard let compositor = rightPanelCompositor else { return }
         guard let renderer = rightPanelRenderer else { return }
+
+        ensureTitleTexture()
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue

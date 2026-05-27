@@ -213,7 +213,13 @@ class RightPanelCompositor {
     }
 
     func addRowAtBottom(texture: MTLTexture, data: SongCardData, queueIndex: Int) {
-        interruptCurrentAnimations()
+        if isScrollAnimating {
+            scrollOffset = targetScrollOffset
+            isScrollAnimating = false
+            scrollCompletion = nil
+            updateRowPositionsForScroll()
+        }
+        stopIdleScroll()
         lastOperationTime = CACurrentMediaTime()
 
         let listIndex = rows.count
@@ -245,7 +251,7 @@ class RightPanelCompositor {
     }
 
     func reorderRows(newOrder: [(queueIndex: Int, data: SongCardData)], textures: [Int: MTLTexture]) {
-        interruptCurrentAnimations()
+        interruptCurrentAnimations(preservePosition: true)
         lastOperationTime = CACurrentMediaTime()
 
         print("[RightPanel] reorderRows called, newOrder.count=\(newOrder.count), existing rows=\(rows.count)")
@@ -658,9 +664,16 @@ class RightPanelCompositor {
         rows[index].pendingAnimations.removeAll()
     }
 
-    private func interruptCurrentAnimations() {
+    private func interruptCurrentAnimations(preservePosition: Bool = false) {
         if isScrollAnimating {
-            scrollOffset = targetScrollOffset
+            if preservePosition {
+                let elapsed = Float(CACurrentMediaTime() - scrollAnimStartTime)
+                var progress = min(max(elapsed / scrollAnimDuration, 0), 1)
+                let eased = easeOutCubic(progress)
+                scrollOffset = startScrollOffset + (targetScrollOffset - startScrollOffset) * eased
+            } else {
+                scrollOffset = targetScrollOffset
+            }
             isScrollAnimating = false
             scrollCompletion = nil
             updateRowPositionsForScroll()
@@ -670,10 +683,22 @@ class RightPanelCompositor {
 
         for i in rows.indices {
             if rows[i].isAnimating {
-                rows[i].currentPosX = rows[i].targetPosX
-                rows[i].currentPosY = rows[i].targetPosY
-                rows[i].currentOpacity = rows[i].targetOpacity
-                rows[i].currentScale = rows[i].targetScale
+                if preservePosition {
+                    let elapsed = Float(CACurrentMediaTime() - rows[i].animStartTime)
+                    if elapsed >= 0 {
+                        var progress = min(max(elapsed / rows[i].animDuration, 0), 1)
+                        let eased = easeOutCubic(progress)
+                        rows[i].currentPosX = rows[i].startPosX + (rows[i].targetPosX - rows[i].startPosX) * eased
+                        rows[i].currentPosY = rows[i].startPosY + (rows[i].targetPosY - rows[i].startPosY) * eased
+                        rows[i].currentOpacity = rows[i].startOpacity + (rows[i].targetOpacity - rows[i].startOpacity) * eased
+                        rows[i].currentScale = rows[i].startScale + (rows[i].targetScale - rows[i].startScale) * eased
+                    }
+                } else {
+                    rows[i].currentPosX = rows[i].targetPosX
+                    rows[i].currentPosY = rows[i].targetPosY
+                    rows[i].currentOpacity = rows[i].targetOpacity
+                    rows[i].currentScale = rows[i].targetScale
+                }
                 rows[i].isAnimating = false
                 rows[i].pendingAnimations.removeAll()
                 rows[i].zOrder = 0
