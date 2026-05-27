@@ -100,7 +100,6 @@ class RTMPStreamManager: ObservableObject {
             )
             videoSettings.allowFrameReordering = false
             videoSettings.dataRateLimits = [Double(bitrateBps) / 8.0 * 2.0, 1.0]
-            videoSettings.expectedFrameRate = Double(Config.videoFPS)
             await stream.setVideoSettings(videoSettings)
             await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
         }
