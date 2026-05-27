@@ -159,7 +159,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             guard let self = self else { return }
             let coinValue = max(msg.totalCoin, msg.totalFreeCoin)
             DispatchQueue.main.async { self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))") }
-            self.postMarquee("🎁 感谢 \(msg.authorName) 送出 \(msg.giftName) ×\(msg.num)", type: .gift)
+            let prefix = "🎁 感谢 \(msg.authorName) 送出 \(msg.giftName)"
+            self.postMarquee("\(prefix) ×\(msg.num)", type: .gift, mergeKey: "gift_\(msg.authorName)_\(msg.giftName)", mergeCount: msg.num, textPrefix: prefix)
             if coinValue > 0 {
                 let name = msg.authorName
                 self.songCardManager.userGiftPool[name, default: 0] += coinValue
@@ -213,9 +214,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
     }
 
-    func postMarquee(_ text: String, type: MarqueeItem.MarqueeItemType) {
+    func postMarquee(_ text: String, type: MarqueeItem.MarqueeItemType, mergeKey: String? = nil, mergeCount: Int = 1, textPrefix: String? = nil) {
         guard let manager = marqueeManager else { return }
-        let item = MarqueeItem(text: text, type: type)
+        let item = MarqueeItem(text: text, type: type, mergeKey: mergeKey, mergeCount: mergeCount, textPrefix: textPrefix)
         manager.enqueue(item)
     }
 
