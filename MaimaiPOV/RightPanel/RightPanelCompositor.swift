@@ -84,6 +84,7 @@ class RightPanelCompositor {
     let offScreenRightPosX: Float = 1.3
 
     private var scrollOffset: Float = 0
+    private var pendingScrollOffset: Float? = nil
 
     private var targetScrollOffset: Float = 0
     private var startScrollOffset: Float = 0
@@ -114,7 +115,7 @@ class RightPanelCompositor {
     private var globalOpacityAnimDuration: Float = 0.75
 
     var currentScrollOffset: Float {
-        return scrollOffset
+        return pendingScrollOffset ?? scrollOffset
     }
 
     var totalRowCount: Int {
@@ -250,15 +251,21 @@ class RightPanelCompositor {
         rows.append(newRow)
     }
 
-    func reorderRows(newOrder: [(queueIndex: Int, data: SongCardData)], textures: [Int: MTLTexture]) {
+    func reorderRows(newOrder: [(queueIndex: Int, data: SongCardData)], textures: [Int: MTLTexture], targetScrollOffset: Float? = nil) {
         interruptCurrentAnimations(preservePosition: true)
         lastOperationTime = CACurrentMediaTime()
 
-        print("[RightPanel] reorderRows called, newOrder.count=\(newOrder.count), existing rows=\(rows.count)")
+        let effectiveTargetScrollOffset = targetScrollOffset ?? scrollOffset
+
+        if targetScrollOffset != nil {
+            pendingScrollOffset = targetScrollOffset
+        }
+
+        print("[RightPanel] reorderRows called, newOrder.count=\(newOrder.count), existing rows=\(rows.count), targetScrollOffset=\(effectiveTargetScrollOffset)")
 
         var moveDistances: [UUID: Float] = [:]
         for (listIndex, item) in newOrder.enumerated() {
-            let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: scrollOffset)
+            let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: effectiveTargetScrollOffset)
             if let existingIndex = rows.firstIndex(where: { $0.data?.id == item.data.id }) {
                 let fromPosY = rows[existingIndex].currentPosY
                 let distance = abs(targetPosY - fromPosY)
@@ -270,7 +277,7 @@ class RightPanelCompositor {
 
         var newRows: [RightPanelRowState] = []
         for (listIndex, item) in newOrder.enumerated() {
-            let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: scrollOffset)
+            let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: effectiveTargetScrollOffset)
             if let existingIndex = rows.firstIndex(where: { $0.data?.id == item.data.id }) {
                 var row = rows[existingIndex]
                 let fromPosY = row.currentPosY
@@ -289,24 +296,32 @@ class RightPanelCompositor {
                 row.targetScale = 1.0
                 row.isAnimating = true
                 row.animStartTime = CACurrentMediaTime()
-                row.animDuration = 0.6
+                row.animDuration = targetScrollOffset != nil ? 1.0 : 0.6
                 row.shouldRemoveAfterAnimation = false
                 row.pendingAnimations = []
 
                 let distance = moveDistances[item.data.id] ?? 0
                 if maxDistance > 0.001 && distance == maxDistance {
                     row.zOrder = 100
-                    row.startScale = 1.0
-                    row.targetScale = 1.20
+                    let scaleStep = RightPanelAnimationStep(
+                        targetPosX: normalPosX,
+                        targetPosY: targetPosY,
+                        targetOpacity: 1.0,
+                        targetScale: 1.20,
+                        duration: 0.45,
+                        delay: 0
+                    )
                     let scaleBackStep = RightPanelAnimationStep(
                         targetPosX: normalPosX,
                         targetPosY: targetPosY,
                         targetOpacity: 1.0,
                         targetScale: 1.0,
-                        duration: 0.45,
+                        duration: 0.55,
                         delay: 0
                     )
-                    row.pendingAnimations.append(scaleBackStep)
+                    row.targetScale = 1.20
+                    row.animDuration = 0.45
+                    row.pendingAnimations = [scaleBackStep]
                 } else if distance > 0.001 {
                     row.zOrder = 50
                 } else {
@@ -412,6 +427,7 @@ class RightPanelCompositor {
     func clearAll() {
         rows.removeAll()
         scrollOffset = 0
+        pendingScrollOffset = nil
         isScrollAnimating = false
         scrollCompletion = nil
         stopIdleScroll()
@@ -455,7 +471,7 @@ class RightPanelCompositor {
             handleIdleScroll(now: now)
         }
 
-        if !isIdleScrolling && !isScrollAnimating && rows.count > maxVisibleRows {
+        if !isIdleScrolling && !isScrollAnimating && rows.count > maxVisibleRows && pendingScrollOffset == nil {
             let timeSinceOp = Float(now - lastOperationTime)
             if timeSinceOp >= idleScrollPauseDuration {
                 isIdleScrolling = true
@@ -515,6 +531,12 @@ class RightPanelCompositor {
         }
 
         rows.removeAll { $0.texture == nil && !$0.isAnimating }
+
+        if pendingScrollOffset != nil && rows.allSatisfy({ !$0.isAnimating }) {
+            scrollOffset = pendingScrollOffset!
+            pendingScrollOffset = nil
+            updateRowPositionsForScroll()
+        }
     }
 
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
@@ -665,6 +687,12 @@ class RightPanelCompositor {
     }
 
     private func interruptCurrentAnimations(preservePosition: Bool = false) {
+        if let pending = pendingScrollOffset {
+            scrollOffset = pending
+            pendingScrollOffset = nil
+            updateRowPositionsForScroll()
+        }
+
         if isScrollAnimating {
             if preservePosition {
                 let elapsed = Float(CACurrentMediaTime() - scrollAnimStartTime)

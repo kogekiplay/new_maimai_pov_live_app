@@ -1312,17 +1312,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         let needsScroll = abs(neededOffset - currentOffset) > 0.01
+        let targetScrollOffset = needsScroll ? neededOffset : nil
 
-        if needsScroll {
-            rightPanelCompositor?.animateScrollTo(targetOffset: neededOffset, duration: 0.3) { [weak self] in
-                self?.doReorderRightPanel(compositor: compositor, renderer: renderer, allSongs: allSongs, startQueueIndex: startQueueIndex)
-            }
-        } else {
-            doReorderRightPanel(compositor: compositor, renderer: renderer, allSongs: allSongs, startQueueIndex: startQueueIndex)
-        }
+        doReorderRightPanel(compositor: compositor, renderer: renderer, allSongs: allSongs, startQueueIndex: startQueueIndex, targetScrollOffset: targetScrollOffset)
     }
 
-    private func doReorderRightPanel(compositor: RightPanelCompositor, renderer: RightPanelRenderer, allSongs: [SongCardData], startQueueIndex: Int) {
+    private func doReorderRightPanel(compositor: RightPanelCompositor, renderer: RightPanelRenderer, allSongs: [SongCardData], startQueueIndex: Int, targetScrollOffset: Float? = nil) {
 
         var newOrder: [(queueIndex: Int, data: SongCardData)] = []
         var existingGiftChanged: [(queueIndex: Int, data: SongCardData)] = []
@@ -1341,7 +1336,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         if newRowsNeedTexture.isEmpty {
-            compositor.reorderRows(newOrder: newOrder, textures: [:])
+            compositor.reorderRows(newOrder: newOrder, textures: [:], targetScrollOffset: targetScrollOffset)
 
             for item in existingGiftChanged {
                 let queueIndex = item.queueIndex
@@ -1401,7 +1396,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         group.notify(queue: .main) { [weak self] in
             guard self != nil else { return }
-            compositor.reorderRows(newOrder: newOrder, textures: renderedTextures)
+            compositor.reorderRows(newOrder: newOrder, textures: renderedTextures, targetScrollOffset: targetScrollOffset)
 
             for item in existingGiftChanged {
                 let queueIndex = item.queueIndex
