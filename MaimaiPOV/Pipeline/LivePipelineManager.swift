@@ -733,6 +733,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         return
                     }
 
+                    if let bufferIdx = pool.indexOfBuffer(writeBuffer) {
+                        pool.markBufferInUse(bufferIdx, commandBuffer: cmdBuf)
+                    }
+
                     cc.encode(into: encoder,
                               stabTexture: stab.outputTexture,
                               cx: offsetCx, cy: track.cy,
@@ -757,6 +761,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     encoder.endEncoding()
 
                     cmdBuf.addCompletedHandler { [weak self] _ in
+                        if let pool = self?.ioSurfacePool, let idx = pool.indexOfBuffer(writeBuffer) {
+                            pool.notifyBufferCompleted(idx)
+                        }
                         self?.pipelineQueue.async {
                             guard let self = self else { return }
                             self.streamFrameCount += 1

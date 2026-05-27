@@ -13,6 +13,7 @@ class MarqueeRenderer {
 
     private var textureCache: [String: MTLTexture] = [:]
     private var widthCache: [String: Int] = [:]
+    private let cacheLock = os_unfair_lock_s()
 
     init(device: MTLDevice) {
         self.device = device
@@ -20,10 +21,35 @@ class MarqueeRenderer {
 
     func render(text: String, type: MarqueeItem.MarqueeItemType) -> (MTLTexture?, Int) {
         let cacheKey = "\(type.rawValue)_\(text)"
+
+        os_unfair_lock_lock(&cacheLock)
         if let cachedTexture = textureCache[cacheKey], let cachedWidth = widthCache[cacheKey] {
+            os_unfair_lock_unlock(&cacheLock)
             return (cachedTexture, cachedWidth)
         }
+        os_unfair_lock_unlock(&cacheLock)
 
+        if Thread.isMainThread {
+            return renderOnMainThread(text: text, type: type, cacheKey: cacheKey)
+        }
+
+        let sem = DispatchSemaphore(value: 0)
+        var result: (MTLTexture?, Int) = (nil, 0)
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                sem.signal()
+                return
+            }
+            result = self.renderOnMainThread(text: text, type: type, cacheKey: cacheKey)
+            sem.signal()
+        }
+
+        sem.wait()
+        return result
+    }
+
+    private func renderOnMainThread(text: String, type: MarqueeItem.MarqueeItemType, cacheKey: String) -> (MTLTexture?, Int) {
         let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
@@ -66,8 +92,10 @@ class MarqueeRenderer {
 
         let texture = TextureHelper.shared.cgImageToTexture(cgImage, device: device)
         if let texture = texture {
+            os_unfair_lock_lock(&cacheLock)
             textureCache[cacheKey] = texture
             widthCache[cacheKey] = textureWidth
+            os_unfair_lock_unlock(&cacheLock)
         }
         return (texture, textureWidth)
     }

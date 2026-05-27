@@ -14,6 +14,8 @@ class OverlayCompositor {
     var opacity: Float = 1.0
     var rotation: Float = 0.0
 
+    private var stateLock = os_unfair_lock_s()
+
     let outWidth = Config.outputWidth
     let outHeight = Config.outputHeight
 
@@ -106,7 +108,9 @@ class OverlayCompositor {
     }
 
     func loadImage(_ uiImage: UIImage) {
+        os_unfair_lock_lock(&stateLock)
         loadImageToTexture(uiImage)
+        os_unfair_lock_unlock(&stateLock)
         persistImage(uiImage)
     }
 
@@ -121,26 +125,35 @@ class OverlayCompositor {
     }
 
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
-        guard let overlayTex = overlayTexture else { return }
+        os_unfair_lock_lock(&stateLock)
+        let localOverlayTexture = overlayTexture
+        let localPosX = posX
+        let localPosY = posY
+        let localScale = scale
+        let localOpacity = opacity
+        let localRotation = rotation
+        os_unfair_lock_unlock(&stateLock)
+
+        guard let overlayTex = localOverlayTexture else { return }
 
         var uniforms = OverlayUniforms()
-        uniforms.posX = posX
-        uniforms.posY = posY
-        uniforms.scale = scale
-        uniforms.opacity = opacity
-        uniforms.rotation = rotation
+        uniforms.posX = localPosX
+        uniforms.posY = localPosY
+        uniforms.scale = localScale
+        uniforms.opacity = localOpacity
+        uniforms.rotation = localRotation
         uniforms.overlayWidth = Float(overlayTex.width)
         uniforms.overlayHeight = Float(overlayTex.height)
         uniforms.outWidth = Float(outWidth)
         uniforms.outHeight = Float(outHeight)
 
-        let overlayPixelW = Float(outWidth) * scale
+        let overlayPixelW = Float(outWidth) * localScale
         let overlayPixelH = overlayPixelW * (Float(overlayTex.height) / Float(overlayTex.width))
-        let centerX = posX * Float(outWidth)
-        let centerY = posY * Float(outHeight)
+        let centerX = localPosX * Float(outWidth)
+        let centerY = localPosY * Float(outHeight)
 
-        let absCos = abs(cos(rotation))
-        let absSin = abs(sin(rotation))
+        let absCos = abs(cos(localRotation))
+        let absSin = abs(sin(localRotation))
         let halfW = overlayPixelW / 2.0 * absCos + overlayPixelH / 2.0 * absSin
         let halfH = overlayPixelW / 2.0 * absSin + overlayPixelH / 2.0 * absCos
 
