@@ -84,12 +84,20 @@ class CoverImageLoader {
             if let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200,
                let image = UIImage(data: data) {
                 self.memoryCache.setObject(image, forKey: "\(musicId)" as NSString)
-                self.saveToDiskCache(image: image, musicId: musicId)
-                let base64 = self.imageToBase64(image)
-                if let base64 = base64 {
-                    self.base64Cache[musicId] = base64
+                let jpegData: Data?
+                if format == "jpg" || format == "jpeg" {
+                    jpegData = data
+                } else {
+                    jpegData = image.jpegData(compressionQuality: 0.7)
                 }
-                completion(base64)
+                if let jpegData = jpegData {
+                    self.saveToDiskCache(jpegData: jpegData, musicId: musicId)
+                    let base64 = jpegData.base64EncodedString()
+                    self.base64Cache[musicId] = base64
+                    completion(base64)
+                } else {
+                    completion(nil)
+                }
             } else {
                 self.tryFormat(musicId: musicId, formatIndex: formatIndex + 1, completion: completion)
             }
@@ -102,10 +110,9 @@ class CoverImageLoader {
         return jpegData.base64EncodedString()
     }
 
-    private func saveToDiskCache(image: UIImage, musicId: Int) {
-        guard let data = image.jpegData(compressionQuality: 0.7) else { return }
+    private func saveToDiskCache(jpegData: Data, musicId: Int) {
         let fileURL = diskCacheDir.appendingPathComponent("\(musicId).jpg")
-        try? data.write(to: fileURL)
+        try? jpegData.write(to: fileURL)
     }
 
     private func loadFromDiskCache(musicId: Int) -> UIImage? {

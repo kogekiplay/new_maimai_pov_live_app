@@ -11,11 +11,19 @@ class MarqueeRenderer {
     private let maxTextureWidth: Int = 1800
     private let barHeight: Int = 64
 
+    private var textureCache: [String: MTLTexture] = [:]
+    private var widthCache: [String: Int] = [:]
+
     init(device: MTLDevice) {
         self.device = device
     }
 
     func render(text: String, type: MarqueeItem.MarqueeItemType) -> (MTLTexture?, Int) {
+        let cacheKey = "\(type.rawValue)_\(text)"
+        if let cachedTexture = textureCache[cacheKey], let cachedWidth = widthCache[cacheKey] {
+            return (cachedTexture, cachedWidth)
+        }
+
         let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
@@ -56,49 +64,11 @@ class MarqueeRenderer {
         }
         UIGraphicsEndImageContext()
 
-        let texture = cgImageToTexture(cgImage)
+        let texture = TextureHelper.shared.cgImageToTexture(cgImage, device: device)
+        if let texture = texture {
+            textureCache[cacheKey] = texture
+            widthCache[cacheKey] = textureWidth
+        }
         return (texture, textureWidth)
-    }
-
-    private func cgImageToTexture(_ cgImage: CGImage) -> MTLTexture? {
-        let width = cgImage.width
-        let height = cgImage.height
-        let bytesPerRow = width * 4
-
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        var pixelData = [UInt8](repeating: 0, count: bytesPerRow * height)
-
-        guard let context = CGContext(
-            data: &pixelData,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
-        ) else { return nil }
-
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        let texDesc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: width,
-            height: height,
-            mipmapped: false
-        )
-        texDesc.usage = .shaderRead
-        texDesc.storageMode = .shared
-
-        guard let texture = device.makeTexture(descriptor: texDesc) else { return nil }
-
-        texture.replace(
-            region: MTLRegion(origin: .init(x: 0, y: 0, z: 0),
-                              size: MTLSize(width: width, height: height, depth: 1)),
-            mipmapLevel: 0,
-            withBytes: pixelData,
-            bytesPerRow: bytesPerRow
-        )
-
-        return texture
     }
 }

@@ -51,6 +51,7 @@ class RTMPStreamManager: ObservableObject {
     private var audioContinuation: AsyncStream<(AVAudioBuffer, AVAudioTime)>.Continuation?
 
     private var videoFormatDescription: CMVideoFormatDescription?
+    private var cachedAudioFormat: AVAudioFormat?
     private let lock = NSLock()
 
     private var rtmpUrl: String = ""
@@ -311,7 +312,10 @@ class RTMPStreamManager: ObservableObject {
         guard isStreaming else { return }
 
         guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
-        let audioFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
+        if cachedAudioFormat == nil {
+            cachedAudioFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
+        }
+        guard let audioFormat = cachedAudioFormat else { return }
 
         let frameCount = AVAudioFrameCount(sampleBuffer.numSamples)
         guard let pcmBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: frameCount) else { return }

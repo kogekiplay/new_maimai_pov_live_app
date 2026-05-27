@@ -151,44 +151,34 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             guard let self = self else { return }
             self.latestDanmaku = "\(msg.authorName): \(msg.content)"
             self.danmakuCount += 1
-            DispatchQueue.main.async {
-                self.debug.log("[弹幕] \(msg.authorName): \(msg.content)")
-            }
+            self.debug.log("[弹幕] \(msg.authorName): \(msg.content)")
             self.handleDanmakuForSongRequest(msg)
         }
 
         blivechatClient.onGift = { [weak self] msg in
             guard let self = self else { return }
             let coinValue = max(msg.totalCoin, msg.totalFreeCoin)
-            DispatchQueue.main.async {
-                self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))")
-                self.postMarquee("🎁 感谢 \(msg.authorName) 送出 \(msg.giftName) ×\(msg.num)", type: .gift)
-            }
+            self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))")
+            self.postMarquee("🎁 感谢 \(msg.authorName) 送出 \(msg.giftName) ×\(msg.num)", type: .gift)
             if coinValue > 0 {
                 let name = msg.authorName
                 self.songCardManager.userGiftPool[name, default: 0] += coinValue
                 if let index = self.songCardManager.findSongIndex(byName: name) {
                     self.songCardManager.updateGiftValue(name: name, delta: coinValue)
                     let lockedEnd = self.songCardManager.lockedEndIndex
-                    DispatchQueue.main.async {
-                        if index >= lockedEnd {
-                            self.songCardManager.reorderQueueByGiftValue()
-                        }
-                        self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
+                    if index >= lockedEnd {
+                        self.songCardManager.reorderQueueByGiftValue()
                     }
+                    self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                 } else {
-                    DispatchQueue.main.async {
-                        self.scheduleRefreshLeftPanel()
-                    }
+                    self.scheduleRefreshLeftPanel()
                 }
             }
         }
 
         blivechatClient.onSuperChat = { [weak self] msg in
             guard let self = self else { return }
-            DispatchQueue.main.async {
-                self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
-            }
+            self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
             self.handleSuperChatForSongRequest(msg)
         }
 
@@ -200,27 +190,19 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if let index = self.songCardManager.findSongIndex(byName: name) {
                 self.songCardManager.updateGiftValue(name: name, delta: coinValue)
                 let lockedEnd = self.songCardManager.lockedEndIndex
-                DispatchQueue.main.async {
-                    if index >= lockedEnd {
-                        self.songCardManager.reorderQueueByGiftValue()
-                    }
+                if index >= lockedEnd {
+                    self.songCardManager.reorderQueueByGiftValue()
                 }
             } else {
-                DispatchQueue.main.async {
-                    self.scheduleRefreshLeftPanel()
-                }
+                self.scheduleRefreshLeftPanel()
             }
-            DispatchQueue.main.async {
-                self.debug.log("[上舰] \(msg.authorName)")
-                self.postMarquee("⭐ \(msg.authorName) 上舰了!", type: .member)
-            }
+            self.debug.log("[上舰] \(msg.authorName)")
+            self.postMarquee("⭐ \(msg.authorName) 上舰了!", type: .member)
         }
 
         blivechatClient.onError = { [weak self] error in
             guard let self = self else { return }
-            DispatchQueue.main.async {
-                self.debug.log("[blivechat错误] code=\(error.code) \(error.message)")
-            }
+            self.debug.log("[blivechat错误] code=\(error.code) \(error.message)")
         }
 
         blivechatClient.onReconnectLog = { [weak self] message in

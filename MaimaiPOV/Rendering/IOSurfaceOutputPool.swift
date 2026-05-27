@@ -10,7 +10,7 @@ class IOSurfaceOutputPool {
 
     private var buffers: [PooledBuffer] = []
     private var writeIndex: Int = 0
-    private let lock = NSLock()
+    private var unfairLock = os_unfair_lock_s()
 
     init?(device: MTLDevice, width: Int, height: Int, count: Int = 3) {
         let bufferAttrs: [String: Any] = [
@@ -56,8 +56,8 @@ class IOSurfaceOutputPool {
     }
 
     func nextWriteBuffer() -> PooledBuffer? {
-        lock.lock()
-        defer { lock.unlock() }
+        os_unfair_lock_lock(&unfairLock)
+        defer { os_unfair_lock_unlock(&unfairLock) }
         guard !buffers.isEmpty else { return nil }
         let buffer = buffers[writeIndex]
         writeIndex = (writeIndex + 1) % buffers.count
@@ -65,8 +65,8 @@ class IOSurfaceOutputPool {
     }
 
     var lastCompletedBuffer: PooledBuffer? {
-        lock.lock()
-        defer { lock.unlock() }
+        os_unfair_lock_lock(&unfairLock)
+        defer { os_unfair_lock_unlock(&unfairLock) }
         guard !buffers.isEmpty else { return nil }
         let readIndex = (writeIndex + buffers.count - 1) % buffers.count
         return buffers[readIndex]
