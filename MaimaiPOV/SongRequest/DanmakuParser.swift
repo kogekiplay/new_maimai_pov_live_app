@@ -6,6 +6,7 @@ struct ParseResult {
         case notACommand
     }
     let type: ResultType
+    let originalQuery: String
 }
 
 class DanmakuParser {
@@ -19,7 +20,7 @@ class DanmakuParser {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
         let nsRange = NSRange(trimmed.startIndex..., in: trimmed)
         guard commandPrefixPattern.firstMatch(in: trimmed, range: nsRange) != nil else {
-            return ParseResult(type: .notACommand)
+            return ParseResult(type: .notACommand, originalQuery: "")
         }
 
         let matchPattern = "^!?点歌\\s*(.+)$"
@@ -27,11 +28,13 @@ class DanmakuParser {
               let match = matchRegex.firstMatch(in: trimmed, range: nsRange),
               match.numberOfRanges > 1,
               let queryRange = Range(match.range(at: 1), in: trimmed) else {
-            return ParseResult(type: .notACommand)
+            return ParseResult(type: .notACommand, originalQuery: "")
         }
 
         var rawQuery = String(trimmed[queryRange]).trimmingCharacters(in: .whitespaces)
-        guard !rawQuery.isEmpty else { return ParseResult(type: .notACommand) }
+        guard !rawQuery.isEmpty else { return ParseResult(type: .notACommand, originalQuery: "") }
+
+        let originalQuery = rawQuery.trimmingCharacters(in: .whitespaces)
 
         var diffInput: String?
         var chartTypePreference: String?
@@ -56,6 +59,14 @@ class DanmakuParser {
                 continue
             }
 
+            if let (captured, fullRange) = matchFromHead(rawQuery, pattern: "^(绿|basic|黄|advanced|红|expert|紫|master|白|remaster|宴|utage)\\s*") {
+                diffInput = captured.lowercased()
+                rawQuery.removeSubrange(fullRange)
+                rawQuery = rawQuery.trimmingCharacters(in: .whitespaces)
+                changed = true
+                continue
+            }
+
             if let (captured, fullRange) = matchFromHead(rawQuery, pattern: "^(dx|标准|std|标)(?:谱)?\\s*") {
                 let token = captured.lowercased()
                 chartTypePreference = (token == "dx") ? "dx" : "standard"
@@ -67,9 +78,11 @@ class DanmakuParser {
         }
 
         let queryName = rawQuery.trimmingCharacters(in: .whitespaces)
-        guard !queryName.isEmpty else { return ParseResult(type: .notACommand) }
+        if queryName.isEmpty {
+            return ParseResult(type: .songRequest(query: originalQuery, diffInput: nil, chartTypePreference: nil), originalQuery: originalQuery)
+        }
 
-        return ParseResult(type: .songRequest(query: queryName, diffInput: diffInput, chartTypePreference: chartTypePreference))
+        return ParseResult(type: .songRequest(query: queryName, diffInput: diffInput, chartTypePreference: chartTypePreference), originalQuery: originalQuery)
     }
 
     private func matchFromTail(_ text: String, pattern: String) -> (captured: String, fullRange: Range<String.Index>)? {

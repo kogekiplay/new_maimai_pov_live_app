@@ -225,9 +225,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         switch result.type {
         case .songRequest(let query, let diffInput, let chartTypePreference):
             let name = msg.authorName
+            let originalQuery = result.originalQuery
 
             DispatchQueue.main.async {
-                self.debug.log("[点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
+                self.debug.log("[点歌] 解析: query=\"\(query)\" original=\"\(originalQuery)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
             }
 
             guard !songCardManager.hasSongInQueue(name: name) else {
@@ -238,32 +239,44 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 return
             }
 
-            let candidates = songDatabase.findCandidates(query: query)
+            var candidates = songDatabase.findCandidates(query: originalQuery)
+            var resolvedDiffInput: String? = nil
+            var resolvedChartTypePreference: String? = nil
+            var usedOriginalQuery = false
+
+            if !candidates.candidates.isEmpty && originalQuery != query {
+                usedOriginalQuery = true
+            } else {
+                candidates = songDatabase.findCandidates(query: query)
+                resolvedDiffInput = diffInput
+                resolvedChartTypePreference = chartTypePreference
+            }
+
             if candidates.candidates.isEmpty {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] 未找到歌曲: \"\(query)\"")
-                    self.postMarquee("❌ 未找到\"\(query)\"", type: .songFailure)
+                    self.postMarquee("❌ \(name) 未找到\"\(query)\"", type: .songFailure)
                 }
                 return
             }
 
             guard let song = songDatabase.pickByChartType(
                 candidates: candidates.candidates,
-                chartTypePreference: chartTypePreference,
-                diffInput: diffInput
+                chartTypePreference: resolvedChartTypePreference,
+                diffInput: resolvedDiffInput
             ) else {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] 候选\(candidates.candidates.count)首但无法选择")
-                    self.postMarquee("❌ 无法匹配歌曲", type: .songFailure)
+                    self.postMarquee("❌ \(name) 无法匹配歌曲", type: .songFailure)
                 }
                 return
             }
 
-            let targetDiffNum = songDatabase.resolveDiffInput(diffInput)
+            let targetDiffNum = songDatabase.resolveDiffInput(resolvedDiffInput)
             guard let noteResult = songDatabase.findNote(song: song, targetDiffNum: targetDiffNum) else {
                 DispatchQueue.main.async {
                     self.debug.log("[点歌] \(song.title) 没有可用难度")
-                    self.postMarquee("❌ \(song.title) 没有可用难度", type: .songFailure)
+                    self.postMarquee("❌ \(name): \(song.title) 没有可用难度", type: .songFailure)
                 }
                 return
             }
@@ -310,9 +323,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         switch result.type {
         case .songRequest(let query, let diffInput, let chartTypePreference):
             let name = sc.authorName
+            let originalQuery = result.originalQuery
 
             DispatchQueue.main.async {
-                self.debug.log("[SC点歌] 解析: query=\"\(query)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") price=\(sc.price)")
+                self.debug.log("[SC点歌] 解析: query=\"\(query)\" original=\"\(originalQuery)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") price=\(sc.price)")
             }
 
             if songCardManager.hasSongInQueue(name: name) {
@@ -330,35 +344,46 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 return
             }
 
-            let candidates = songDatabase.findCandidates(query: query)
+            var candidates = songDatabase.findCandidates(query: originalQuery)
+            var resolvedDiffInput: String? = nil
+            var resolvedChartTypePreference: String? = nil
+
+            if !candidates.candidates.isEmpty && originalQuery != query {
+                // whole match succeeded, don't apply difficulty/chartType filters
+            } else {
+                candidates = songDatabase.findCandidates(query: query)
+                resolvedDiffInput = diffInput
+                resolvedChartTypePreference = chartTypePreference
+            }
+
             if candidates.candidates.isEmpty {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] 未找到歌曲: \"\(query)\"，SC金额累积到送礼池")
-                    self.postMarquee("❌ 未找到\"\(query)\"", type: .songFailure)
+                    self.postMarquee("❌ \(name) 未找到\"\(query)\"", type: .songFailure)
                 }
                 return
             }
 
             guard let song = songDatabase.pickByChartType(
                 candidates: candidates.candidates,
-                chartTypePreference: chartTypePreference,
-                diffInput: diffInput
+                chartTypePreference: resolvedChartTypePreference,
+                diffInput: resolvedDiffInput
             ) else {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] 候选\(candidates.candidates.count)首但无法选择，SC金额累积到送礼池")
-                    self.postMarquee("❌ 无法匹配歌曲", type: .songFailure)
+                    self.postMarquee("❌ \(name) 无法匹配歌曲", type: .songFailure)
                 }
                 return
             }
 
-            let targetDiffNum = songDatabase.resolveDiffInput(diffInput)
+            let targetDiffNum = songDatabase.resolveDiffInput(resolvedDiffInput)
             guard let noteResult = songDatabase.findNote(song: song, targetDiffNum: targetDiffNum) else {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] \(song.title) 没有可用难度，SC金额累积到送礼池")
-                    self.postMarquee("❌ \(song.title) 没有可用难度", type: .songFailure)
+                    self.postMarquee("❌ \(name): \(song.title) 没有可用难度", type: .songFailure)
                 }
                 return
             }
