@@ -1431,6 +1431,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         var renderedTextures: [Int: MTLTexture] = [:]
         let group = DispatchGroup()
+        let currentGeneration = rightPanelGeneration
 
         for item in newRowsNeedTexture {
             group.enter()
@@ -1460,7 +1461,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }
 
         group.notify(queue: .main) { [weak self] in
-            guard self != nil else { return }
+            guard let self = self, self.rightPanelGeneration == currentGeneration else { return }
             compositor.reorderRows(newOrder: newOrder, textures: renderedTextures, targetScrollOffset: targetScrollOffset)
 
             for item in existingGiftChanged {
