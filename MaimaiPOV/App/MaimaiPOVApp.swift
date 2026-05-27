@@ -7,6 +7,7 @@ struct MaimaiPOVApp: App {
     var body: some Scene {
         WindowGroup {
             Phase2View()
+                .background(HomeIndicatorHider())
         }
         .defaultSize(.init(width: 393, height: 852))
     }
