@@ -13,7 +13,7 @@ class MarqueeRenderer {
 
     private var textureCache: [String: MTLTexture] = [:]
     private var widthCache: [String: Int] = [:]
-    private let cacheLock = os_unfair_lock_s()
+    private var cacheLock = os_unfair_lock_s()
 
     init(device: MTLDevice) {
         self.device = device
