@@ -484,6 +484,29 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         blivechatConnectionState = .disconnected
     }
 
+    @MainActor func restoreQueueFromSnapshot() {
+        guard let snapshot = QueuePersistenceManager.shared.load() else { return }
+        songCardManager.restoreFromSnapshot(snapshot)
+        songCardManager.forceSave()
+        debug.log("[持久化] 已恢复队列: \(snapshot.queue.count) 首歌曲")
+    }
+
+    @MainActor func discardSnapshot() {
+        QueuePersistenceManager.shared.clearSnapshot()
+    }
+
+    var hasRestorableSnapshot: Bool {
+        QueuePersistenceManager.shared.hasSnapshot()
+    }
+
+    var snapshotAgeString: String {
+        guard let age = QueuePersistenceManager.shared.snapshotAge() else { return "" }
+        if age < 60 { return "\(Int(age))秒前" }
+        if age < 3600 { return "\(Int(age / 60))分钟前" }
+        if age < 86400 { return "\(Int(age / 3600))小时前" }
+        return "\(Int(age / 86400))天前"
+    }
+
     private func observeBlivechatState() {
         blivechatClient.$connectionState
             .receive(on: DispatchQueue.main)

@@ -43,6 +43,7 @@ struct Phase2View: View {
     @AppStorage("streamKey") private var streamKey: String = ""
     @State private var showImagePicker = false
     @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var showRestoreAlert = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -57,6 +58,10 @@ struct Phase2View: View {
             UIApplication.shared.isIdleTimerDisabled = true
             pipeline.start()
 
+            if pipeline.hasRestorableSnapshot {
+                showRestoreAlert = true
+            }
+
             let session = AVAudioSession.sharedInstance()
             volumeObservation = session.observe(\.outputVolume) { [weak session] _, _ in
                 guard session != nil else { return }
@@ -68,6 +73,16 @@ struct Phase2View: View {
                     }
                 }
             }
+        }
+        .alert("恢复点歌队列", isPresented: $showRestoreAlert) {
+            Button("恢复队列") {
+                pipeline.restoreQueueFromSnapshot()
+            }
+            Button("不恢复", role: .destructive) {
+                pipeline.discardSnapshot()
+            }
+        } message: {
+            Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？")
         }
         .onChange(of: pipeline.selectedLens) { pipeline.handleLensChange($0) }
         .onChange(of: pipeline.focusValue) { _ in pipeline.applyExposure() }
