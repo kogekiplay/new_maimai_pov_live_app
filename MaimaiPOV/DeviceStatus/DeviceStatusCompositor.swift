@@ -32,7 +32,7 @@ class DeviceStatusCompositor {
     }
 
     func updateIfNeeded() {
-        let level = manager.batteryLevel
+        let level = manager.effectiveBatteryLevel
         guard level != lastRenderedLevel else { return }
         lastRenderedLevel = level
 

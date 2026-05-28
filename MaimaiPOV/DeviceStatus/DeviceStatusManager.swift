@@ -6,6 +6,16 @@ class DeviceStatusManager {
     var onBatteryLevelChanged: (() -> Void)?
 
     var deviceTemperature: Double = 0.0
+    var simulatedBatteryLevel: Int? = nil
+
+    var effectiveBatteryLevel: Int {
+        simulatedBatteryLevel ?? batteryLevel
+    }
+
+    func setSimulatedBatteryLevel(_ level: Int?) {
+        simulatedBatteryLevel = level
+        onBatteryLevelChanged?()
+    }
 
     func startMonitoring() {
         UIDevice.current.isBatteryMonitoringEnabled = true

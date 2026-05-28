@@ -134,6 +134,11 @@ class WebServerManager {
             return self.debugHandler.simulateMarquee(request: request)
         }
 
+        server["/api/debug/simulate/battery"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.debugHandler.simulateBattery(request: request)
+        }
+
         server["/api/announcement"] = { [weak self] request in
             guard let self = self else { return .internalServerError }
             switch request.method {

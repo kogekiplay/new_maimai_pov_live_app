@@ -303,4 +303,34 @@ class DebugAPIHandler {
         sem.wait()
         return .ok(.json(result))
     }
+
+    func simulateBattery(request: HttpRequest) -> HttpResponse {
+        guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any] else {
+            return .badRequest(.text("Invalid JSON body"))
+        }
+
+        let level = body["level"] as? Int
+
+        let sem = DispatchSemaphore(value: 0)
+        var result: [String: Any] = ["success": true]
+
+        DispatchQueue.main.async { [weak self] in
+            guard let pipeline = self?.pipeline else {
+                result = ["success": false, "error": "Pipeline not available"]
+                sem.signal()
+                return
+            }
+
+            pipeline.deviceStatusManager?.setSimulatedBatteryLevel(level)
+            result = [
+                "success": true,
+                "simulatedLevel": level ?? NSNull(),
+                "actualLevel": pipeline.deviceStatusManager?.batteryLevel ?? -1
+            ]
+            sem.signal()
+        }
+
+        sem.wait()
+        return .ok(.json(result))
+    }
 }
