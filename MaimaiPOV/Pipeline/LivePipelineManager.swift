@@ -615,6 +615,15 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         MotionManager.shared.startUpdates()
         webServerManager.start()
 
+        if songDatabase.songCount == 0 {
+            songDatabase.loadFromBundle()
+            if songDatabase.songCount == 0 {
+                debug.log("[曲库] ❌ 加载失败: \(songDatabase.lastError ?? "unknown")")
+            } else {
+                debug.log("[曲库] 加载完成: \(songDatabase.songCount) 首歌曲")
+            }
+        }
+
         camera.onVideoFrame = { [weak self] pixelBuffer, alignedTime in
             let pipelineEnterTime = CACurrentMediaTime()
             self?.pipelineQueue.async {
