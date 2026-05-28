@@ -338,12 +338,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 songCardManager.userGiftPool[name, default: 0] += coinValue
                 songCardManager.updateGiftValue(name: name, delta: coinValue)
                 let lockedEnd = songCardManager.lockedEndIndex
+                if let idx = songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
+                    songCardManager.reorderQueueByGiftValue()
+                }
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中，SC金额累加到送礼池")
                     self.postMarquee("❌ \(name) 已有歌曲在队列中", type: .songFailure)
-                    if let idx = self.songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
-                        self.songCardManager.reorderQueueByGiftValue()
-                    }
                 }
                 return
             }
@@ -431,10 +431,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if let index = songCardManager.findSongIndex(byName: name) {
                 songCardManager.updateGiftValue(name: name, delta: coinValue)
                 let lockedEnd = songCardManager.lockedEndIndex
+                if index >= lockedEnd {
+                    songCardManager.reorderQueueByGiftValue()
+                }
                 DispatchQueue.main.async {
-                    if index >= lockedEnd {
-                        self.songCardManager.reorderQueueByGiftValue()
-                    }
                     self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                 }
             }
@@ -1107,10 +1107,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         if song.giftValue > 0 {
             songCardManager.addSong(song)
             songCardManager.reorderQueueByGiftValue()
-            reorderRightPanelWorkItem?.cancel()
-            rightPanelGeneration += 1
             ensureTitleTexture()
-            performReorderRightPanel()
+            scheduleReorderRightPanel()
         } else {
             songCardManager.addSong(song)
             addRightPanelRow(song: song)
