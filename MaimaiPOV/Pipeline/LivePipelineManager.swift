@@ -476,15 +476,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             roomKeyValue: blivechatIdentityCode
         )
 
-        webServerManager.start()
-
         observeBlivechatState()
     }
 
     @MainActor func disconnectBlivechat() {
         blivechatClient.disconnect()
         blivechatConnectionState = .disconnected
-        webServerManager.stop()
     }
 
     private func observeBlivechatState() {
@@ -593,6 +590,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             self.applyExposure()
         }
         MotionManager.shared.startUpdates()
+        webServerManager.start()
 
         camera.onVideoFrame = { [weak self] pixelBuffer, alignedTime in
             let pipelineEnterTime = CACurrentMediaTime()

@@ -496,14 +496,13 @@ struct Phase2View: View {
                     } label: {
                         HStack {
                             ProgressView().scaleEffect(0.6)
-                            Text("重连中...").font(.caption).fontWeight(.medium)
+                            Text("强制断开").font(.caption).fontWeight(.medium)
                         }
                         .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.orange)
+                    .tint(.red)
                     .controlSize(.small)
-                    .disabled(true)
                 } else {
                     Button {
                         pipeline.connectBlivechat()
