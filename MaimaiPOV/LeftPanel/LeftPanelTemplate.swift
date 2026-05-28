@@ -241,21 +241,21 @@ struct LeftPanelTemplate {
   .announcement-container {
     width: 420px;
     height: 324px;
-    padding: 14px 18px;
+    padding: 10px 13px;
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
   .announcement-title {
-    color: rgba(255,255,255,0.85);
-    font-size: 20px;
-    font-weight: 600;
+    color: rgba(255,255,255,1.00);
+    font-size: 27px;
+    font-weight: 800;
     letter-spacing: 0.5px;
   }
   .announcement-content {
-    color: rgba(255,255,255,0.75);
-    font-size: 22px;
-    font-weight: 400;
+    color: rgba(255,255,255,0.90);
+    font-size: 30px;
+    font-weight: 600;
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-all;
@@ -264,7 +264,7 @@ struct LeftPanelTemplate {
 </head>
 <body>
 <div class="announcement-container">
-  <div class="announcement-title">📢 公告</div>
+  <div class="announcement-title">欢迎来到猫猫头的直播间</div>
   <div class="announcement-content">{{ANNOUNCEMENT_TEXT}}</div>
 </div>
 </body>
