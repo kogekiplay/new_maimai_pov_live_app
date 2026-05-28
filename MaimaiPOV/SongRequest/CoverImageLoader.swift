@@ -5,6 +5,9 @@ class CoverImageLoader {
 
     private let memoryCache = NSCache<NSString, UIImage>()
     private var base64Cache: [Int: String] = [:]
+    private var base64CacheOrder: [Int] = []
+    private let maxBase64CacheSize = 200
+    private var lock = os_unfair_lock_s()
     private let diskCacheDir: URL
 
     private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
@@ -37,8 +40,27 @@ class CoverImageLoader {
         return String(format: "%06d", baseId)
     }
 
+    private func getCachedBase64(musicId: Int) -> String? {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return base64Cache[musicId]
+    }
+
+    private func setCachedBase64(musicId: Int, base64: String) {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        if base64Cache[musicId] == nil {
+            base64CacheOrder.append(musicId)
+        }
+        base64Cache[musicId] = base64
+        while base64Cache.count > maxBase64CacheSize {
+            let oldest = base64CacheOrder.removeFirst()
+            base64Cache.removeValue(forKey: oldest)
+        }
+    }
+
     func loadCoverBase64(musicId: Int, completion: @escaping (String?) -> Void) {
-        if let cached = base64Cache[musicId] {
+        if let cached = getCachedBase64(musicId: musicId) {
             completion(cached)
             return
         }
@@ -46,7 +68,7 @@ class CoverImageLoader {
         if let cached = loadFromDiskCache(musicId: musicId) {
             let base64 = imageToBase64(cached)
             if let base64 = base64 {
-                base64Cache[musicId] = base64
+                setCachedBase64(musicId: musicId, base64: base64)
             }
             completion(base64)
             return
@@ -55,7 +77,7 @@ class CoverImageLoader {
         if let cached = memoryCache.object(forKey: "\(musicId)" as NSString) {
             let base64 = imageToBase64(cached)
             if let base64 = base64 {
-                base64Cache[musicId] = base64
+                setCachedBase64(musicId: musicId, base64: base64)
             }
             completion(base64)
             return
@@ -93,7 +115,7 @@ class CoverImageLoader {
                 if let jpegData = jpegData {
                     self.saveToDiskCache(jpegData: jpegData, musicId: musicId)
                     let base64 = jpegData.base64EncodedString()
-                    self.base64Cache[musicId] = base64
+                    self.setCachedBase64(musicId: musicId, base64: base64)
                     completion(base64)
                 } else {
                     completion(nil)
