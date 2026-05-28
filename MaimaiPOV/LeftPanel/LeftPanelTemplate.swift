@@ -241,26 +241,22 @@ struct LeftPanelTemplate {
   .announcement-container {
     width: 420px;
     height: 324px;
-    padding: 16px 20px;
+    padding: 14px 18px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
   .announcement-title {
-    color: rgba(255,255,255,0.7);
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 1px;
-  }
-  .announcement-divider {
-    height: 1px;
-    background: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.85);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
   }
   .announcement-content {
-    color: rgba(255,255,255,0.55);
-    font-size: 20px;
-    font-weight: 500;
-    line-height: 1.6;
+    color: rgba(255,255,255,0.75);
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-all;
   }
@@ -269,7 +265,6 @@ struct LeftPanelTemplate {
 <body>
 <div class="announcement-container">
   <div class="announcement-title">📢 公告</div>
-  <div class="announcement-divider"></div>
   <div class="announcement-content">{{ANNOUNCEMENT_TEXT}}</div>
 </div>
 </body>
