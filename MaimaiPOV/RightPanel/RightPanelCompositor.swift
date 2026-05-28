@@ -94,6 +94,7 @@ class RightPanelCompositor {
     private var scrollAnimDuration: Float = 0.45
     private var isScrollAnimating: Bool = false
     private var scrollCompletion: (() -> Void)?
+    private var isPreScrolling: Bool = false
 
     private var isIdleScrolling: Bool = false
     private let idleScrollSpeed: Float = 0.5
@@ -392,7 +393,7 @@ class RightPanelCompositor {
         os_unfair_lock_unlock(&stateLock)
     }
 
-    func animateScrollTo(targetOffset: Float, duration: Float = 0.45, extraRows: Int = 0, completion: (() -> Void)? = nil) {
+    func animateScrollTo(targetOffset: Float, duration: Float = 0.45, extraRows: Int = 0, isPreScroll: Bool = false, completion: (() -> Void)? = nil) {
         os_unfair_lock_lock(&stateLock)
         _stopIdleScrollLocked()
         lastOperationTime = CACurrentMediaTime()
@@ -406,6 +407,7 @@ class RightPanelCompositor {
         if isScrollAnimating {
             scrollOffset = targetScrollOffset
             isScrollAnimating = false
+            isPreScrolling = false
             updateRowPositionsForScroll()
             scrollCompletion = nil
         }
@@ -426,7 +428,22 @@ class RightPanelCompositor {
         scrollAnimStartTime = CACurrentMediaTime()
         scrollAnimDuration = duration
         isScrollAnimating = true
+        isPreScrolling = isPreScroll
         scrollCompletion = completion
+        os_unfair_lock_unlock(&stateLock)
+    }
+
+    func cancelPreScroll() {
+        os_unfair_lock_lock(&stateLock)
+        guard isPreScrolling else {
+            os_unfair_lock_unlock(&stateLock)
+            return
+        }
+        scrollOffset = targetScrollOffset
+        isScrollAnimating = false
+        isPreScrolling = false
+        updateRowPositionsForScroll()
+        scrollCompletion = nil
         os_unfair_lock_unlock(&stateLock)
     }
 
@@ -539,6 +556,7 @@ class RightPanelCompositor {
             if progress >= 1.0 {
                 scrollOffset = targetScrollOffset
                 isScrollAnimating = false
+                isPreScrolling = false
                 updateRowPositionsForScroll()
                 pendingCompletion = scrollCompletion
                 scrollCompletion = nil

@@ -1223,6 +1223,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func scheduleReorderRightPanel() {
+        rightPanelCompositor?.cancelPreScroll()
         reorderRightPanelWorkItem?.cancel()
         rightPanelGeneration += 1
         let currentGeneration = rightPanelGeneration
@@ -1374,7 +1375,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 let oldNeededOffset = compositor.scrollOffsetNeededForRow(listIndex: oldListIndex)
 
                 let gen = rightPanelGeneration
-                compositor.animateScrollTo(targetOffset: oldNeededOffset, duration: 0.3) { [weak self] in
+                compositor.animateScrollTo(targetOffset: oldNeededOffset, duration: 0.3, isPreScroll: true) { [weak self] in
                     guard let self = self else { return }
                     guard self.rightPanelGeneration == gen else { return }
 
