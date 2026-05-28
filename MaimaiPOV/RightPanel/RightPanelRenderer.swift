@@ -47,7 +47,7 @@ class RightPanelRenderer {
     }
 
     private func cacheKey(for data: SongCardData) -> String {
-        return "\(data.requesterName ?? "")_\(data.songName)"
+        return "\(data.requesterName ?? "")_\(data.songName)_\(data.giftValue)"
     }
 
     func renderTitle(completion: @escaping (MTLTexture?) -> Void) {
