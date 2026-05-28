@@ -147,6 +147,17 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         setupBlivechatCallbacks()
         webServerManager.pipeline = self
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+    }
+
+    @objc private func appDidEnterBackground() {
+        songCardManager.forceSave()
     }
 
     private func setupBlivechatCallbacks() {

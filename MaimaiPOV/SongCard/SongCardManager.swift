@@ -22,6 +22,9 @@ class SongCardManager: ObservableObject {
 
     var userGiftPool: [String: Int] = [:]
 
+    private var saveTimer: Timer?
+    private let saveDebounceInterval: TimeInterval = 1.0
+
     var lockedEndIndex: Int {
         guard currentIndex >= 0 else { return 0 }
         return min(currentIndex + 2, queue.count)
@@ -52,6 +55,7 @@ class SongCardManager: ObservableObject {
             currentIndex = 0
             delegate?.onCurrentSongChanged(song)
         }
+        scheduleSave()
     }
 
     func addSongAtNext(_ song: SongCardData) {
@@ -68,6 +72,7 @@ class SongCardManager: ObservableObject {
             queue.insert(song, at: insertIndex)
             delegate?.onQueueUpdated(queue, change: .added(index: insertIndex))
         }
+        scheduleSave()
     }
 
     func switchToNext() {
@@ -78,6 +83,7 @@ class SongCardManager: ObservableObject {
             resetGiftPool(name: name)
         }
         delegate?.onCurrentSongChanged(queue[currentIndex])
+        scheduleSave()
     }
 
     func updateQueue(_ songs: [SongCardData]) {
@@ -87,6 +93,7 @@ class SongCardManager: ObservableObject {
         if let first = songs.first {
             delegate?.onCurrentSongChanged(first)
         }
+        scheduleSave()
     }
 
     func removeSong(at index: Int) {
@@ -120,6 +127,7 @@ class SongCardManager: ObservableObject {
                 }
             }
         }
+        scheduleSave()
     }
 
     func clearQueue() {
@@ -128,6 +136,8 @@ class SongCardManager: ObservableObject {
         userGiftPool.removeAll()
         delegate?.onCurrentSongChanged(nil)
         delegate?.onQueueUpdated([], change: .fullRefresh)
+        cancelPendingSave()
+        QueuePersistenceManager.shared.clearSnapshot()
     }
 
     func findSongIndex(byName name: String) -> Int? {
@@ -148,6 +158,7 @@ class SongCardManager: ObservableObject {
         guard let index = findSongIndex(byName: name) else { return false }
         queue[index].giftValue = userGiftPool[name] ?? queue[index].giftValue + delta
         delegate?.onGiftValueChanged(queue[index], queueIndex: index)
+        scheduleSave()
         return true
     }
 
@@ -169,5 +180,45 @@ class SongCardManager: ObservableObject {
 
         queue.replaceSubrange(lockedEnd..., with: sortable)
         delegate?.onQueueUpdated(queue, change: .reordered)
+        scheduleSave()
+    }
+
+    func restoreFromSnapshot(_ snapshot: QueueSnapshot) {
+        queue = snapshot.queue
+        currentIndex = snapshot.currentIndex
+        userGiftPool = snapshot.userGiftPool
+        delegate?.onQueueUpdated(queue, change: .fullRefresh)
+        if let song = currentSong {
+            delegate?.onCurrentSongChanged(song)
+        }
+    }
+
+    func forceSave() {
+        cancelPendingSave()
+        performSave()
+    }
+
+    private func scheduleSave() {
+        saveTimer?.invalidate()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: saveDebounceInterval, repeats: false) { [weak self] _ in
+            self?.performSave()
+        }
+    }
+
+    private func cancelPendingSave() {
+        saveTimer?.invalidate()
+        saveTimer = nil
+    }
+
+    private func performSave() {
+        guard !queue.isEmpty else { return }
+        let snapshot = QueueSnapshot(
+            version: QueueSnapshot.currentVersion,
+            savedAt: Date(),
+            queue: queue,
+            currentIndex: currentIndex,
+            userGiftPool: userGiftPool
+        )
+        QueuePersistenceManager.shared.save(snapshot: snapshot)
     }
 }
