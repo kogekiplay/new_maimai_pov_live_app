@@ -472,6 +472,17 @@ enum Config {
         set { UserDefaults.standard.set(Double(newValue), forKey: marqueeSpeedKey) }
     }
 
+    static let defaultDeviceStatusEnabled: Bool = true
+    static var deviceStatusEnabled: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: deviceStatusEnabledKey) != nil else {
+                return defaultDeviceStatusEnabled
+            }
+            return UserDefaults.standard.bool(forKey: deviceStatusEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: deviceStatusEnabledKey) }
+    }
+
     // UserDefaults keys
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
@@ -518,6 +529,7 @@ enum Config {
     private static let autoFocusEnabledKey = "com.maimai.autoFocusEnabled"
     private static let streamBitrateKey = "com.maimai.streamBitrate"
     private static let marqueeSpeedKey = "com.maimai.marqueeSpeed"
+    private static let deviceStatusEnabledKey = "com.maimai.deviceStatusEnabled"
 
     // Video encoding
     static let videoFPS: Int = 60

@@ -82,6 +82,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     var marqueeManager: MarqueeManager?
     var marqueeRenderer: MarqueeRenderer?
     var marqueeCompositor: MarqueeCompositor?
+    var deviceStatusManager: DeviceStatusManager?
+    var deviceStatusRenderer: DeviceStatusRenderer?
+    var deviceStatusCompositor: DeviceStatusCompositor?
     private var rightPanelGeneration: Int = 0
     private var refreshLeftPanelWorkItem: DispatchWorkItem?
     private var reorderRightPanelWorkItem: DispatchWorkItem?
@@ -535,6 +538,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         self.marqueeRenderer = MarqueeRenderer(device: device)
         self.marqueeCompositor = MarqueeCompositor(device: device, manager: marqueeManager!, renderer: marqueeRenderer!)
 
+        self.deviceStatusManager = DeviceStatusManager()
+        self.deviceStatusRenderer = DeviceStatusRenderer(device: device)
+        self.deviceStatusCompositor = DeviceStatusCompositor(device: device, manager: deviceStatusManager!, renderer: deviceStatusRenderer!)
+        self.deviceStatusManager?.startMonitoring()
+
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
             width: Config.outputWidth,
@@ -759,6 +767,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         marquee.encode(into: encoder, outputTexture: writeBuffer.texture)
                     }
 
+                    if let ds = self.deviceStatusCompositor, ds.enabled {
+                        ds.updateIfNeeded()
+                        ds.encode(into: encoder, outputTexture: writeBuffer.texture)
+                    }
+
                     encoder.endEncoding()
 
                     cmdBuf.addCompletedHandler { [weak self] _ in
@@ -796,6 +809,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         camera.onVideoFrame = nil
         camera.stopRunning()
         MotionManager.shared.stopUpdates()
+        deviceStatusManager?.stopMonitoring()
         stopFPSTimer()
         DispatchQueue.main.async {
             self.debug.stopFlushTimer()

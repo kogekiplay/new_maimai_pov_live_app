@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>公告面板 - 极简主义风格预览</title>
+<style>
+  body {
+    margin: 0;
+    padding: 20px;
+    background: #1a1a1a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+
+  h1 {
+    color: #fff;
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+
+  .preview-container {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .preview-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .label {
+    color: rgba(255,255,255,0.7);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* ========== 原始样式（对照） ========== */
+  .original-panel {
+    width: 420px;
+    height: 324px;
+    background: rgba(17,17,17,0.85);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .original-title {
+    color: rgba(255,255,255,0.7);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .original-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.15);
+  }
+
+  .original-content {
+    color: rgba(255,255,255,0.55);
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* ========== 新样式：极简主义优化版 ========== */
+  .new-panel {
+    width: 420px;
+    height: 324px;
+    background: rgba(17,17,17,0.85);
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .new-title {
+    color: rgba(255,255,255,0.85);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .new-content {
+    color: rgba(255,255,255,0.75);
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    flex: 1;
+  }
+
+  /* 测试用例容器 */
+  .test-cases {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  .test-case-title {
+    color: #ffd93d;
+    font-size: 18px;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<h1>公告面板样式对比预览</h1>
+
+<div class="preview-container">
+  <!-- 原始版本 -->
+  <div class="preview-item">
+    <div class="label">【原始样式】当前线上版本</div>
+    <div class="original-panel">
+      <div class="original-title">📢 公告</div>
+      <div class="original-divider"></div>
+      <div class="original-content">欢迎来到直播间！\n请遵守直播间规则\n点歌请发送：点歌 歌名</div>
+    </div>
+  </div>
+
+  <!-- 新版本 -->
+  <div class="preview-item">
+    <div class="label">【新样式】极简主义优化版</div>
+    <div class="new-panel">
+      <div class="new-title">📢 公告</div>
+      <div class="new-content">欢迎来到直播间！\n请遵守直播间规则\n点歌请发送：点歌 歌名</div>
+    </div>
+  </div>
+</div>
+
+<div class="test-cases">
+  <div class="test-case-title">测试用例：不同长度的文本</div>
+
+  <div class="preview-container">
+    <!-- 短文本 -->
+    <div class="preview-item">
+      <div class="label">短文本</div>
+      <div class="new-panel">
+        <div class="new-title">📢 公告</div>
+        <div class="new-content">暂无公告</div>
+      </div>
+    </div>
+
+    <!-- 中等文本 -->
+    <div class="preview-item">
+      <div class="label">中等长度</div>
+      <div class="new-panel">
+        <div class="new-title">📢 公告</div>
+        <div class="new-content">今晚8点开始直播\n主要游玩maimai DX\n欢迎来玩！</div>
+      </div>
+    </div>
+
+    <!-- 长文本 -->
+    <div class="preview-item">
+      <div class="label">长文本（溢出测试）</div>
+      <div class="new-panel">
+        <div class="new-title">📢 公告</div>
+        <div class="new-content">1. 请文明发言\n2. 禁止刷屏广告\n3. 点歌格式：点歌 歌名 难度\n4. 礼物感谢名单将在每局结束后展示\n5. 违规者将被禁言处理</div>
+      </div>
+    </div>
+
+    <!-- 超长单行 -->
+    <div class="preview-item">
+      <div class="label">超长单行文字</div>
+      <div class="new-panel">
+        <div class="new-title">📢 公告</div>
+        <div class="new-content">这是一段非常非常非常非常非常非常非常非常非常非常非常非常长的单行文字用于测试自动换行功能是否正常工作</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 显示关键参数对比
+  console.log('========== 样式参数对比 ==========');
+  console.log('【原始样式】');
+  console.log('- 标题字号: 18px');
+  console.log('- 标题颜色: rgba(255,255,255,0.70)');
+  console.log('- 标题字重: 700');
+  console.log('- 正文字号: 20px');
+  console.log('- 正文颜色: rgba(255,255,255,0.55)');
+  console.log('- 正文字重: 500');
+  console.log('- 内边距: 16px 20px');
+  console.log('- 包含分割线: 是');
+  console.log('');
+  console.log('【新样式 - 极简主义优化版】');
+  console.log('- 标题字号: 20px (+2px)');
+  console.log('- 标题颜色: rgba(255,255,255,0.85) (+15%)');
+  console.log('- 标题字重: 600 (略降)');
+  console.log('- 正文字号: 22px (+2px)');
+  console.log('- 正文颜色: rgba(255,255,255,0.75) (+20%)');
+  console.log('- 正文字重: 400 (更轻)');
+  console.log('- 内边距: 14px 18px (更紧凑)');
+  console.log('- 包含分割线: 否 (已移除)');
+</script>
+
+</body>
+</html>
