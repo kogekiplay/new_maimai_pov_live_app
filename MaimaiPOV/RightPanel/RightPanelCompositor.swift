@@ -515,6 +515,14 @@ class RightPanelCompositor {
         os_unfair_lock_unlock(&stateLock)
     }
 
+    func updateRowTexture(bySongId songId: UUID, texture: MTLTexture) {
+        os_unfair_lock_lock(&stateLock)
+        if let index = rows.firstIndex(where: { $0.data?.id == songId }) {
+            rows[index].texture = texture
+        }
+        os_unfair_lock_unlock(&stateLock)
+    }
+
     func updateAnimations() {
         let now = CACurrentMediaTime()
         var pendingCompletion: (() -> Void)?

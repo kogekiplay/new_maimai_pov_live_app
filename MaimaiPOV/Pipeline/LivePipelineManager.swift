@@ -1428,23 +1428,23 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             compositor.reorderRows(newOrder: newOrder, textures: [:], targetScrollOffset: targetScrollOffset)
 
             for item in existingGiftChanged {
-                let queueIndex = item.queueIndex
                 let song = item.data
+                let songId = song.id
                 if let musicId = song.musicId {
                     CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
                         DispatchQueue.main.async {
-                            renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
+                            renderer.renderRow(data: song, queueIndex: item.queueIndex, coverBase64: base64) { _, texture in
                                 if let texture = texture {
-                                    compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                                    compositor.updateRowTexture(bySongId: songId, texture: texture)
                                 }
                             }
                         }
                     }
                 } else {
                     DispatchQueue.main.async {
-                        renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
+                        renderer.renderRow(data: song, queueIndex: item.queueIndex, coverBase64: nil) { _, texture in
                             if let texture = texture {
-                                compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                                compositor.updateRowTexture(bySongId: songId, texture: texture)
                             }
                         }
                     }
@@ -1489,23 +1489,23 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             compositor.reorderRows(newOrder: newOrder, textures: renderedTextures, targetScrollOffset: targetScrollOffset)
 
             for item in existingGiftChanged {
-                let queueIndex = item.queueIndex
                 let song = item.data
+                let songId = song.id
                 if let musicId = song.musicId {
                     CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
                         DispatchQueue.main.async {
-                            renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
+                            renderer.renderRow(data: song, queueIndex: item.queueIndex, coverBase64: base64) { _, texture in
                                 if let texture = texture {
-                                    compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                                    compositor.updateRowTexture(bySongId: songId, texture: texture)
                                 }
                             }
                         }
                     }
                 } else {
                     DispatchQueue.main.async {
-                        renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
+                        renderer.renderRow(data: song, queueIndex: item.queueIndex, coverBase64: nil) { _, texture in
                             if let texture = texture {
-                                compositor.updateRowTexture(queueIndex: queueIndex, texture: texture)
+                                compositor.updateRowTexture(bySongId: songId, texture: texture)
                             }
                         }
                     }
