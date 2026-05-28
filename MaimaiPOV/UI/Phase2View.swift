@@ -26,6 +26,7 @@ struct Phase2View: View {
     @State private var panelExpanded: Bool = true
     @State private var isAntiTouchMode: Bool = false
     @State private var antiTouchTimer: Timer?
+    @State private var volumeObservation: NSKeyValueObservation?
     @State private var previewOverride: Bool = false
     @State private var advancedExpanded: Bool = false
     @State private var presets: [StreamPreset] = Config.streamPresets
@@ -55,6 +56,18 @@ struct Phase2View: View {
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
             pipeline.start()
+
+            let session = AVAudioSession.sharedInstance()
+            volumeObservation = session.observe(\.outputVolume) { [weak session] _, _ in
+                guard session != nil else { return }
+                DispatchQueue.main.async {
+                    if isAntiTouchMode {
+                        antiTouchTimer?.invalidate()
+                        antiTouchTimer = nil
+                        isAntiTouchMode = false
+                    }
+                }
+            }
         }
         .onChange(of: pipeline.selectedLens) { pipeline.handleLensChange($0) }
         .onChange(of: pipeline.focusValue) { _ in pipeline.applyExposure() }
@@ -114,16 +127,11 @@ struct Phase2View: View {
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AVSystemController_SystemVolumeDidChangeNotification"))) { _ in
-            if isAntiTouchMode {
-                antiTouchTimer?.invalidate()
-                antiTouchTimer = nil
-                isAntiTouchMode = false
-            }
-        }
         .onDisappear {
             antiTouchTimer?.invalidate()
             antiTouchTimer = nil
+            volumeObservation?.invalidate()
+            volumeObservation = nil
             pipeline.stop()
         }
     }
