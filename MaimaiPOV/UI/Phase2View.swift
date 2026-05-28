@@ -24,6 +24,8 @@ struct Phase2View: View {
     @StateObject private var pipeline = LivePipelineManager()
     @State private var selectedTab: ControlTab = .camera
     @State private var panelExpanded: Bool = true
+    @State private var isAntiTouchMode: Bool = false
+    @State private var antiTouchTimer: Timer?
     @State private var previewOverride: Bool = false
     @State private var advancedExpanded: Bool = false
     @State private var presets: [StreamPreset] = Config.streamPresets
@@ -100,7 +102,28 @@ struct Phase2View: View {
                 pipeline.debug.isDetailVisible = false
             }
         }
+        .onChange(of: panelExpanded) { expanded in
+            if expanded {
+                antiTouchTimer?.invalidate()
+                antiTouchTimer = nil
+                isAntiTouchMode = false
+            } else {
+                antiTouchTimer?.invalidate()
+                antiTouchTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+                    isAntiTouchMode = true
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AVSystemController_SystemVolumeDidChangeNotification"))) { _ in
+            if isAntiTouchMode {
+                antiTouchTimer?.invalidate()
+                antiTouchTimer = nil
+                isAntiTouchMode = false
+            }
+        }
         .onDisappear {
+            antiTouchTimer?.invalidate()
+            antiTouchTimer = nil
             pipeline.stop()
         }
     }
@@ -172,7 +195,7 @@ struct Phase2View: View {
                 }
             }
 
-            DebugOverlayView(debug: pipeline.debug)
+            DebugOverlayView(debug: pipeline.debug, isAntiTouchMode: $isAntiTouchMode)
                 .padding(.leading, 4)
                 .padding(.top, 4)
 
@@ -199,6 +222,7 @@ struct Phase2View: View {
     private var controlPanel: some View {
         VStack(spacing: 0) {
             Button {
+                if isAntiTouchMode { return }
                 withAnimation(.easeInOut(duration: 0.2)) {
                     panelExpanded.toggle()
                     previewOverride = false

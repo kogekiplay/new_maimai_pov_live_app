@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DebugOverlayView: View {
     @ObservedObject var debug: DebugInfoManager
+    @Binding var isAntiTouchMode: Bool
     @State private var dragOffset: CGSize = .zero
     @State private var showLog = false
 
@@ -64,6 +65,7 @@ struct DebugOverlayView: View {
             }
 
             Button {
+                if isAntiTouchMode { return }
                 withAnimation(.easeInOut(duration: 0.15)) {
                     debug.isDetailVisible.toggle()
                 }
