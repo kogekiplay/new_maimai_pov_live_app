@@ -88,6 +88,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     private var rightPanelGeneration: Int = 0
     private var refreshLeftPanelWorkItem: DispatchWorkItem?
     private var reorderRightPanelWorkItem: DispatchWorkItem?
+    private var isSwitchingSong: Bool = false
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
     let songDatabase = SongDatabase()
@@ -1061,7 +1062,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func onCurrentSongChanged(_ song: SongCardData?) {
-        renderLeftPanelCurrentSong(song)
+        if !isSwitchingSong {
+            renderLeftPanelCurrentSong(song)
+        }
     }
 
     func onQueueUpdated(_ songs: [SongCardData], change: QueueChange) {
@@ -1088,11 +1091,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     func triggerSongCardSwitch() {
-        guard let leftCompositor = leftPanelCompositor else { return }
+        guard leftPanelCompositor != nil else { return }
 
         let newCurrentData = songCardManager.nextSong
-
-        songCardManager.switchToNext()
+        isSwitchingSong = true
 
         if let data = newCurrentData {
             if let musicId = data.musicId {
@@ -1102,6 +1104,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         self.leftPanelRenderer?.renderCurrentSong(data, coverBase64: base64) { [weak self] texture in
                             guard let self = self else { return }
                             self.leftPanelCompositor?.switchToNext(newCurrentTexture: texture, newCurrentData: data)
+                            self.songCardManager.switchToNext()
+                            self.isSwitchingSong = false
                             self.switchRightPanelToNext()
                         }
                     }
@@ -1112,6 +1116,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     self.leftPanelRenderer?.renderCurrentSong(data, coverBase64: nil) { [weak self] texture in
                         guard let self = self else { return }
                         self.leftPanelCompositor?.switchToNext(newCurrentTexture: texture, newCurrentData: data)
+                        self.songCardManager.switchToNext()
+                        self.isSwitchingSong = false
                         self.switchRightPanelToNext()
                     }
                 }
@@ -1122,6 +1128,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 self.leftPanelRenderer?.renderCurrentSong(nil, coverBase64: nil) { [weak self] texture in
                     guard let self = self else { return }
                     self.leftPanelCompositor?.switchToNext(newCurrentTexture: texture, newCurrentData: nil)
+                    self.songCardManager.switchToNext()
+                    self.isSwitchingSong = false
                     self.switchRightPanelToNext()
                 }
             }
