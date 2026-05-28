@@ -17,7 +17,16 @@ class RightPanelRenderer {
     private var cachedTitleTexture: MTLTexture?
     private let maxCacheSize = 20
 
-    private var renderGeneration: Int = 0
+    private struct PendingRowRender {
+        let data: SongCardData
+        let queueIndex: Int
+        let coverBase64: String?
+        let completion: (Int, MTLTexture?) -> Void
+    }
+
+    private var pendingRowRenders: [PendingRowRender] = []
+    private var isRenderingRow = false
+    private var pendingFullRefresh: (() -> Void)?
 
     init(device: MTLDevice) {
         self.device = device
@@ -38,7 +47,7 @@ class RightPanelRenderer {
     }
 
     private func cacheKey(for data: SongCardData) -> String {
-        return "\(data.requesterName ?? "")_\(data.songName)_\(data.giftValue)"
+        return "\(data.requesterName ?? "")_\(data.songName)"
     }
 
     func renderTitle(completion: @escaping (MTLTexture?) -> Void) {
@@ -47,7 +56,7 @@ class RightPanelRenderer {
             return
         }
         let html = RightPanelTemplate.renderTitle()
-        renderHTML(html, webView: titleWebView, width: titleWidth, height: titleHeight, expectedGeneration: nil) { [weak self] texture in
+        renderHTML(html, webView: titleWebView, width: titleWidth, height: titleHeight) { [weak self] texture in
             if let texture = texture {
                 self?.cachedTitleTexture = texture
             }
@@ -61,23 +70,43 @@ class RightPanelRenderer {
             completion(queueIndex, cached)
             return
         }
-        renderGeneration += 1
-        let currentGen = renderGeneration
-        let html = RightPanelTemplate.renderRow(data: data, coverBase64: coverBase64)
-        renderHTML(html, webView: rowWebView, width: rowWidth, height: rowHeight, expectedGeneration: currentGen) { [weak self] texture in
-            guard let self = self else {
-                completion(queueIndex, nil)
-                return
+
+        pendingRowRenders.append(PendingRowRender(data: data, queueIndex: queueIndex, coverBase64: coverBase64, completion: completion))
+
+        if !isRenderingRow {
+            processNextPendingRender()
+        }
+    }
+
+    private func processNextPendingRender() {
+        guard !pendingRowRenders.isEmpty else {
+            isRenderingRow = false
+            if let refresh = pendingFullRefresh {
+                pendingFullRefresh = nil
+                refresh()
             }
-            if self.renderGeneration != currentGen {
-                completion(queueIndex, nil)
-                return
-            }
+            return
+        }
+
+        isRenderingRow = true
+        let item = pendingRowRenders.removeFirst()
+        let key = cacheKey(for: item.data)
+
+        if let cached = rowTextureCache[key] {
+            item.completion(item.queueIndex, cached)
+            processNextPendingRender()
+            return
+        }
+
+        let html = RightPanelTemplate.renderRow(data: item.data, coverBase64: item.coverBase64)
+        renderHTML(html, webView: rowWebView, width: rowWidth, height: rowHeight) { [weak self] texture in
+            guard let self = self else { return }
             if let texture = texture {
                 self.rowTextureCache[key] = texture
                 self.trimCacheIfNeeded()
             }
-            completion(queueIndex, texture)
+            item.completion(item.queueIndex, texture)
+            self.processNextPendingRender()
         }
     }
 
@@ -100,35 +129,58 @@ class RightPanelRenderer {
             return
         }
 
-        renderGeneration += 1
-        let batchGen = renderGeneration
-
-        func renderNext(index: Int) {
-            guard index < rowsToRender.count else {
-                completion(results)
-                return
-            }
-
-            let item = rowsToRender[index]
-            let coverBase64 = covers[item.queueIndex]
-            let key = cacheKey(for: item.song)
-
-            let html = RightPanelTemplate.renderRow(data: item.song, coverBase64: coverBase64)
-            renderHTML(html, webView: rowWebView, width: rowWidth, height: rowHeight, expectedGeneration: batchGen) { [weak self] texture in
-                guard let self = self else { return }
-                if self.renderGeneration != batchGen {
-                    return
-                }
-                if let texture = texture {
-                    results[item.queueIndex] = texture
-                    self.rowTextureCache[key] = texture
-                    self.trimCacheIfNeeded()
-                }
-                renderNext(index: index + 1)
-            }
+        let staleRenders = pendingRowRenders
+        pendingRowRenders.removeAll()
+        for item in staleRenders {
+            item.completion(item.queueIndex, nil)
         }
 
-        renderNext(index: 0)
+        func startBatch() {
+            isRenderingRow = true
+
+            func renderNext(index: Int) {
+                guard index < rowsToRender.count else {
+                    isRenderingRow = false
+                    if !pendingRowRenders.isEmpty {
+                        processNextPendingRender()
+                    } else if let refresh = pendingFullRefresh {
+                        pendingFullRefresh = nil
+                        refresh()
+                    }
+                    completion(results)
+                    return
+                }
+
+                let item = rowsToRender[index]
+                let key = cacheKey(for: item.song)
+                let coverBase64 = covers[item.queueIndex]
+
+                if let cached = rowTextureCache[key] {
+                    results[item.queueIndex] = cached
+                    renderNext(index: index + 1)
+                    return
+                }
+
+                let html = RightPanelTemplate.renderRow(data: item.song, coverBase64: coverBase64)
+                renderHTML(html, webView: rowWebView, width: rowWidth, height: rowHeight) { [weak self] texture in
+                    guard let self = self else { return }
+                    if let texture = texture {
+                        results[item.queueIndex] = texture
+                        self.rowTextureCache[key] = texture
+                        self.trimCacheIfNeeded()
+                    }
+                    renderNext(index: index + 1)
+                }
+            }
+
+            renderNext(index: 0)
+        }
+
+        if isRenderingRow {
+            pendingFullRefresh = startBatch
+        } else {
+            startBatch()
+        }
     }
 
     func invalidateCache() {
@@ -163,15 +215,11 @@ class RightPanelRenderer {
         }
     }
 
-    private func renderHTML(_ html: String, webView: WKWebView, width: Int, height: Int, expectedGeneration: Int?, completion: @escaping (MTLTexture?) -> Void) {
+    private func renderHTML(_ html: String, webView: WKWebView, width: Int, height: Int, completion: @escaping (MTLTexture?) -> Void) {
         webView.loadHTMLString(html, baseURL: nil)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             guard let self = self else {
-                completion(nil)
-                return
-            }
-            if let gen = expectedGeneration, self.renderGeneration != gen {
                 completion(nil)
                 return
             }
