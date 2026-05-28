@@ -4,7 +4,7 @@ struct LeftPanelTemplate {
     static let songCardWidth = 420
     static let songCardHeight = 432
     static let announcementWidth = 420
-    static let announcementHeight = 324
+    static let announcementHeight = 756
 
     static let songCardHTML = """
 <!DOCTYPE html>
@@ -235,26 +235,26 @@ struct LeftPanelTemplate {
     background: rgba(17,17,17,0.85);
     font-family: -apple-system, sans-serif;
     width: 420px;
-    height: 324px;
+    height: 756px;
     overflow: hidden;
   }
   .announcement-container {
     width: 420px;
-    height: 324px;
-    padding: 10px 13px;
+    height: 756px;
+    padding: 16px 18px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
   }
   .announcement-title {
     color: rgba(255,255,255,1.00);
-    font-size: 27px;
+    font-size: 30px;
     font-weight: 800;
     letter-spacing: 0.5px;
   }
   .announcement-content {
     color: rgba(255,255,255,0.90);
-    font-size: 30px;
+    font-size: 32px;
     font-weight: 600;
     line-height: 1.5;
     white-space: pre-wrap;

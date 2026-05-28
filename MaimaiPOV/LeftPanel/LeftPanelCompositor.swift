@@ -76,7 +76,6 @@ class LeftPanelCompositor {
     private var stateLock = os_unfair_lock_s()
 
     private var currentSongState: PanelCardState
-    private var nextSongState: PanelCardState
     private var announcementState: PanelCardState
     private var outgoingStates: [PanelCardState] = []
 
@@ -89,15 +88,9 @@ class LeftPanelCompositor {
         scale: Float(420) / Float(1920)
     )
 
-    static let nextSongSlot = PanelSlot(
-        posX: Float(420) / Float(1920) / 2,
-        posY: (Float(432) + Float(324) / 2) / Float(1080),
-        scale: Float(420) / Float(1920) * Float(324) / Float(432)
-    )
-
     static let announcementSlot = PanelSlot(
         posX: Float(420) / Float(1920) / 2,
-        posY: (Float(756) + Float(324) / 2) / Float(1080),
+        posY: (Float(432) + Float(756) / 2) / Float(1080),
         scale: Float(420) / Float(1920)
     )
 
@@ -114,7 +107,7 @@ class LeftPanelCompositor {
         self.pipelineState = ps
 
         self.uniformsBuffers = []
-        for _ in 0..<6 {
+        for _ in 0..<5 {
             guard let buffer = device.makeBuffer(
                 length: MemoryLayout<SongCardUniforms>.stride,
                 options: .storageModeShared
@@ -123,7 +116,6 @@ class LeftPanelCompositor {
         }
 
         self.currentSongState = .atSlot(Self.currentSongSlot)
-        self.nextSongState = .atSlot(Self.nextSongSlot)
         self.announcementState = .atSlot(Self.announcementSlot, cardWidth: LeftPanelTemplate.announcementWidth, cardHeight: LeftPanelTemplate.announcementHeight)
     }
 
@@ -139,7 +131,6 @@ class LeftPanelCompositor {
         let currentTime = CACurrentMediaTime()
         os_unfair_lock_lock(&stateLock)
         updateCardState(&currentSongState, currentTime: currentTime)
-        updateCardState(&nextSongState, currentTime: currentTime)
         for i in outgoingStates.indices {
             updateCardState(&outgoingStates[i], currentTime: currentTime)
         }
@@ -221,42 +212,6 @@ class LeftPanelCompositor {
          os_unfair_lock_unlock(&stateLock)
      }
 
-    func setNextSong(texture: MTLTexture?, data: SongCardData?, animate: Bool = true) {
-         os_unfair_lock_lock(&stateLock)
-         let hadTexture = nextSongState.texture != nil
-         nextSongState.texture = texture
-         nextSongState.data = data
-
-         if animate && !hadTexture && texture != nil {
-             nextSongState.currentPosX = Self.offScreenLeft.posX
-             nextSongState.currentPosY = Self.nextSongSlot.posY
-             nextSongState.currentScale = Self.nextSongSlot.scale
-             nextSongState.currentOpacity = 0.0
-
-             nextSongState.startPosX = Self.offScreenLeft.posX
-             nextSongState.startPosY = Self.nextSongSlot.posY
-             nextSongState.startScale = Self.nextSongSlot.scale
-             nextSongState.startOpacity = 0.0
-
-             nextSongState.targetPosX = Self.nextSongSlot.posX
-             nextSongState.targetPosY = Self.nextSongSlot.posY
-             nextSongState.targetScale = Self.nextSongSlot.scale
-             nextSongState.targetOpacity = 1.0
-
-             nextSongState.isAnimating = true
-             nextSongState.animStartTime = CACurrentMediaTime() + 0.15
-             nextSongState.animDuration = 0.6
-             nextSongState.shouldRemoveAfterAnimation = false
-             nextSongState.pendingAnimations.removeAll()
-         } else if !nextSongState.isAnimating {
-             nextSongState.currentPosX = Self.nextSongSlot.posX
-             nextSongState.currentPosY = Self.nextSongSlot.posY
-             nextSongState.currentScale = Self.nextSongSlot.scale
-             nextSongState.currentOpacity = 1.0
-         }
-         os_unfair_lock_unlock(&stateLock)
-     }
-
     func setAnnouncement(texture: MTLTexture?) {
         os_unfair_lock_lock(&stateLock)
         announcementState.texture = texture
@@ -269,33 +224,30 @@ class LeftPanelCompositor {
         os_unfair_lock_unlock(&stateLock)
     }
 
-    func switchToNext(newNextTexture: MTLTexture?, newNextData: SongCardData?) {
+    func switchToNext(newCurrentTexture: MTLTexture?, newCurrentData: SongCardData?) {
         os_unfair_lock_lock(&stateLock)
         var outgoingCurrent = currentSongState
         animateStateOutLeft(&outgoingCurrent)
         outgoingStates.append(outgoingCurrent)
 
-        var promotedNext = nextSongState
-        animateStateToSlot(&promotedNext, slot: Self.currentSongSlot, duration: 0.6, delay: 0.075)
-        currentSongState = promotedNext
-
-        var newState = PanelCardState.atSlot(Self.nextSongSlot, texture: newNextTexture, data: newNextData)
-        newState.currentPosX = Self.offScreenLeft.posX
-        newState.currentPosY = Self.nextSongSlot.posY
-        newState.currentScale = Self.nextSongSlot.scale
-        newState.currentOpacity = 0.0
-        newState.startPosX = Self.offScreenLeft.posX
-        newState.startPosY = Self.nextSongSlot.posY
-        newState.startScale = Self.nextSongSlot.scale
-        newState.startOpacity = 0.0
-        newState.targetPosX = Self.nextSongSlot.posX
-        newState.targetPosY = Self.nextSongSlot.posY
-        newState.targetScale = Self.nextSongSlot.scale
-        newState.targetOpacity = 1.0
-        newState.isAnimating = true
-        newState.animStartTime = CACurrentMediaTime() + 0.15
-        newState.animDuration = 0.6
-        nextSongState = newState
+        currentSongState = PanelCardState.atSlot(Self.currentSongSlot, texture: newCurrentTexture, data: newCurrentData)
+        currentSongState.currentPosX = Self.offScreenLeft.posX
+        currentSongState.currentPosY = Self.currentSongSlot.posY
+        currentSongState.currentScale = Self.currentSongSlot.scale
+        currentSongState.currentOpacity = 0.0
+        currentSongState.startPosX = Self.offScreenLeft.posX
+        currentSongState.startPosY = Self.currentSongSlot.posY
+        currentSongState.startScale = Self.currentSongSlot.scale
+        currentSongState.startOpacity = 0.0
+        currentSongState.targetPosX = Self.currentSongSlot.posX
+        currentSongState.targetPosY = Self.currentSongSlot.posY
+        currentSongState.targetScale = Self.currentSongSlot.scale
+        currentSongState.targetOpacity = 1.0
+        currentSongState.isAnimating = true
+        currentSongState.animStartTime = CACurrentMediaTime() + 0.15
+        currentSongState.animDuration = 0.6
+        currentSongState.shouldRemoveAfterAnimation = false
+        currentSongState.pendingAnimations.removeAll()
         os_unfair_lock_unlock(&stateLock)
     }
 
@@ -303,11 +255,6 @@ class LeftPanelCompositor {
         os_unfair_lock_lock(&stateLock)
         if currentSongState.texture != nil {
             var outgoing = currentSongState
-            animateStateOutLeft(&outgoing)
-            outgoingStates.append(outgoing)
-        }
-        if nextSongState.texture != nil {
-            var outgoing = nextSongState
             animateStateOutLeft(&outgoing)
             outgoingStates.append(outgoing)
         }
@@ -324,15 +271,6 @@ class LeftPanelCompositor {
         currentSongState.currentOpacity = 0.0
         currentSongState.isAnimating = false
         currentSongState.pendingAnimations.removeAll()
-
-        nextSongState.texture = nil
-        nextSongState.data = nil
-        nextSongState.currentPosX = Self.nextSongSlot.posX
-        nextSongState.currentPosY = Self.nextSongSlot.posY
-        nextSongState.currentScale = Self.nextSongSlot.scale
-        nextSongState.currentOpacity = 0.0
-        nextSongState.isAnimating = false
-        nextSongState.pendingAnimations.removeAll()
         os_unfair_lock_unlock(&stateLock)
     }
 
@@ -377,7 +315,6 @@ class LeftPanelCompositor {
 
         os_unfair_lock_lock(&stateLock)
         let currentSnap = currentSongState
-        let nextSnap = nextSongState
         let announcementSnap = announcementState
         let outgoingSnap = outgoingStates
         os_unfair_lock_unlock(&stateLock)
@@ -390,18 +327,14 @@ class LeftPanelCompositor {
             encodeCard(encoder, state: currentSnap, texture: texture, bufferIndex: 0, outputTexture: outputTexture, tgSize: tgSize)
         }
 
-        if let texture = nextSnap.texture, nextSnap.currentOpacity > 0.01 {
-            encodeCard(encoder, state: nextSnap, texture: texture, bufferIndex: 1, outputTexture: outputTexture, tgSize: tgSize)
-        }
-
         if let texture = announcementSnap.texture, announcementSnap.currentOpacity > 0.01 {
-            encodeCard(encoder, state: announcementSnap, texture: texture, bufferIndex: 2, outputTexture: outputTexture, tgSize: tgSize)
+            encodeCard(encoder, state: announcementSnap, texture: texture, bufferIndex: 1, outputTexture: outputTexture, tgSize: tgSize)
         }
 
         for i in outgoingSnap.indices {
             let state = outgoingSnap[i]
             if let texture = state.texture, state.currentOpacity > 0.01 {
-                let bufferIndex = 3 + i
+                let bufferIndex = 2 + i
                 if bufferIndex < uniformsBuffers.count {
                     encodeCard(encoder, state: state, texture: texture, bufferIndex: bufferIndex, outputTexture: outputTexture, tgSize: tgSize)
                 }

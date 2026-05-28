@@ -6,7 +6,6 @@ class LeftPanelRenderer {
     private let device: MTLDevice
 
     private let currentSongWebView: WKWebView
-    private let nextSongWebView: WKWebView
     private let announcementWebView: WKWebView
 
     private let songCardWidth: Int
@@ -16,8 +15,6 @@ class LeftPanelRenderer {
 
     private var cachedCurrentSongTexture: MTLTexture?
     private var cachedCurrentSongKey: String?
-    private var cachedNextSongTexture: MTLTexture?
-    private var cachedNextSongKey: String?
 
     init(device: MTLDevice) {
         self.device = device
@@ -32,13 +29,6 @@ class LeftPanelRenderer {
         currentSongWebView.isOpaque = false
         currentSongWebView.backgroundColor = .clear
         currentSongWebView.scrollView.isScrollEnabled = false
-
-        let nextSongConfig = WKWebViewConfiguration()
-        nextSongConfig.websiteDataStore = .nonPersistent()
-        nextSongWebView = WKWebView(frame: CGRect(x: 0, y: 0, width: songCardWidth, height: songCardHeight), configuration: nextSongConfig)
-        nextSongWebView.isOpaque = false
-        nextSongWebView.backgroundColor = .clear
-        nextSongWebView.scrollView.isScrollEnabled = false
 
         let annConfig = WKWebViewConfiguration()
         annConfig.websiteDataStore = .nonPersistent()
@@ -75,28 +65,6 @@ class LeftPanelRenderer {
         }
     }
 
-    func renderNextSong(_ data: SongCardData?, coverBase64: String?, completion: @escaping (MTLTexture?) -> Void) {
-        let key = cacheKey(for: data)
-        if cachedNextSongKey == key, let cached = cachedNextSongTexture {
-            completion(cached)
-            return
-        }
-
-        let html: String
-        if let data = data {
-            html = LeftPanelTemplate.renderSongCard(data: data, coverBase64: coverBase64)
-        } else {
-            html = LeftPanelTemplate.renderEmptyState()
-        }
-        renderHTML(html, webView: nextSongWebView, width: songCardWidth, height: songCardHeight) { [weak self] texture in
-            if let texture = texture {
-                self?.cachedNextSongTexture = texture
-                self?.cachedNextSongKey = key
-            }
-            completion(texture)
-        }
-    }
-
     func renderAnnouncement(_ text: String, completion: @escaping (MTLTexture?) -> Void) {
         let html = LeftPanelTemplate.renderAnnouncement(text: text)
         renderHTML(html, webView: announcementWebView, width: announcementWidth, height: announcementHeight, completion: completion)
@@ -105,8 +73,6 @@ class LeftPanelRenderer {
     func invalidateCache() {
         cachedCurrentSongTexture = nil
         cachedCurrentSongKey = nil
-        cachedNextSongTexture = nil
-        cachedNextSongKey = nil
     }
 
     private func renderHTML(_ html: String, webView: WKWebView, width: Int, height: Int, completion: @escaping (MTLTexture?) -> Void) {

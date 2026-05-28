@@ -27,7 +27,7 @@ class SongCardManager: ObservableObject {
 
     var lockedEndIndex: Int {
         guard currentIndex >= 0 else { return 0 }
-        return min(currentIndex + 2, queue.count)
+        return min(currentIndex + 1, queue.count)
     }
 
     var currentSong: SongCardData? {
@@ -99,7 +99,7 @@ class SongCardManager: ObservableObject {
     func removeSong(at index: Int) {
         guard index >= 0, index < queue.count else { return }
         let removedName = queue[index].requesterName
-        let wasInRightPanel = index >= currentIndex + 2
+        let wasInRightPanel = index >= currentIndex + 1
         queue.remove(at: index)
         if let name = removedName {
             resetGiftPool(name: name)
