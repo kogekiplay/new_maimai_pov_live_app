@@ -20,6 +20,7 @@ struct DanmakuEntry: Codable {
     var songRequestStatus: String?
     let uid: String
     let originalDanmakuId: String
+    let userGiftValue: Int
 }
 
 class SSEClient {
@@ -75,7 +76,8 @@ class DanmakuBufferManager {
         giftPrice: Int? = nil,
         isSongRequest: Bool = false,
         uid: String = "",
-        originalDanmakuId: String = ""
+        originalDanmakuId: String = "",
+        userGiftValue: Int = 0
     ) -> DanmakuEntry {
         lock.lock()
         let entry = DanmakuEntry(
@@ -90,7 +92,8 @@ class DanmakuBufferManager {
             isSongRequest: isSongRequest,
             songRequestStatus: isSongRequest ? "pending" : nil,
             uid: uid,
-            originalDanmakuId: originalDanmakuId
+            originalDanmakuId: originalDanmakuId,
+            userGiftValue: userGiftValue
         )
         nextId += 1
         buffer.append(entry)

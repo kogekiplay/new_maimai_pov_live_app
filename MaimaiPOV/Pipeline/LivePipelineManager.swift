@@ -200,7 +200,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 avatarUrl: msg.avatarUrl,
                 isSongRequest: isSongRequest,
                 uid: msg.effectiveUid,
-                originalDanmakuId: msg.id
+                originalDanmakuId: msg.id,
+                userGiftValue: self.songCardManager.userGiftPool[msg.authorName] ?? 0
             )
 
             self.handleDanmakuForSongRequest(msg)
@@ -220,7 +221,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 giftName: msg.giftName,
                 giftPrice: coinValue,
                 uid: msg.effectiveUid,
-                originalDanmakuId: msg.id
+                originalDanmakuId: msg.id,
+                userGiftValue: self.songCardManager.userGiftPool[msg.authorName] ?? 0
             )
 
             let prefix = "🎁 感谢 \(msg.authorName) 送出 \(msg.giftName)"
@@ -253,7 +255,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 avatarUrl: msg.avatarUrl,
                 giftPrice: msg.price,
                 uid: msg.effectiveUid,
-                originalDanmakuId: msg.id
+                originalDanmakuId: msg.id,
+                userGiftValue: self.songCardManager.userGiftPool[msg.authorName] ?? 0
             )
 
             self.handleSuperChatForSongRequest(msg)
@@ -283,7 +286,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 avatarUrl: msg.avatarUrl,
                 giftPrice: msg.price,
                 uid: msg.effectiveUid,
-                originalDanmakuId: msg.id
+                originalDanmakuId: msg.id,
+                userGiftValue: self.songCardManager.userGiftPool[msg.authorName] ?? 0
             )
 
             self.postMarquee("⭐ \(msg.authorName) 上舰了!", type: .member)

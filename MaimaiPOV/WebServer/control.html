@@ -53,11 +53,11 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 .queue-list{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
 .queue-list.open{max-height:40vh;overflow-y:auto}
 .queue-item{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(192,132,252,0.05)}
-.queue-item-cover{width:32px;height:32px;border-radius:6px;object-fit:cover;background:rgba(30,15,50,0.6);flex-shrink:0}
+.queue-item-cover{width:40px;height:40px;border-radius:6px;object-fit:cover;background:rgba(30,15,50,0.6);flex-shrink:0}
 .queue-item-info{flex:1;min-width:0}
 .queue-item-name{font-size:12px;font-weight:600;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.queue-item-meta{font-size:10px;color:var(--text-dim)}
-.queue-item-diff{width:3px;height:24px;border-radius:2px;flex-shrink:0}
+.queue-item-meta{font-size:10px;color:var(--text-dim);display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center}
+.queue-item-diff{width:3px;height:28px;border-radius:2px;flex-shrink:0}
 
 .danmaku-section{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .danmaku-filters{display:flex;gap:4px;padding:6px 12px;flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -69,6 +69,7 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 .danmaku-entry-header{display:flex;align-items:center;gap:4px;margin-bottom:2px}
 .danmaku-type-icon{font-size:11px;flex-shrink:0}
 .danmaku-username{font-size:11px;font-weight:600;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px}
+.danmaku-gift-val{font-size:9px;color:var(--success);margin-left:2px;flex-shrink:0}
 .danmaku-time{font-size:9px;color:var(--text-dim);margin-left:auto;flex-shrink:0}
 .danmaku-content{font-size:12px;color:var(--text);word-break:break-all;line-height:1.4}
 .danmaku-entry.type-sc{background:rgba(255,193,7,0.05);border-radius:6px;padding:6px 8px;margin:2px 0}
@@ -247,6 +248,25 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 </div>
 </div>
 <div v-else class="no-song">暂无播放歌曲</div>
+<div v-if="nextSong" style="margin-top:8px">
+<div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;padding-left:4px">⏭ 下一首</div>
+<div class="queue-item" style="padding:4px 0">
+<div class="queue-item-diff" :class="diffBarClass(nextSong.difficulty)"></div>
+<img v-if="nextSong.coverURL" class="queue-item-cover" :src="nextSong.coverURL" loading="lazy" @error="$event.target.style.display='none'">
+<div v-else class="queue-item-cover"></div>
+<div class="queue-item-info">
+<div class="queue-item-name">{{nextSong.songName}}</div>
+<div class="queue-item-meta">
+<span :style="{color:diffColor(nextSong.difficulty)}">{{nextSong.difficulty}}</span>
+<span v-if="nextSong.level">Lv.{{nextSong.level}}</span>
+<span v-if="nextSong.bpm">♪{{nextSong.bpm}}</span>
+<span v-if="nextSong.chartType" class="cs-badge" :class="chartBadgeClass(nextSong.chartType)" style="font-size:8px">{{chartLabel(nextSong.chartType)}}</span>
+<span v-if="nextSong.requester" style="color:var(--accent2)">{{nextSong.requester}}</span>
+<span v-if="nextSong.giftValue>0" style="color:var(--success)">🎁{{(nextSong.giftValue/1000).toFixed(1)}}元</span>
+</div>
+</div>
+</div>
+</div>
 </div>
 
 <div class="queue-toggle" @click="queueExpanded=!queueExpanded">
@@ -263,7 +283,10 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 <div class="queue-item-meta">
 <span :style="{color:diffColor(s.difficulty)}">{{s.difficulty}}</span>
 <span v-if="s.level">Lv.{{s.level}}</span>
-<span v-if="s.requester">{{s.requester}}</span>
+<span v-if="s.bpm">♪{{s.bpm}}</span>
+<span v-if="s.chartType" class="cs-badge" :class="chartBadgeClass(s.chartType)" style="font-size:8px">{{chartLabel(s.chartType)}}</span>
+<span v-if="s.requester" style="color:var(--accent2)">{{s.requester}}</span>
+<span v-if="s.giftValue>0" style="color:var(--success)">🎁{{(s.giftValue/1000).toFixed(1)}}元</span>
 </div>
 </div>
 </div>
@@ -283,6 +306,7 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 <div class="danmaku-entry-header">
 <span class="danmaku-type-icon">{{danmakuIcon(d.type)}}</span>
 <span class="danmaku-username">{{d.username}}</span>
+<span v-if="d.userGiftValue>0" class="danmaku-gift-val">🎁{{(d.userGiftValue/1000).toFixed(1)}}</span>
 <span v-if="d.giftPrice&&d.type==='sc'" style="font-size:10px;color:var(--gold)">¥{{d.giftPrice}}</span>
 <span v-if="d.giftPrice&&d.type==='gift'" style="font-size:10px;color:var(--accent1)">{{d.giftName}}</span>
 <span v-if="d.isSongRequest" class="song-request-badge" :class="srBadgeClass(d.songRequestStatus)">{{srBadgeText(d.songRequestStatus)}}</span>
@@ -498,9 +522,15 @@ return this.queueData.queue[this.queueData.currentIndex]
 }
 return null
 },
+nextSong:function(){
+if(this.queueData.queue&&this.queueData.queue.length>0&&this.queueData.currentIndex+1<this.queueData.queue.length){
+return this.queueData.queue[this.queueData.currentIndex+1]
+}
+return null
+},
 queueSongs:function(){
 if(!this.queueData.queue)return[]
-return this.queueData.queue.filter(function(_,i){return i!==this.queueData.currentIndex}.bind(this))
+return this.queueData.queue.filter(function(_,i){return i!==this.queueData.currentIndex&&i!==this.queueData.currentIndex+1}.bind(this))
 },
 queueRemaining:function(){
 return this.queueData.remaining||0
