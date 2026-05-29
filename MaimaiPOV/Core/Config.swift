@@ -452,6 +452,17 @@ enum Config {
         set { UserDefaults.standard.set(Double(newValue), forKey: cropHorizontalOffsetKey) }
     }
 
+    static let defaultActivitySmoothFactor: Float = 0.03
+    static var activitySmoothFactor: Float {
+        get {
+            guard UserDefaults.standard.object(forKey: activitySmoothFactorKey) != nil else {
+                return defaultActivitySmoothFactor
+            }
+            return Float(UserDefaults.standard.double(forKey: activitySmoothFactorKey))
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: activitySmoothFactorKey) }
+    }
+
     static let defaultStreamBitrate: Int = 4000
     static var streamBitrate: Int {
         get {
@@ -539,6 +550,7 @@ enum Config {
     private static let overlayOpacityKey = "com.maimai.overlayOpacity"
     private static let overlayRotationKey = "com.maimai.overlayRotation"
     private static let cropHorizontalOffsetKey = "com.maimai.cropHorizontalOffset"
+    private static let activitySmoothFactorKey = "com.maimai.activitySmoothFactor"
     private static let leftPanelEnabledKey = "com.maimai.leftPanelEnabled"
     private static let announcementTextKey = "com.maimai.announcementText"
     private static let blivechatServerKey = "com.maimai.blivechatServer"

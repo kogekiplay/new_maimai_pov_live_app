@@ -24,6 +24,21 @@ class MetalStabilizer {
     var anchorQuaternion: simd_quatf?
     var lensConfig: LensConfig
 
+    var activityMode: Bool = false {
+        didSet {
+            if activityMode && !oldValue {
+                savedAnchor = anchorQuaternion
+            } else if !activityMode && oldValue {
+                if let saved = savedAnchor {
+                    setAnchor(saved)
+                    savedAnchor = nil
+                }
+            }
+        }
+    }
+    var activitySmoothFactor: Float = 0.03
+    private var savedAnchor: simd_quatf?
+
     var fov: Float {
         get { uniforms.fovRadHalf * 360.0 / .pi }
         set { uniforms.fovRadHalf = newValue * .pi / 360.0 }
@@ -141,17 +156,26 @@ class MetalStabilizer {
         return v + q.vector.w * t + simd_cross(a, t)
     }
 
-    static func horizonReferenced(_ q: simd_quatf) -> simd_quatf {
+    static func horizonReferenced(_ q: simd_quatf, keepPitch: Bool = false) -> simd_quatf {
         let forward = qRot(q, simd_float3(0, 0, 1))
         let worldUp = simd_float3(0, 0, -1)
-        var forwardHoriz = simd_float3(forward.x, forward.y, 0)
-        if simd_length(forwardHoriz) < 0.001 {
-            forwardHoriz = simd_float3(1, 0, 0)
+        let forwardTarget: simd_float3
+        if keepPitch {
+            forwardTarget = forward
+        } else {
+            var forwardHoriz = simd_float3(forward.x, forward.y, 0)
+            if simd_length(forwardHoriz) < 0.001 {
+                forwardHoriz = simd_float3(1, 0, 0)
+            }
+            forwardTarget = simd_normalize(forwardHoriz)
         }
-        forwardHoriz = simd_normalize(forwardHoriz)
-        let right = simd_normalize(simd_cross(forwardHoriz, worldUp))
-        let down = simd_cross(forwardHoriz, right)
-        let matrix = simd_float3x3(columns: (right, down, forwardHoriz))
+        var right = simd_cross(forwardTarget, worldUp)
+        if simd_length(right) < 0.001 {
+            right = simd_float3(1, 0, 0)
+        }
+        right = simd_normalize(right)
+        let down = simd_cross(forwardTarget, right)
+        let matrix = simd_float3x3(columns: (right, down, forwardTarget))
         return simd_quaternion(matrix)
     }
 
@@ -201,6 +225,14 @@ class MetalStabilizer {
 
         if anchorQuaternion == nil {
             setAnchor(Self.horizonReferenced(qc))
+        }
+
+        if activityMode {
+            let target = Self.horizonReferenced(qc, keepPitch: true)
+            if let current = anchorQuaternion {
+                let newAnchor = simd_slerp(current, target, activitySmoothFactor)
+                setAnchor(newAnchor)
+            }
         }
 
         uniforms.qCenter = StabilizerUniforms.quatToFloat4(qc)

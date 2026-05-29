@@ -106,6 +106,8 @@ struct Phase2View: View {
             pipeline.updateReadoutTime()
         }
         .onChange(of: pipeline.stabEnabled) { _ in pipeline.updateStabilizerEnabled() }
+        .onChange(of: pipeline.activityMode) { _ in pipeline.updateActivityMode() }
+        .onChange(of: pipeline.activitySmoothFactor) { _ in pipeline.updateActivitySmoothFactor() }
         .onChange(of: pipeline.fov) { _ in pipeline.updateFov() }
         .onChange(of: pipeline.distRatio) { _ in pipeline.updateDistRatio() }
         .onChange(of: pipeline.yaw) { _ in pipeline.updateYaw() }
@@ -368,6 +370,7 @@ struct Phase2View: View {
 
             if advancedExpanded {
                 VStack(spacing: 8) {
+                    activitySmoothFactorRow
                     syncRow
                     yoloPaddingRow
                     trackTargetRatioRow
@@ -671,6 +674,9 @@ struct Phase2View: View {
             Text("Stabilizer").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.stabEnabled).labelsHidden()
             Spacer()
+            Text("Activity").font(.caption2).foregroundColor(pipeline.activityMode ? .green : .gray)
+            Toggle("", isOn: $pipeline.activityMode).labelsHidden()
+            Spacer()
             Text("Preview").font(.caption2).foregroundColor(.gray)
             Toggle("", isOn: Binding(
                 get: { pipeline.previewEnabled },
@@ -698,6 +704,14 @@ struct Phase2View: View {
             Slider(value: Binding(get: { Double(pipeline.distRatio) }, set: { pipeline.distRatio = Float($0) }), in: 0...1)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.distRatio)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
+        }
+    }
+
+    private var activitySmoothFactorRow: some View {
+        labeledRow("Follow") {
+            Slider(value: Binding(get: { Double(pipeline.activitySmoothFactor) }, set: { pipeline.activitySmoothFactor = Float($0) }), in: 0.01...0.2)
+        } valueLabel: {
+            Text(String(format: "%.2f", pipeline.activitySmoothFactor)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
     }
 

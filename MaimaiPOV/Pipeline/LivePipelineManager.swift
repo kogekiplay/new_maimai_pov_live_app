@@ -26,6 +26,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var pitch: Float = Config.pitch
     @Published var roll: Float = Config.roll
     @Published var stabEnabled: Bool = Config.stabEnabled
+    @Published var activityMode: Bool = false
+    @Published var activitySmoothFactor: Float = Config.activitySmoothFactor
     @Published var lagMs: Double = 0
 
     @Published var yoloEnabled: Bool = Config.yoloEnabled
@@ -577,6 +579,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         let lensCfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
         let stab = MetalStabilizer(device: device, commandQueue: sharedCommandQueue, lensConfig: lensCfg)
         stab?.stabilizerEnabled = stabEnabled
+        stab?.activitySmoothFactor = activitySmoothFactor
         stab?.fov = fov
         stab?.distRatio = distRatio
         stab?.yawDeg = yaw
@@ -977,6 +980,15 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         Config.stabEnabled = stabEnabled
         stabilizer?.stabilizerEnabled = stabEnabled
         debug.stabEnabled = stabEnabled
+    }
+
+    func updateActivityMode() {
+        stabilizer?.activityMode = activityMode
+    }
+
+    func updateActivitySmoothFactor() {
+        Config.activitySmoothFactor = activitySmoothFactor
+        stabilizer?.activitySmoothFactor = activitySmoothFactor
     }
 
     @MainActor func updateFov() {
