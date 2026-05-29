@@ -333,4 +333,63 @@ class DebugAPIHandler {
         sem.wait()
         return .ok(.json(result))
     }
+
+    func setExpirationTimeout(request: HttpRequest) -> HttpResponse {
+        guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
+              let timeout = body["timeout"] as? Int else {
+            return .badRequest(.text("Missing 'timeout' (seconds)"))
+        }
+
+        let sem = DispatchSemaphore(value: 0)
+        var result: [String: Any] = ["success": true]
+
+        DispatchQueue.main.async { [weak self] in
+            guard let pipeline = self?.pipeline else {
+                result = ["success": false, "error": "Pipeline not available"]
+                sem.signal()
+                return
+            }
+
+            pipeline.songCardManager.expirationTimeout = TimeInterval(timeout)
+            result = [
+                "success": true,
+                "expirationTimeout": timeout
+            ]
+            sem.signal()
+        }
+
+        sem.wait()
+        return .ok(.json(result))
+    }
+
+    func triggerExpirationCheck(request: HttpRequest) -> HttpResponse {
+        let sem = DispatchSemaphore(value: 0)
+        var result: [String: Any] = ["success": true]
+
+        DispatchQueue.main.async { [weak self] in
+            guard let pipeline = self?.pipeline else {
+                result = ["success": false, "error": "Pipeline not available"]
+                sem.signal()
+                return
+            }
+
+            let expired = pipeline.songCardManager.checkAndRemoveExpiredSongs()
+            if !expired.isEmpty {
+                pipeline.onSongsExpired(expired)
+            }
+            result = [
+                "success": true,
+                "expiredCount": expired.count,
+                "expiredSongs": expired.map { [
+                    "songName": $0.songName,
+                    "requesterName": $0.requesterName ?? "未知",
+                    "giftValue": $0.giftValue
+                ] }
+            ]
+            sem.signal()
+        }
+
+        sem.wait()
+        return .ok(.json(result))
+    }
 }

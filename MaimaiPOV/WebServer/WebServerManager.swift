@@ -146,6 +146,16 @@ class WebServerManager {
             return self.debugHandler.simulateBattery(request: request)
         }
 
+        server["/api/debug/set-expiration-timeout"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.debugHandler.setExpirationTimeout(request: request)
+        }
+
+        server["/api/debug/trigger-expiration-check"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.debugHandler.triggerExpirationCheck(request: request)
+        }
+
         server["/api/announcement"] = { [weak self] request in
             guard let self = self else { return .internalServerError }
             switch request.method {
