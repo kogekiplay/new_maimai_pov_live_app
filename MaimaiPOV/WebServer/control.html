@@ -323,7 +323,7 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 <div v-if="!sseConnected" class="danmaku-disconnected">⚠ 弹幕连接断开，正在重连...</div>
 <div class="danmaku-list" ref="danmakuListEl" @touchstart="danmakuPaused=true" @touchend="resumeDanmaku">
 <div v-if="filteredDanmaku.length===0" class="danmaku-empty">暂无弹幕</div>
-<div v-for="d in filteredDanmaku" :key="d.id" class="danmaku-entry" :class="['type-'+d.type, d.isSongRequest?'danmaku-song-request':'']" @click="onDanmakuClick(d)">
+<div v-for="d in filteredDanmaku" :key="d.id" class="danmaku-entry danmaku-song-request" :class="['type-'+d.type]" @click="onDanmakuClick(d)">
 <div class="danmaku-entry-header">
 <span class="danmaku-type-icon">{{danmakuIcon(d.type)}}</span>
 <span class="danmaku-username">{{d.username}}</span>
@@ -506,8 +506,12 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 <span>🎵 帮 {{danmakuSearchUser}} 点歌</span>
 <button class="danmaku-search-close" @click="danmakuSearchVisible=false">✕</button>
 </div>
-<div v-if="danmakuSearchResults.length===0&&!danmakuSearchLoading" class="dsr-empty">搜索中...</div>
-<div v-else-if="danmakuSearchResults.length===0" class="dsr-empty">未找到歌曲</div>
+<div style="display:flex;gap:6px;margin-bottom:8px">
+<input type="text" v-model="danmakuSearchQuery" placeholder="输入歌名搜索" style="flex:1;padding:8px 12px;border:1px solid rgba(192,132,252,0.3);border-radius:8px;background:var(--bg-input);color:var(--text-bright);font-size:14px;outline:none" @keydown.enter="doDanmakuSearch">
+<button @click="doDanmakuSearch" style="padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff;font-size:13px;font-weight:600;cursor:pointer">搜索</button>
+</div>
+<div v-if="danmakuSearchUserInQueue" style="padding:6px 10px;background:rgba(251,156,44,0.1);border-radius:6px;margin-bottom:8px;font-size:11px;color:var(--warning)">⚠ 该用户已有歌曲在队列中，添加后将替换原歌曲</div>
+<div v-if="danmakuSearchResults.length===0&&danmakuSearchLoading" class="dsr-empty">搜索中...</div>
 <div class="danmaku-search-results">
 <div v-for="r in danmakuSearchResults" :key="r.musicId" class="danmaku-search-result">
 <img v-if="r.coverURL" class="dsr-cover" :src="r.coverURL" loading="lazy" @error="$event.target.style.display='none'">
@@ -607,6 +611,10 @@ return m[this.status.device.thermalState]||'未知'
 filteredDanmaku:function(){
 if(this.danmakuFilter==='all')return this.danmakuList
 return this.danmakuList.filter(function(d){return d.type===this.danmakuFilter}.bind(this))
+},
+danmakuSearchUserInQueue:function(){
+if(!this.danmakuSearchUser||!this.queueData.queue)return false
+return this.queueData.queue.some(function(s){return s.requester===this.danmakuSearchUser}.bind(this))
 }
 },
 methods:{
@@ -782,23 +790,26 @@ this.fetchQueue()
 }.bind(this))
 },
 onDanmakuClick:function(d){
-if(d.isSongRequest){
 var content=d.content
 var query=content.replace(/^!?\s*点歌\s*/,'').trim()
-if(query){
+if(!query||query===content.trim())query=content.trim()
 this.danmakuSearchUser=d.username
 this.danmakuSearchUid=d.uid||d.username
 this.danmakuSearchQuery=query
 this.danmakuSearchResults=[]
 this.danmakuSearchDiffs={}
-this.danmakuSearchLoading=true
+this.danmakuSearchLoading=false
 this.danmakuSearchVisible=true
-this.apiGet('/api/search?q='+encodeURIComponent(query),function(d){
+this.doDanmakuSearch()
+},
+doDanmakuSearch:function(){
+var q=this.danmakuSearchQuery.trim()
+if(!q)return
+this.danmakuSearchLoading=true
+this.apiGet('/api/search?q='+encodeURIComponent(q),function(d){
 this.danmakuSearchResults=d.results||[]
 this.danmakuSearchLoading=false
 }.bind(this))
-}
-}
 },
 selectDanmakuDiff:function(musicId,diffName){
 this.danmakuSearchDiffs[musicId]=diffName
@@ -812,11 +823,27 @@ if(keys.length>0)diffName=keys[keys.length-1]
 if(!diffName){this.showToast('请先选择难度');return}
 var diffMap={'BASIC':'绿','ADVANCED':'黄','EXPERT':'红','MASTER':'紫','Re:MASTER':'白','UTAGE':'宴'}
 var diffInput=diffMap[diffName]||diffName
-this.apiPost('/api/queue/add-for-user',{musicId:r.musicId,difficulty:diffInput,chartType:r.chartType,username:this.danmakuSearchUser},function(){
-this.showToast('已帮 '+this.danmakuSearchUser+' 点歌')
-this.fetchQueue()
-this.danmakuSearchVisible=false
-}.bind(this))
+var self=this
+var doAdd=function(){
+self.apiPost('/api/queue/add-for-user',{musicId:r.musicId,difficulty:diffInput,chartType:r.chartType,username:self.danmakuSearchUser},function(){
+self.showToast('已帮 '+self.danmakuSearchUser+' 点歌')
+self.fetchQueue()
+self.danmakuSearchVisible=false
+})
+}
+if(this.danmakuSearchUserInQueue){
+var existingIndex=-1
+for(var i=0;i<this.queueData.queue.length;i++){
+if(this.queueData.queue[i].requester===this.danmakuSearchUser){existingIndex=i;break}
+}
+if(existingIndex>=0){
+this.apiPost('/api/queue/remove',{index:existingIndex},function(){doAdd()})
+}else{
+doAdd()
+}
+}else{
+doAdd()
+}
 },
 resumeDanmaku:function(){
 var self=this
