@@ -85,6 +85,7 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 .danmaku-song-request{cursor:pointer}
 .danmaku-song-request:active{opacity:0.7}
 .danmaku-empty{text-align:center;padding:30px 20px;color:var(--text-dim);font-size:13px}
+.danmaku-disconnected{text-align:center;padding:8px;background:rgba(246,72,97,0.1);color:var(--danger);font-size:11px;flex-shrink:0}
 
 .live-controls{display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(26,10,46,0.95);backdrop-filter:blur(10px);border-top:1px solid rgba(192,132,252,0.15);flex-shrink:0}
 .activity-toggle{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;flex:1}
@@ -319,6 +320,7 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 <button class="filter-btn" :class="{active:danmakuFilter==='gift'}" @click="danmakuFilter='gift'">🎁 礼物</button>
 <button class="filter-btn" :class="{active:danmakuFilter==='member'}" @click="danmakuFilter='member'">⚓ 上舰</button>
 </div>
+<div v-if="!sseConnected" class="danmaku-disconnected">⚠ 弹幕连接断开，正在重连...</div>
 <div class="danmaku-list" ref="danmakuListEl" @touchstart="danmakuPaused=true" @touchend="resumeDanmaku">
 <div v-if="filteredDanmaku.length===0" class="danmaku-empty">暂无弹幕</div>
 <div v-for="d in filteredDanmaku" :key="d.id" class="danmaku-entry" :class="['type-'+d.type, d.isSongRequest?'danmaku-song-request':'']" @click="onDanmakuClick(d)">
@@ -488,6 +490,16 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 </div>
 </div>
 
+<div v-if="confirmRemoveIndex>=0" class="modal-overlay" @click.self="confirmRemoveIndex=-1">
+<div class="modal-box center">
+<p>确定要删除当前播放的歌曲吗？</p>
+<div class="modal-btns">
+<button class="modal-btn modal-btn-cancel" @click="confirmRemoveIndex=-1">取消</button>
+<button class="modal-btn modal-btn-confirm" @click="confirmRemoveSong">确定删除</button>
+</div>
+</div>
+</div>
+
 <div v-if="danmakuSearchVisible" class="danmaku-search-panel" @click.self="danmakuSearchVisible=false">
 <div class="danmaku-search-box">
 <div class="danmaku-search-header">
@@ -544,6 +556,7 @@ danmakuSearchQuery:'',
 danmakuSearchResults:[],
 danmakuSearchDiffs:{},
 danmakuSearchLoading:false,
+confirmRemoveIndex:-1,
 toastMsg:'',
 toastVisible:false,
 toastTimer:null,
@@ -564,7 +577,8 @@ stressStats:{},
 stressStartTime:0,
 sse:null,
 sseLastId:0,
-sseReconnectAttempts:0
+sseReconnectAttempts:0,
+sseConnected:false
 }},
 computed:{
 currentSong:function(){
@@ -713,7 +727,16 @@ this.confirmClear=false
 this.apiPost('/api/queue/clear',null,function(){this.fetchQueue();this.showToast('队列已清空')}.bind(this))
 },
 removeSong:function(idx){
+if(idx===0){
+this.confirmRemoveIndex=idx
+return
+}
 this.apiPost('/api/queue/remove',{index:idx},function(){this.fetchQueue()}.bind(this))
+},
+confirmRemoveSong:function(){
+var idx=this.confirmRemoveIndex
+this.confirmRemoveIndex=-1
+this.apiPost('/api/queue/remove',{index:idx},function(){this.fetchQueue();this.showToast('已删除当前播放歌曲')}.bind(this))
 },
 toggleActivityMode:function(){
 this.apiPost('/api/activity-mode',{activityMode:this.activityMode},function(d){
@@ -807,6 +830,7 @@ var url='/api/danmaku/stream'
 this.sse=new EventSource(url)
 this.sse.onopen=function(){
 self.sseReconnectAttempts=0
+self.sseConnected=true
 self.apiGet('/api/danmaku/history?sinceId='+self.sseLastId,function(entries){
 entries.forEach(function(e){
 var exists=self.danmakuList.some(function(d){return d.id===e.id})
@@ -841,6 +865,7 @@ e.songRequestStatus=d.status
 this.sse.onerror=function(){
 self.sse.close()
 self.sse=null
+self.sseConnected=false
 var delay=Math.min(1000*Math.pow(2,self.sseReconnectAttempts),30000)
 self.sseReconnectAttempts++
 setTimeout(function(){self.connectSSE()},delay)
