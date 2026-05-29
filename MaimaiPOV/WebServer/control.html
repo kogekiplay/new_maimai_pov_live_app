@@ -2,821 +2,863 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>点歌队列</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>maimai POV 控制面板</title>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding-bottom:80px}
-.queue-section{padding:8px 12px 0}
-.queue-header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px}
-.queue-header .remaining{font-size:12px;color:#8b7ba8}
-.queue-header .remaining span{color:#ff6b9d;font-weight:600}
-.queue-empty{text-align:center;padding:40px 20px;color:#6b5b8a;font-size:14px}
-.song-card{background:rgba(45,27,78,0.8);border-radius:12px;margin-bottom:8px;overflow:hidden;display:flex;align-items:stretch;position:relative;transition:transform 0.15s}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg1:#1a0a2e;--bg2:#2d1b4e;--bg-card:rgba(45,27,78,0.8);--bg-input:rgba(45,27,78,0.6);--text:#e0d0f0;--text-dim:#8b7ba8;--text-bright:#f0e6ff;--accent1:#ff6b9d;--accent2:#c084fc;--danger:#f64861;--success:#22bb5b;--warning:#fb9c2c;--gold:#ffc107}
+body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;min-height:100dvh;overflow-x:hidden}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+.tab-nav{display:flex;background:rgba(26,10,46,0.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(192,132,252,0.15);flex-shrink:0;position:sticky;top:0;z-index:20}
+.tab-btn{flex:1;padding:12px 4px;border:none;background:transparent;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;position:relative;transition:color 0.2s}
+.tab-btn.active{color:var(--accent1)}
+.tab-btn.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:linear-gradient(90deg,var(--accent1),var(--accent2));border-radius:1px}
+
+.tab-content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+
+.live-mode{display:flex;flex-direction:column;height:100%}
+.status-bar{padding:8px 12px;background:rgba(26,10,46,0.6);border-bottom:1px solid rgba(192,132,252,0.1);flex-shrink:0}
+.status-grid{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.status-item{display:flex;align-items:center;gap:4px;font-size:12px}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.live{background:#f64861;box-shadow:0 0 6px rgba(246,72,97,0.6);animation:pulse 1.5s infinite}
+.status-dot.offline{background:#6b5b8a}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.thermal-badge{padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600}
+.thermal-nominal{background:rgba(34,187,91,0.2);color:var(--success)}
+.thermal-fair{background:rgba(251,156,44,0.2);color:var(--warning)}
+.thermal-serious{background:rgba(246,72,97,0.2);color:var(--danger)}
+.thermal-critical{background:rgba(246,72,97,0.4);color:#fff;animation:pulse 0.8s infinite}
+
+.current-song{padding:10px 12px;flex-shrink:0;border-bottom:1px solid rgba(192,132,252,0.1)}
+.current-song-card{background:var(--bg-card);border-radius:12px;padding:10px;display:flex;gap:10px;align-items:center;border:1px solid rgba(255,107,157,0.3);box-shadow:0 0 12px rgba(255,107,157,0.1)}
+.cs-cover{width:64px;height:64px;border-radius:10px;object-fit:cover;background:rgba(30,15,50,0.6);flex-shrink:0}
+.cs-info{flex:1;min-width:0}
+.cs-name{font-size:15px;font-weight:700;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-detail{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:4px;font-size:11px;color:var(--text-dim);align-items:center}
+.cs-diff{font-weight:700}
+.cs-badge{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600}
+.badge-dx{background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff}
+.badge-std{background:rgba(192,132,252,0.3);color:var(--accent2)}
+.badge-utage{background:rgba(255,107,157,0.3);color:var(--accent1)}
+.no-song{text-align:center;padding:20px;color:var(--text-dim);font-size:13px}
+
+.queue-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;flex-shrink:0;border-bottom:1px solid rgba(192,132,252,0.1)}
+.queue-toggle-text{font-size:12px;color:var(--text-dim)}
+.queue-toggle-text span{color:var(--accent1);font-weight:600}
+.queue-toggle-arrow{color:var(--text-dim);font-size:10px;transition:transform 0.2s}
+.queue-toggle-arrow.open{transform:rotate(180deg)}
+.queue-list{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
+.queue-list.open{max-height:40vh;overflow-y:auto}
+.queue-item{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(192,132,252,0.05)}
+.queue-item-cover{width:32px;height:32px;border-radius:6px;object-fit:cover;background:rgba(30,15,50,0.6);flex-shrink:0}
+.queue-item-info{flex:1;min-width:0}
+.queue-item-name{font-size:12px;font-weight:600;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.queue-item-meta{font-size:10px;color:var(--text-dim)}
+.queue-item-diff{width:3px;height:24px;border-radius:2px;flex-shrink:0}
+
+.danmaku-section{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.danmaku-filters{display:flex;gap:4px;padding:6px 12px;flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.filter-btn{padding:4px 10px;border:1px solid rgba(192,132,252,0.2);border-radius:12px;background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;white-space:nowrap;transition:all 0.15s}
+.filter-btn.active{background:rgba(255,107,157,0.2);border-color:rgba(255,107,157,0.4);color:var(--accent1)}
+.danmaku-list{flex:1;overflow-y:auto;padding:0 12px 8px;-webkit-overflow-scrolling:touch}
+.danmaku-entry{padding:6px 0;border-bottom:1px solid rgba(192,132,252,0.05);animation:fadeIn 0.2s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.danmaku-entry-header{display:flex;align-items:center;gap:4px;margin-bottom:2px}
+.danmaku-type-icon{font-size:11px;flex-shrink:0}
+.danmaku-username{font-size:11px;font-weight:600;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px}
+.danmaku-time{font-size:9px;color:var(--text-dim);margin-left:auto;flex-shrink:0}
+.danmaku-content{font-size:12px;color:var(--text);word-break:break-all;line-height:1.4}
+.danmaku-entry.type-sc{background:rgba(255,193,7,0.05);border-radius:6px;padding:6px 8px;margin:2px 0}
+.danmaku-entry.type-sc .danmaku-username{color:var(--gold)}
+.danmaku-entry.type-gift{background:rgba(255,107,157,0.05);border-radius:6px;padding:6px 8px;margin:2px 0}
+.danmaku-entry.type-gift .danmaku-username{color:var(--accent1)}
+.danmaku-entry.type-member{background:rgba(192,132,252,0.05);border-radius:6px;padding:6px 8px;margin:2px 0}
+.danmaku-entry.type-member .danmaku-username{color:var(--accent2)}
+.song-request-badge{font-size:9px;padding:0 4px;border-radius:3px;font-weight:600;margin-left:4px}
+.sr-pending{background:rgba(251,156,44,0.2);color:var(--warning)}
+.sr-success{background:rgba(34,187,91,0.2);color:var(--success)}
+.sr-rejected{background:rgba(246,72,97,0.2);color:var(--danger)}
+.danmaku-song-request{cursor:pointer}
+.danmaku-song-request:active{opacity:0.7}
+.danmaku-empty{text-align:center;padding:30px 20px;color:var(--text-dim);font-size:13px}
+
+.live-controls{display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(26,10,46,0.95);backdrop-filter:blur(10px);border-top:1px solid rgba(192,132,252,0.15);flex-shrink:0}
+.activity-toggle{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;flex:1}
+.btn-skip{padding:12px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;min-width:80px}
+.btn-skip:active{opacity:0.7}
+
+.toggle-switch{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(107,91,138,0.4);border-radius:24px;transition:0.3s}
+.toggle-slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:var(--text);border-radius:50%;transition:0.3s}
+.toggle-switch input:checked+.toggle-slider{background:linear-gradient(135deg,var(--accent1),var(--accent2))}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(20px)}
+
+.queue-page{padding:8px 12px 80px}
+.queue-header-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px}
+.queue-header-row .remaining{font-size:12px;color:var(--text-dim)}
+.queue-header-row .remaining span{color:var(--accent1);font-weight:600}
+.btn-clear-danger{padding:6px 12px;border:1px solid rgba(246,72,97,0.3);border-radius:6px;background:rgba(246,72,97,0.15);color:var(--danger);font-size:12px;font-weight:600;cursor:pointer}
+.btn-clear-danger:active{opacity:0.7}
+.song-card{background:var(--bg-card);border-radius:12px;margin-bottom:8px;overflow:hidden;display:flex;align-items:stretch;position:relative}
 .song-card.current{border:1px solid rgba(255,107,157,0.4);box-shadow:0 0 12px rgba(255,107,157,0.15)}
 .song-card.priority{border:1px solid rgba(255,193,7,0.3)}
 .diff-bar{width:4px;flex-shrink:0;border-radius:2px 0 0 2px}
-.diff-basic{background:#22bb5b}
-.diff-advanced{background:#fb9c2c}
-.diff-expert{background:#f64861}
+.diff-basic{background:var(--success)}
+.diff-advanced{background:var(--warning)}
+.diff-expert{background:var(--danger)}
 .diff-master{background:#9e45e2}
 .diff-remaster{background:#dbaaff}
-.diff-utage{background:#ff6b9d}
+.diff-utage{background:var(--accent1)}
 .card-cover{width:56px;height:56px;flex-shrink:0;margin:8px 0 8px 8px;border-radius:8px;object-fit:cover;background:rgba(30,15,50,0.6)}
 .card-body{flex:1;padding:8px 8px 8px 10px;min-width:0}
 .card-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
-.song-name{font-size:13px;font-weight:600;color:#f0e6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.song-name{font-size:13px;font-weight:600;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
 .chart-badge{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600;flex-shrink:0}
-.chart-dx{background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff}
-.chart-std{background:rgba(192,132,252,0.3);color:#c084fc}
-.chart-utage{background:rgba(255,107,157,0.3);color:#ff6b9d}
-.priority-badge{font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,193,7,0.3);color:#ffc107;flex-shrink:0}
-.card-info{display:flex;align-items:center;gap:6px;font-size:10px;color:#8b7ba8;flex-wrap:wrap}
+.priority-badge{font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,193,7,0.3);color:var(--gold);flex-shrink:0}
+.card-info{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-dim);flex-wrap:wrap}
 .card-info .difficulty{font-weight:600}
 .card-info .bpm{color:#6b8ba8}
 .card-info .requester{margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px}
-.card-actions{display:flex;align-items:center;justify-content:center;padding:6px 6px;flex-shrink:0}
-.card-actions button{width:26px;height:26px;border:none;border-radius:6px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:opacity 0.15s}
+.card-actions{display:flex;align-items:center;justify-content:center;padding:6px;flex-shrink:0}
+.card-actions button{width:28px;height:28px;border:none;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;background:rgba(246,72,97,0.2);color:var(--danger)}
 .card-actions button:active{opacity:0.6}
-.btn-remove{background:rgba(246,72,97,0.2);color:#f64861}
-.bottom-bar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:8px;padding:12px 16px;background:rgba(26,10,46,0.95);backdrop-filter:blur(10px);z-index:10}
-.bottom-bar button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.15s}
-.bottom-bar button:active{opacity:0.7}
-.btn-skip{background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff}
-.btn-clear{background:rgba(246,72,97,0.2);color:#f64861;border:1px solid rgba(246,72,97,0.3)!important}
-.search-section{padding:8px 12px 16px}
-.search-section h2{font-size:14px;color:#c084fc;margin-bottom:8px;font-weight:600}
+.queue-empty{text-align:center;padding:40px 20px;color:var(--text-dim);font-size:14px}
+
+.search-section{padding:12px 0 8px}
+.search-section h2{font-size:14px;color:var(--accent2);margin-bottom:8px;font-weight:600}
 .search-box{display:flex;gap:8px;margin-bottom:12px}
-.search-box input{flex:1;padding:10px 14px;border:1px solid rgba(192,132,252,0.3);border-radius:10px;background:rgba(45,27,78,0.6);color:#f0e6ff;font-size:14px;outline:none}
-.search-box input::placeholder{color:#6b5b8a}
+.search-box input{flex:1;padding:10px 14px;border:1px solid rgba(192,132,252,0.3);border-radius:10px;background:var(--bg-input);color:var(--text-bright);font-size:14px;outline:none}
+.search-box input::placeholder{color:var(--text-dim)}
 .search-box input:focus{border-color:rgba(255,107,157,0.5)}
-.search-box button{padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+.search-box button{padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff;font-size:14px;font-weight:600;cursor:pointer}
 .search-box button:active{opacity:0.7}
-.search-results{display:none}
-.search-result{background:rgba(45,27,78,0.6);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start}
+.search-result{background:var(--bg-input);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start}
 .sr-cover{width:48px;height:48px;flex-shrink:0;border-radius:8px;object-fit:cover;background:rgba(30,15,50,0.6)}
 .sr-info{flex:1;min-width:0}
-.sr-info .sr-title{font-size:13px;font-weight:600;color:#f0e6ff;margin-bottom:2px;display:flex;align-items:center;gap:5px}
-.sr-info .sr-title .song-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sr-info .sr-artist{font-size:10px;color:#8b7ba8;margin-bottom:2px}
-.sr-info .sr-bpm{font-size:10px;color:#6b8ba8;margin-bottom:4px}
-.sr-info .sr-diffs{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+.sr-title{font-size:13px;font-weight:600;color:var(--text-bright);margin-bottom:2px;display:flex;align-items:center;gap:5px}
+.sr-title .song-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-artist{font-size:10px;color:var(--text-dim);margin-bottom:2px}
+.sr-bpm{font-size:10px;color:#6b8ba8;margin-bottom:4px}
+.sr-diffs{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
 .sr-diff{font-size:9px;padding:2px 5px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s}
-.sr-diff:hover{border-color:rgba(255,255,255,0.3)}
-.sr-diff.selected{border-color:#ff6b9d;box-shadow:0 0 6px rgba(255,107,157,0.3)}
-.sr-diff-basic{background:rgba(34,187,91,0.2);color:#22bb5b}
-.sr-diff-advanced{background:rgba(251,156,44,0.2);color:#fb9c2c}
-.sr-diff-expert{background:rgba(246,72,97,0.2);color:#f64861}
+.sr-diff.selected{border-color:var(--accent1);box-shadow:0 0 6px rgba(255,107,157,0.3)}
+.sr-diff-basic{background:rgba(34,187,91,0.2);color:var(--success)}
+.sr-diff-advanced{background:rgba(251,156,44,0.2);color:var(--warning)}
+.sr-diff-expert{background:rgba(246,72,97,0.2);color:var(--danger)}
 .sr-diff-master{background:rgba(158,69,226,0.2);color:#9e45e2}
 .sr-diff-remaster{background:rgba(219,170,255,0.2);color:#dbaaff}
-.sr-diff-utage{background:rgba(255,107,157,0.2);color:#ff6b9d}
-.sr-add{padding:4px 10px;border:none;border-radius:6px;background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff;font-size:10px;font-weight:600;cursor:pointer;margin-left:auto;flex-shrink:0}
+.sr-diff-utage{background:rgba(255,107,157,0.2);color:var(--accent1)}
+.sr-add{padding:4px 10px;border:none;border-radius:6px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff;font-size:10px;font-weight:600;cursor:pointer;margin-left:auto;flex-shrink:0}
 .sr-add:active{opacity:0.7}
-.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:100;opacity:0;transition:opacity 0.3s;pointer-events:none}
-.toast.show{opacity:1}
-.debug-section{padding:8px 12px 16px}
-.debug-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(45,27,78,0.6);border-radius:10px;cursor:pointer;margin-bottom:8px}
-.debug-toggle h2{font-size:14px;color:#c084fc;font-weight:600;margin:0}
-.debug-toggle .arrow{color:#8b7ba8;transition:transform 0.2s;font-size:12px}
+
+.config-section{padding:8px 0}
+.config-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-input);border-radius:10px;margin-bottom:6px}
+.config-row .control-label{font-size:13px;color:var(--text);font-weight:600}
+.config-row .control-label.active{color:var(--danger)}
+.threshold-input{width:70px;padding:4px 8px;border:1px solid rgba(192,132,252,0.3);border-radius:6px;background:var(--bg-input);color:var(--text-bright);font-size:13px;text-align:center;outline:none}
+.threshold-unit{font-size:11px;color:var(--text-dim);margin-left:4px}
+
+.debug-page{padding:8px 12px 80px}
+.debug-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg-input);border-radius:10px;cursor:pointer;margin-bottom:8px}
+.debug-toggle h2{font-size:14px;color:var(--accent2);font-weight:600;margin:0}
+.debug-toggle .arrow{color:var(--text-dim);transition:transform 0.2s;font-size:12px}
 .debug-toggle .arrow.open{transform:rotate(180deg)}
 .debug-panel{display:none}
 .debug-panel.open{display:block}
 .debug-row{display:flex;gap:6px;margin-bottom:8px;align-items:center}
-.debug-row label{font-size:11px;color:#8b7ba8;min-width:50px}
-.debug-row input,.debug-row select{flex:1;padding:6px 10px;border:1px solid rgba(192,132,252,0.3);border-radius:6px;background:rgba(45,27,78,0.6);color:#f0e6ff;font-size:12px;outline:none}
-.debug-row input::placeholder{color:#6b5b8a}
-.debug-row input:focus{border-color:rgba(255,107,157,0.5)}
+.debug-row label{font-size:11px;color:var(--text-dim);min-width:50px}
+.debug-row input,.debug-row select{flex:1;padding:6px 10px;border:1px solid rgba(192,132,252,0.3);border-radius:6px;background:var(--bg-input);color:var(--text-bright);font-size:12px;outline:none}
+.debug-row input::placeholder{color:var(--text-dim)}
 .debug-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .debug-btn{padding:6px 12px;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:opacity 0.15s}
 .debug-btn:active{opacity:0.7}
-.debug-btn-gift{background:rgba(34,187,91,0.2);color:#22bb5b;border:1px solid rgba(34,187,91,0.3)}
-.debug-btn-sc{background:rgba(255,193,7,0.2);color:#ffc107;border:1px solid rgba(255,193,7,0.3)}
-.debug-btn-member{background:rgba(192,132,252,0.2);color:#c084fc;border:1px solid rgba(192,132,252,0.3)}
-.debug-btn-clear{background:rgba(246,72,97,0.2);color:#f64861;border:1px solid rgba(246,72,97,0.3)}
-.debug-btn-add{background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff}
-.debug-btn-refresh{background:rgba(192,132,252,0.2);color:#c084fc;border:1px solid rgba(192,132,252,0.3)}
-.song-control-section{padding:8px 12px}
-.song-control-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(45,27,78,0.6);border-radius:10px;margin-bottom:6px}
-.song-control-row .control-label{font-size:13px;color:#e0d0f0;font-weight:600}
-.song-control-row .control-label.paused-active{color:#f64861}
-.toggle-switch{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0}
-.toggle-switch input{opacity:0;width:0;height:0}
-.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(107,91,138,0.4);border-radius:26px;transition:0.3s}
-.toggle-slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#e0d0f0;border-radius:50%;transition:0.3s}
-.toggle-switch input:checked+.toggle-slider{background:linear-gradient(135deg,#ff6b9d,#c084fc)}
-.toggle-switch input:checked+.toggle-slider:before{transform:translateX(22px)}
-.threshold-input{width:70px;padding:4px 8px;border:1px solid rgba(192,132,252,0.3);border-radius:6px;background:rgba(45,27,78,0.6);color:#f0e6ff;font-size:13px;text-align:center;outline:none}
-.threshold-input:focus{border-color:rgba(255,107,157,0.5)}
-.threshold-unit{font-size:11px;color:#8b7ba8;margin-left:4px}
+.debug-btn-gift{background:rgba(34,187,91,0.2);color:var(--success);border:1px solid rgba(34,187,91,0.3)}
+.debug-btn-sc{background:rgba(255,193,7,0.2);color:var(--gold);border:1px solid rgba(255,193,7,0.3)}
+.debug-btn-member{background:rgba(192,132,252,0.2);color:var(--accent2);border:1px solid rgba(192,132,252,0.3)}
+.debug-btn-clear{background:rgba(246,72,97,0.2);color:var(--danger);border:1px solid rgba(246,72,97,0.3)}
+.debug-btn-add{background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff}
+.debug-btn-refresh{background:rgba(192,132,252,0.2);color:var(--accent2);border:1px solid rgba(192,132,252,0.3)}
+
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:var(--bg2);border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center}
+.modal-box p{margin-bottom:16px;font-size:14px;color:var(--text)}
+.modal-btns{display:flex;gap:10px;justify-content:center}
+.modal-btn{padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.modal-btn-cancel{background:rgba(107,91,138,0.4);color:var(--text)}
+.modal-btn-confirm{background:var(--danger);color:#fff}
+
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity 0.3s;pointer-events:none}
+.toast.show{opacity:1}
+
+.perm-item{display:flex;justify-content:space-between;padding:4px 0;font-size:11px}
+.perm-name{color:var(--text)}
+.perm-chances{color:var(--success)}
 </style>
 </head>
 <body>
-<div class="queue-section">
-<div class="queue-header">
-<div class="remaining" id="remainingInfo"></div>
+<div id="app">
+<div class="tab-nav">
+<button class="tab-btn" :class="{active:tab==='live'}" @click="tab='live'">📡 直播</button>
+<button class="tab-btn" :class="{active:tab==='queue'}" @click="tab='queue'">🎵 队列</button>
+<button class="tab-btn" :class="{active:tab==='debug'}" @click="tab='debug'">🔧 调试</button>
 </div>
-<div id="queueList"><div class="queue-empty">暂无歌曲</div></div>
+
+<div class="tab-content">
+<div v-if="tab==='live'" class="live-mode">
+<div class="status-bar">
+<div class="status-grid">
+<div class="status-item">
+<span class="status-dot" :class="status.streaming.isStreaming?'live':'offline'"></span>
+<span :style="{color:status.streaming.isStreaming?'#f64861':'#6b5b8a',fontWeight:600}">{{status.streaming.isStreaming?'直播中':'未连接'}}</span>
 </div>
-<div class="song-control-section">
-<div class="song-control-row">
-<span class="control-label" id="pauseLabel">🚫 停止点歌</span>
+<div class="status-item" v-if="status.streaming.isStreaming" style="color:var(--text-dim)">{{status.streaming.duration}}</div>
+<div class="status-item" v-if="status.streaming.isStreaming" style="color:var(--text-dim)">{{status.streaming.bitrate}}kbps</div>
+<div class="status-item" style="color:var(--text-dim)">{{status.streaming.resolution}}</div>
+<div class="status-item" style="color:var(--text-dim)" v-if="status.streaming.fps>0">{{status.streaming.fps}}fps</div>
+<div class="status-item">
+<span>{{status.device.batteryState==='charging'?'⚡':'🔋'}}</span>
+<span>{{status.device.batteryLevel>=0?status.device.batteryLevel+'%':'--'}}</span>
+</div>
+<div class="status-item">
+<span class="thermal-badge" :class="'thermal-'+status.device.thermalState">{{thermalLabel}}</span>
+</div>
+<div class="status-item" style="color:var(--text-dim)">⏱{{status.pipeline.lagMs.toFixed(1)}}ms</div>
+</div>
+</div>
+
+<div class="current-song">
+<div v-if="currentSong" class="current-song-card">
+<img v-if="currentSong.coverURL" class="cs-cover" :src="currentSong.coverURL" @error="$event.target.style.display='none'">
+<div v-else class="cs-cover"></div>
+<div class="cs-info">
+<div class="cs-name">{{currentSong.songName}}</div>
+<div class="cs-detail">
+<span class="cs-diff" :style="{color:diffColor(currentSong.difficulty)}">{{currentSong.difficulty}}</span>
+<span v-if="currentSong.level">Lv.{{currentSong.level}}</span>
+<span v-if="currentSong.bpm">♪{{currentSong.bpm}}</span>
+<span v-if="currentSong.chartType" class="cs-badge" :class="chartBadgeClass(currentSong.chartType)">{{chartLabel(currentSong.chartType)}}</span>
+<span v-if="currentSong.requester" style="color:var(--accent2)">{{currentSong.requester}}</span>
+<span v-if="currentSong.giftValue>0" style="color:var(--success)">🎁{{(currentSong.giftValue/1000).toFixed(1)}}元</span>
+</div>
+</div>
+</div>
+<div v-else class="no-song">暂无播放歌曲</div>
+</div>
+
+<div class="queue-toggle" @click="queueExpanded=!queueExpanded">
+<span class="queue-toggle-text">队列 <span>{{queueRemaining}}</span> 首</span>
+<span class="queue-toggle-arrow" :class="{open:queueExpanded}">▼</span>
+</div>
+<div class="queue-list" :class="{open:queueExpanded}" ref="queueListEl">
+<div v-for="(s,i) in queueSongs" :key="i" class="queue-item">
+<div class="queue-item-diff" :class="diffBarClass(s.difficulty)"></div>
+<img v-if="s.coverURL" class="queue-item-cover" :src="s.coverURL" loading="lazy" @error="$event.target.style.display='none'">
+<div v-else class="queue-item-cover"></div>
+<div class="queue-item-info">
+<div class="queue-item-name">{{s.songName}}</div>
+<div class="queue-item-meta">
+<span :style="{color:diffColor(s.difficulty)}">{{s.difficulty}}</span>
+<span v-if="s.level">Lv.{{s.level}}</span>
+<span v-if="s.requester">{{s.requester}}</span>
+</div>
+</div>
+</div>
+</div>
+
+<div class="danmaku-section">
+<div class="danmaku-filters">
+<button class="filter-btn" :class="{active:danmakuFilter==='all'}" @click="danmakuFilter='all'">全部</button>
+<button class="filter-btn" :class="{active:danmakuFilter==='danmaku'}" @click="danmakuFilter='danmaku'">💬 弹幕</button>
+<button class="filter-btn" :class="{active:danmakuFilter==='sc'}" @click="danmakuFilter='sc'">💰 SC</button>
+<button class="filter-btn" :class="{active:danmakuFilter==='gift'}" @click="danmakuFilter='gift'">🎁 礼物</button>
+<button class="filter-btn" :class="{active:danmakuFilter==='member'}" @click="danmakuFilter='member'">⚓ 上舰</button>
+</div>
+<div class="danmaku-list" ref="danmakuListEl" @touchstart="danmakuPaused=true" @touchend="resumeDanmaku">
+<div v-if="filteredDanmaku.length===0" class="danmaku-empty">暂无弹幕</div>
+<div v-for="d in filteredDanmaku" :key="d.id" class="danmaku-entry" :class="['type-'+d.type, d.isSongRequest?'danmaku-song-request':'']" @click="onDanmakuClick(d)">
+<div class="danmaku-entry-header">
+<span class="danmaku-type-icon">{{danmakuIcon(d.type)}}</span>
+<span class="danmaku-username">{{d.username}}</span>
+<span v-if="d.giftPrice&&d.type==='sc'" style="font-size:10px;color:var(--gold)">¥{{d.giftPrice}}</span>
+<span v-if="d.giftPrice&&d.type==='gift'" style="font-size:10px;color:var(--accent1)">{{d.giftName}}</span>
+<span v-if="d.isSongRequest" class="song-request-badge" :class="srBadgeClass(d.songRequestStatus)">{{srBadgeText(d.songRequestStatus)}}</span>
+<span class="danmaku-time">{{formatTime(d.timestamp)}}</span>
+</div>
+<div class="danmaku-content">{{d.content}}</div>
+</div>
+</div>
+</div>
+
+<div class="live-controls">
+<div class="activity-toggle">
+<span>🏃 活动模式</span>
 <label class="toggle-switch">
-<input type="checkbox" id="songRequestPaused" onchange="toggleSongRequestPause()">
+<input type="checkbox" v-model="activityMode" @change="toggleActivityMode">
 <span class="toggle-slider"></span>
 </label>
 </div>
-<div class="song-control-row">
-<span class="control-label">门槛金额</span>
-<div style="display:flex;align-items:center">
-<input type="number" class="threshold-input" id="pauseThreshold" value="30" min="1" max="9999" onchange="updatePauseThreshold()" />
-<span class="threshold-unit">元</span>
+<button class="btn-skip" @click="skipSong">⏭ 切歌</button>
 </div>
 </div>
-<div class="song-control-row">
-<span class="control-label" id="activityLabel">🏃 活动模式</span>
-<label class="toggle-switch">
-<input type="checkbox" id="activityModeToggle" onchange="toggleActivityMode()">
-<span class="toggle-slider"></span>
-</label>
+
+<div v-if="tab==='queue'" class="queue-page">
+<div class="queue-header-row">
+<div class="remaining" v-if="queueData.queue&&queueData.queue.length>0">剩余 <span>{{queueRemaining}}</span> 首待播</div>
+<div v-else></div>
+<button class="btn-clear-danger" @click="confirmClear=true" v-if="queueData.queue&&queueData.queue.length>0">🗑 清空队列</button>
 </div>
-<div class="song-control-row" id="smoothFactorRow" style="display:none">
-<span class="control-label">跟随速度</span>
-<div style="display:flex;align-items:center;flex:1;margin-left:12px">
-<input type="range" id="smoothFactorSlider" min="0.01" max="0.2" step="0.01" value="0.03" onchange="updateSmoothFactor()" oninput="document.getElementById('smoothFactorValue').textContent=this.value" style="flex:1;accent-color:#c084fc" />
-<span id="smoothFactorValue" style="font-size:12px;color:#8b7ba8;min-width:30px;text-align:right">0.03</span>
+
+<div v-if="queueData.queue&&queueData.queue.length>0">
+<div v-for="(s,i) in queueData.queue" :key="i" class="song-card" :class="{current:i===queueData.currentIndex,priority:s.isPriority}">
+<div class="diff-bar" :class="diffBarClass(s.difficulty)"></div>
+<img v-if="s.coverURL" class="card-cover" :src="s.coverURL" loading="lazy" @error="$event.target.style.display='none'">
+<div v-else class="card-cover"></div>
+<div class="card-body">
+<div class="card-top">
+<span class="song-name">{{s.songName}}</span>
+<span v-if="s.chartType" class="chart-badge" :class="chartBadgeClass(s.chartType)">{{chartLabel(s.chartType)}}</span>
+<span v-if="s.isPriority" class="priority-badge">⚡插队</span>
+</div>
+<div class="card-info">
+<span v-if="s.difficulty" class="difficulty" :style="{color:diffColor(s.difficulty)}">{{s.difficulty}}</span>
+<span v-if="s.level">Lv.{{s.level}}</span>
+<span v-if="s.bpm" class="bpm">♪{{s.bpm}}</span>
+<span v-if="s.requester" class="requester">{{s.requester}}</span>
+<span v-if="s.giftValue>0" style="color:var(--success);font-size:10px">🎁{{(s.giftValue/1000).toFixed(1)}}元</span>
+</div>
+</div>
+<div class="card-actions">
+<button @click="removeSong(i)">✕</button>
 </div>
 </div>
 </div>
+<div v-else class="queue-empty">暂无歌曲</div>
+
 <div class="search-section">
 <h2>🔍 搜索添加</h2>
 <div class="search-box">
-<input type="text" id="searchInput" placeholder="输入歌名、别名或ID" />
-<button onclick="doSearch()">搜索</button>
+<input type="text" v-model="searchQuery" placeholder="输入歌名、别名或ID" @keydown.enter="doSearch">
+<button @click="doSearch">搜索</button>
 </div>
-<div class="search-results" id="searchResults"></div>
+<div v-if="searchResults.length>0">
+<div v-for="r in searchResults" :key="r.musicId" class="search-result">
+<img v-if="r.coverURL" class="sr-cover" :src="r.coverURL" loading="lazy" @error="$event.target.style.display='none'">
+<div v-else class="sr-cover"></div>
+<div class="sr-info">
+<div class="sr-title">
+<span class="song-title">{{r.title}}</span>
+<span v-if="r.chartType" class="chart-badge" :class="chartBadgeClass(r.chartType)">{{chartLabel(r.chartType)}}</span>
 </div>
-<div class="debug-section">
-<div class="debug-toggle" onclick="toggleDebug()">
-<h2>🔧 调试面板</h2>
-<span class="arrow" id="debugArrow">▼</span>
+<div v-if="r.artist" class="sr-artist">{{r.artist}}</div>
+<div v-if="r.bpm" class="sr-bpm">♪ {{r.bpm}} BPM</div>
+<div class="sr-diffs">
+<span v-for="(dv,dk) in diffMap(r)" :key="dk" class="sr-diff" :class="[diffSmallClass(dk), selectedDiff(r.musicId)===dk?'selected':'']" @click="selectDiff(r.musicId,dk)">{{dk}} Lv.{{dv.level}}</span>
+<button class="sr-add" @click="addSong(r)">添加</button>
 </div>
-<div class="debug-panel" id="debugPanel">
+</div>
+</div>
+</div>
+</div>
+
+<div class="config-section">
+<div class="config-row">
+<span class="control-label" :class="{active:songRequestPaused}">{{songRequestPaused?'🚫 点歌已暂停':'🚫 停止点歌'}}</span>
+<label class="toggle-switch">
+<input type="checkbox" v-model="songRequestPaused" @change="updateSongRequestConfig">
+<span class="toggle-slider"></span>
+</label>
+</div>
+<div class="config-row">
+<span class="control-label">门槛金额</span>
+<div style="display:flex;align-items:center">
+<input type="number" class="threshold-input" v-model.number="pauseThreshold" min="1" max="9999" @change="updateSongRequestConfig">
+<span class="threshold-unit">元</span>
+</div>
+</div>
+</div>
+</div>
+
+<div v-if="tab==='debug'" class="debug-page">
+<div class="debug-toggle" @click="debugOpen=!debugOpen">
+<h2>🔧 调试模拟</h2>
+<span class="arrow" :class="{open:debugOpen}">▼</span>
+</div>
+<div class="debug-panel" :class="{open:debugOpen}">
 <div class="debug-row">
 <label>用户名</label>
-<input type="text" id="debugUsername" placeholder="输入用户名" />
+<input type="text" v-model="debugUsername" placeholder="输入用户名">
 </div>
 <div class="debug-btns">
-<button class="debug-btn debug-btn-gift" onclick="simGift()">🎁 模拟礼物</button>
-<button class="debug-btn debug-btn-sc" onclick="simSC()">💰 模拟SC(≥30)</button>
-<button class="debug-btn debug-btn-sc" onclick="simSCSmall()">💵 模拟SC(&lt;30)</button>
-<button class="debug-btn debug-btn-member" onclick="simMember()">⚓ 模拟上舰</button>
+<button class="debug-btn debug-btn-gift" @click="simGift">🎁 模拟礼物</button>
+<button class="debug-btn debug-btn-sc" @click="simSC">💰 模拟SC(≥30)</button>
+<button class="debug-btn debug-btn-sc" @click="simSCSmall">💵 模拟SC(&lt;30)</button>
+<button class="debug-btn debug-btn-member" @click="simMember">⚓ 模拟上舰</button>
 </div>
 <div class="debug-row">
 <label>弹幕内容</label>
-<input type="text" id="debugDanmaku" placeholder="点歌 歌名 [难度]" />
+<input type="text" v-model="debugDanmaku" placeholder="点歌 歌名 [难度]">
 </div>
 <div class="debug-btns">
-<button class="debug-btn debug-btn-gift" onclick="simDanmaku()">💬 模拟弹幕点歌</button>
-<button class="debug-btn debug-btn-sc" onclick="simSCSong()">🎤 模拟SC点歌</button>
+<button class="debug-btn debug-btn-gift" @click="simDanmaku">💬 模拟弹幕点歌</button>
+<button class="debug-btn debug-btn-sc" @click="simSCSong">🎤 模拟SC点歌</button>
 </div>
 <div class="debug-btns">
-<button class="debug-btn debug-btn-refresh" onclick="fetchGiftPool()">🎁 刷新送礼池</button>
+<button class="debug-btn debug-btn-refresh" @click="fetchGiftPool">🎁 刷新送礼池</button>
 </div>
-<div class="perm-list" id="giftPoolList" style="margin-top:8px"><div class="perm-empty">点击"刷新送礼池"查看</div></div>
+<div v-if="giftPool.length>0" style="margin-top:8px">
+<div v-for="p in giftPool" :key="p.name" class="perm-item">
+<span class="perm-name">{{p.name}}</span>
+<span class="perm-chances">🎁{{p.giftValue}}币 (¥{{(p.giftValue/1000).toFixed(1)}})</span>
+</div>
+</div>
+</div>
+
 <h3 style="margin:12px 0 6px;color:#ba68c8">📢 公告编辑</h3>
-<textarea id="announcementText" rows="3" style="width:100%;background:#1a1a2e;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:8px;font-size:14px;resize:vertical" placeholder="输入公告内容..."></textarea>
-<button class="debug-btn debug-btn-refresh" onclick="updateAnnouncement()" style="margin-top:6px">📢 更新公告</button>
-<h3 style="margin:12px 0 6px;color:#ff6b9d">🔥 压力测试</h3>
-<div class="debug-row">
-<label>时长(秒)</label>
-<input type="number" id="stressDuration" value="300" min="30" max="1800" />
-</div>
-<div class="debug-row">
-<label>弹幕/秒</label>
-<input type="number" id="stressDanmakuRate" value="3" min="0" max="20" />
-</div>
-<div class="debug-row">
-<label>礼物/秒</label>
-<input type="number" id="stressGiftRate" value="1" min="0" max="10" />
-</div>
-<div class="debug-row">
-<label>SC/秒</label>
-<input type="number" id="stressSCRate" value="0.3" min="0" max="5" step="0.1" />
-</div>
-<div class="debug-row">
-<label>切歌间隔(秒)</label>
-<input type="number" id="stressSkipInterval" value="60" min="10" max="300" />
-</div>
+<textarea v-model="announcementText" rows="3" style="width:100%;background:#1a1a2e;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:8px;font-size:14px;resize:vertical" placeholder="输入公告内容..."></textarea>
+<button class="debug-btn debug-btn-refresh" @click="updateAnnouncement" style="margin-top:6px">📢 更新公告</button>
+
+<h3 style="margin:12px 0 6px;color:var(--accent1)">🔥 压力测试</h3>
+<div class="debug-row"><label>时长(秒)</label><input type="number" v-model.number="stressDuration" min="30" max="1800"></div>
+<div class="debug-row"><label>弹幕/秒</label><input type="number" v-model.number="stressDanmakuRate" min="0" max="20"></div>
+<div class="debug-row"><label>礼物/秒</label><input type="number" v-model.number="stressGiftRate" min="0" max="10"></div>
+<div class="debug-row"><label>SC/秒</label><input type="number" v-model.number="stressSCRate" min="0" max="5" step="0.1"></div>
+<div class="debug-row"><label>切歌间隔(秒)</label><input type="number" v-model.number="stressSkipInterval" min="10" max="300"></div>
 <div class="debug-btns">
-<button class="debug-btn" style="background:linear-gradient(135deg,#ff6b9d,#ff9c6d);color:#fff" onclick="startStressTest()">🔥 开始压力测试</button>
-<button class="debug-btn debug-btn-clear" onclick="stopStressTest()">⏹ 停止</button>
+<button class="debug-btn" style="background:linear-gradient(135deg,var(--accent1),#ff9c6d);color:#fff" @click="startStressTest">🔥 开始压力测试</button>
+<button class="debug-btn debug-btn-clear" @click="stopStressTest">⏹ 停止</button>
 </div>
-<div id="stressStatus" style="font-size:11px;color:#8b7ba8;margin-top:6px"></div>
+<div v-if="stressStatus" style="font-size:11px;color:var(--text-dim);margin-top:6px">{{stressStatus}}</div>
 </div>
 </div>
-<div class="bottom-bar">
-<button class="btn-skip" onclick="skipSong()">⏭ 切歌</button>
-<button class="btn-clear" onclick="clearQueue()">🗑 清空</button>
+
+<div v-if="confirmClear" class="modal-overlay" @click.self="confirmClear=false">
+<div class="modal-box">
+<p>确定要清空整个队列吗？此操作不可撤销。</p>
+<div class="modal-btns">
+<button class="modal-btn modal-btn-cancel" @click="confirmClear=false">取消</button>
+<button class="modal-btn modal-btn-confirm" @click="clearQueue">确定清空</button>
 </div>
-<div class="toast" id="toast"></div>
+</div>
+</div>
+
+<div class="toast" :class="{show:toastVisible}">{{toastMsg}}</div>
+</div>
+
 <script>
-var lastQueueHash='';
-var currentIndex=-1;
-var coverCache={};
-function showToast(msg){
-var t=document.getElementById('toast');
-t.textContent=msg;
-t.classList.add('show');
-setTimeout(function(){t.classList.remove('show')},1500);
-}
-function diffClass(diff){
-var d=(diff||'').toLowerCase();
-if(d.indexOf('basic')>=0)return'diff-basic';
-if(d.indexOf('advanced')>=0)return'diff-advanced';
-if(d.indexOf('expert')>=0)return'diff-expert';
-if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'diff-master';
-if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'diff-remaster';
-if(d.indexOf('utage')>=0)return'diff-utage';
-return'diff-master';
-}
-function diffSmallClass(diff){
-var d=(diff||'').toLowerCase();
-if(d.indexOf('basic')>=0)return'sr-diff-basic';
-if(d.indexOf('advanced')>=0)return'sr-diff-advanced';
-if(d.indexOf('expert')>=0)return'sr-diff-expert';
-if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'sr-diff-master';
-if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'sr-diff-remaster';
-if(d.indexOf('utage')>=0)return'sr-diff-utage';
-return'sr-diff-master';
-}
-function chartClass(ct){
-if(ct==='dx')return'chart-dx';
-if(ct==='standard'||ct==='std')return'chart-std';
-if(ct==='utage')return'chart-utage';
-return'chart-std';
-}
-function chartLabel(ct){
-if(ct==='dx')return'DX';
-if(ct==='standard')return'STD';
-if(ct==='utage')return'UTAGE';
-return(ct||'').toUpperCase();
-}
-function diffColor(diff){
-var d=(diff||'').toLowerCase();
-if(d.indexOf('basic')>=0)return'#22bb5b';
-if(d.indexOf('advanced')>=0)return'#fb9c2c';
-if(d.indexOf('expert')>=0)return'#f64861';
-if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'#9e45e2';
-if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'#dbaaff';
-if(d.indexOf('utage')>=0)return'#ff6b9d';
-return'#9e45e2';
-}
-function escHtml(s){
-if(!s)return'';
-return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function queueHash(data){
-if(!data||!data.queue)return'';
-var parts=[];
-for(var i=0;i<data.queue.length;i++){
-var s=data.queue[i];
-parts.push(s.songName+'|'+(s.difficulty||'')+'|'+(s.isPriority?'1':'0')+'|'+(s.requester||'')+'|'+(s.giftValue||0));
-}
-return data.currentIndex+'|'+data.remaining+'|'+parts.join(',');
-}
-function renderQueue(data){
-currentIndex=data.currentIndex;
-var remainingEl=document.getElementById('remainingInfo');
-if(data.queue&&data.queue.length>0){
-var rem=data.remaining||0;
-remainingEl.innerHTML='剩余 <span>'+rem+'</span> 首待播';
-}else{
-remainingEl.innerHTML='';
-}
-var section=document.getElementById('queueList');
-if(!data.queue||data.queue.length===0){
-section.innerHTML='<div class="queue-empty">暂无歌曲</div>';
-return;
-}
-var html='';
-for(var i=0;i<data.queue.length;i++){
-var s=data.queue[i];
-var isCurrent=(i===currentIndex);
-var cls='song-card';
-if(isCurrent)cls+=' current';
-if(s.isPriority)cls+=' priority';
-html+='<div class="'+cls+'">';
-html+='<div class="diff-bar '+diffClass(s.difficulty)+'"></div>';
-if(s.coverURL){
-html+='<img class="card-cover" src="'+escHtml(s.coverURL)+'" loading="lazy" onerror="this.style.display=\'none\'" />';
-}else{
-html+='<div class="card-cover"></div>';
-}
-html+='<div class="card-body">';
-html+='<div class="card-top">';
-html+='<span class="song-name">'+escHtml(s.songName)+'</span>';
-if(s.chartType)html+='<span class="chart-badge '+chartClass(s.chartType)+'">'+chartLabel(s.chartType)+'</span>';
-if(s.isPriority)html+='<span class="priority-badge">⚡插队</span>';
-html+='</div>';
-html+='<div class="card-info">';
-if(s.difficulty)html+='<span class="difficulty" style="color:'+diffColor(s.difficulty)+'">'+escHtml(s.difficulty)+'</span>';
-if(s.level)html+='<span>Lv.'+escHtml(s.level)+'</span>';
-if(s.bpm)html+='<span class="bpm">♪'+s.bpm+'</span>';
-if(s.requester)html+='<span class="requester">'+escHtml(s.requester)+'</span>';
-if(s.giftValue>0)html+='<span style="color:#22bb5b;font-size:10px">🎁'+(s.giftValue/1000).toFixed(1)+'元</span>';
-html+='</div>';
-html+='</div>';
-html+='<div class="card-actions">';
-html+='<button class="btn-remove" onclick="removeSong('+i+')">✕</button>';
-html+='</div>';
-html+='</div>';
-}
-section.innerHTML=html;
-}
-function fetchQueue(){
-var xhr=new XMLHttpRequest();
-xhr.open('GET','/api/queue',true);
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-var h=queueHash(data);
-if(h!==lastQueueHash){
-lastQueueHash=h;
-renderQueue(data);
-}
-}catch(e){}
-}
-};
-xhr.onerror=function(){};
-xhr.send();
-}
-function postAction(url,body,cb){
-var xhr=new XMLHttpRequest();
-xhr.open('POST',url,true);
-xhr.setRequestHeader('Content-Type','application/json');
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-lastQueueHash=queueHash(data);
-renderQueue(data);
-if(cb)cb(data);
-}catch(e){}
-}else{
-try{showToast(JSON.parse(xhr.responseText).message||'操作失败')}catch(e){showToast('操作失败')}
-}
-};
-xhr.onerror=function(){showToast('网络错误')};
-xhr.send(body?JSON.stringify(body):'{}');
-}
-function skipSong(){postAction('/api/queue/skip')}
-function clearQueue(){postAction('/api/queue/clear')}
-function removeSong(idx){postAction('/api/queue/remove',{index:idx})}
-function doSearch(){
-var q=document.getElementById('searchInput').value.trim();
-if(!q)return;
-var xhr=new XMLHttpRequest();
-xhr.open('GET','/api/search?q='+encodeURIComponent(q),true);
-xhr.onload=function(){
-if(xhr.status===200){
-try{renderSearchResults(JSON.parse(xhr.responseText))}catch(e){showToast('解析错误')}
-}else{
-showToast('搜索失败');
-}
-};
-xhr.onerror=function(){showToast('网络错误')};
-xhr.send();
-}
-function renderSearchResults(data){
-var container=document.getElementById('searchResults');
-if(!data.results||data.results.length===0){
-container.style.display='block';
-container.innerHTML='<div style="color:#6b5b8a;text-align:center;padding:16px;font-size:13px">未找到歌曲</div>';
-return;
-}
-container.style.display='block';
-var html='';
-for(var i=0;i<data.results.length;i++){
-var r=data.results[i];
-html+='<div class="search-result">';
-if(r.coverURL){
-html+='<img class="sr-cover" src="'+escHtml(r.coverURL)+'" loading="lazy" onerror="this.style.display=\'none\'" />';
-}else{
-html+='<div class="sr-cover"></div>';
-}
-html+='<div class="sr-info">';
-html+='<div class="sr-title">';
-html+='<span class="song-title">'+escHtml(r.title)+'</span>';
-if(r.chartType)html+='<span class="chart-badge '+chartClass(r.chartType)+'">'+chartLabel(r.chartType)+'</span>';
-html+='</div>';
-if(r.artist)html+='<div class="sr-artist">'+escHtml(r.artist)+'</div>';
-if(r.bpm)html+='<div class="sr-bpm">♪ '+r.bpm+' BPM</div>';
-html+='<div class="sr-diffs">';
-var diffMap={};
-if(r.difficulties){
-for(var j=0;j<r.difficulties.length;j++){
-var d=r.difficulties[j];
-var key=d.name;
-if(!diffMap[key])diffMap[key]=[];
-diffMap[key].push(d);
-}
-var keys=Object.keys(diffMap);
-for(var k=0;k<keys.length;k++){
-var dn=keys[k];
-var dv=diffMap[dn][0];
-var sel=(k===keys.length-1)?' selected':'';
-html+='<span class="sr-diff '+diffSmallClass(dn)+sel+'" data-diff-name="'+dn+'" data-music-id="'+r.musicId+'" data-chart-type="'+(r.chartType||'')+'" onclick="selectDiff(this)">'+dn+' Lv.'+dv.level+'</span>';
-}
-}
-html+='<button class="sr-add" onclick="addSong(this)">添加</button>';
-html+='</div>';
-html+='</div>';
-html+='</div>';
-}
-container.innerHTML=html;
-}
-function selectDiff(el){
-var parent=el.parentElement;
-var diffs=parent.querySelectorAll('.sr-diff');
-for(var i=0;i<diffs.length;i++)diffs[i].classList.remove('selected');
-el.classList.add('selected');
-}
-function addSong(btn){
-var parent=btn.parentElement;
-var sel=parent.querySelector('.sr-diff.selected');
-if(!sel){showToast('请先选择难度');return}
-var musicId=parseInt(sel.getAttribute('data-music-id'));
-var chartType=sel.getAttribute('data-chart-type');
-var diffName=sel.getAttribute('data-diff-name');
-var diffMap={'BASIC':'绿','ADVANCED':'黄','EXPERT':'红','MASTER':'紫','Re:MASTER':'白','UTAGE':'宴'};
-var diffInput=diffMap[diffName]||diffName;
-postAction('/api/queue/add',{musicId:musicId,difficulty:diffInput,chartType:chartType},function(){
-showToast('已添加');
-});
-}
-document.getElementById('searchInput').addEventListener('keydown',function(e){
-if(e.key==='Enter')doSearch();
-});
-function toggleDebug(){
-var panel=document.getElementById('debugPanel');
-var arrow=document.getElementById('debugArrow');
-if(panel.classList.contains('open')){
-panel.classList.remove('open');
-arrow.classList.remove('open');
-}else{
-panel.classList.add('open');
-arrow.classList.add('open');
-}
-}
-function getDebugUsername(){
-return document.getElementById('debugUsername').value.trim()||'测试用户';
-}
-function simGift(){
-var name=getDebugUsername();
-postDebug('/api/debug/simulate/gift',{authorName:name,totalCoin:1000},function(){
-showToast('已模拟付费礼物');
-fetchGiftPool();
-});
-}
-function simSC(){
-var name=getDebugUsername();
-postDebug('/api/debug/simulate/sc',{authorName:name,price:30,content:''},function(){
-showToast('已模拟SC≥30元');
-fetchGiftPool();
-});
-}
-function simSCSmall(){
-var name=getDebugUsername();
-postDebug('/api/debug/simulate/sc',{authorName:name,price:10,content:''},function(){
-showToast('已模拟SC<30元');
-fetchGiftPool();
-});
-}
-function simMember(){
-var name=getDebugUsername();
-postDebug('/api/debug/simulate/member',{authorName:name},function(){
-showToast('已模拟上舰');
-fetchGiftPool();
-});
-}
-function simDanmaku(){
-var name=getDebugUsername();
-var content=document.getElementById('debugDanmaku').value.trim();
-if(!content){showToast('请输入弹幕内容');return}
-postDebug('/api/debug/simulate/danmaku',{authorName:name,content:content},function(data){
-if(data.success)showToast('已模拟弹幕: '+content);
-else showToast('模拟失败');
-});
-}
-function simSCSong(){
-var name=getDebugUsername();
-var content=document.getElementById('debugDanmaku').value.trim();
-if(!content){showToast('请输入SC点歌内容');return}
-postDebug('/api/debug/simulate/sc',{authorName:name,price:30,content:content},function(data){
-if(data.success)showToast('已模拟SC点歌: '+content);
-else showToast('模拟失败');
-});
-}
-function fetchGiftPool(){
-var xhr=new XMLHttpRequest();
-xhr.open('GET','/api/debug/gift-pool',true);
-xhr.onload=function(){
-if(xhr.status===200){
-try{renderGiftPool(JSON.parse(xhr.responseText))}catch(e){}
-}
-};
-xhr.send();
-}
-function renderGiftPool(data){
-var container=document.getElementById('giftPoolList');
-if(!data.giftPool||data.giftPool.length===0){
-container.innerHTML='<div class="perm-empty">送礼池为空</div>';
-return;
-}
-var html='';
-for(var i=0;i<data.giftPool.length;i++){
-var p=data.giftPool[i];
-var rmb=(p.giftValue/1000).toFixed(1);
-html+='<div class="perm-item">';
-html+='<span class="perm-name">'+escHtml(p.name)+'</span>';
-html+='<span class="perm-chances">';
-html+='<span style="color:#22bb5b">🎁'+p.giftValue+'币 (¥'+rmb+')</span>';
-html+='</span>';
-html+='</div>';
-}
-container.innerHTML=html;
-}
-function postDebug(url,body,cb){
-var xhr=new XMLHttpRequest();
-xhr.open('POST',url,true);
-xhr.setRequestHeader('Content-Type','application/json');
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-if(cb)cb(data);
-}catch(e){}
-}else{
-try{showToast(JSON.parse(xhr.responseText).message||'操作失败')}catch(e){showToast('操作失败')}
-}
-};
-xhr.onerror=function(){showToast('网络错误')};
-xhr.send(body?JSON.stringify(body):'{}');
-}
-fetchQueue();
-setInterval(fetchQueue,1500);
-fetchAnnouncement();
-fetchSongRequestConfig();
-fetchActivityMode();
-function fetchActivityMode(){
-var xhr=new XMLHttpRequest();
-xhr.open('GET','/api/activity-mode',true);
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-document.getElementById('activityModeToggle').checked=data.activityMode;
-document.getElementById('smoothFactorSlider').value=data.smoothFactor;
-document.getElementById('smoothFactorValue').textContent=data.smoothFactor;
-updateActivityLabel(data.activityMode);
-}catch(e){}
-}
-};
-xhr.send();
-}
-function updateActivityLabel(enabled){
-var label=document.getElementById('activityLabel');
-var row=document.getElementById('smoothFactorRow');
-if(enabled){
-label.textContent='🏃 活动模式已开启';
-label.classList.add('paused-active');
-row.style.display='flex';
-}else{
-label.textContent='🏃 活动模式';
-label.classList.remove('paused-active');
-row.style.display='none';
-}
-}
-function toggleActivityMode(){
-var enabled=document.getElementById('activityModeToggle').checked;
-var sf=parseFloat(document.getElementById('smoothFactorSlider').value)||0.03;
-var xhr=new XMLHttpRequest();
-xhr.open('POST','/api/activity-mode',true);
-xhr.setRequestHeader('Content-Type','application/json');
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-document.getElementById('activityModeToggle').checked=data.activityMode;
-updateActivityLabel(data.activityMode);
-showToast(data.activityMode?'活动模式已开启':'活动模式已关闭');
-}catch(e){}
-}
-};
-xhr.send(JSON.stringify({activityMode:enabled,smoothFactor:sf}));
-}
-function updateSmoothFactor(){
-var sf=parseFloat(document.getElementById('smoothFactorSlider').value)||0.03;
-var enabled=document.getElementById('activityModeToggle').checked;
-var xhr=new XMLHttpRequest();
-xhr.open('POST','/api/activity-mode',true);
-xhr.setRequestHeader('Content-Type','application/json');
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-document.getElementById('smoothFactorSlider').value=data.smoothFactor;
-document.getElementById('smoothFactorValue').textContent=data.smoothFactor;
-}catch(e){}
-}
-};
-xhr.send(JSON.stringify({activityMode:enabled,smoothFactor:sf}));
-}
-function fetchSongRequestConfig(){
-var xhr=new XMLHttpRequest();
-xhr.open('GET','/api/song-request-config',true);
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-document.getElementById('songRequestPaused').checked=data.paused;
-document.getElementById('pauseThreshold').value=data.threshold;
-updatePauseLabel(data.paused);
-}catch(e){}
-}
-};
-xhr.send();
-}
-function updatePauseLabel(paused){
-var label=document.getElementById('pauseLabel');
-if(paused){
-label.textContent='🚫 点歌已暂停';
-label.classList.add('paused-active');
-}else{
-label.textContent='🚫 停止点歌';
-label.classList.remove('paused-active');
-}
-}
-function toggleSongRequestPause(){
-var paused=document.getElementById('songRequestPaused').checked;
-var threshold=parseInt(document.getElementById('pauseThreshold').value)||30;
-var xhr=new XMLHttpRequest();
-xhr.open('POST','/api/song-request-config',true);
-xhr.setRequestHeader('Content-Type','application/json');
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-document.getElementById('songRequestPaused').checked=data.paused;
-updatePauseLabel(data.paused);
-showToast(data.paused?'已开启停止点歌':'已关闭停止点歌');
-}catch(e){}
-}
-};
-xhr.send(JSON.stringify({paused:paused,threshold:threshold}));
-}
-function updatePauseThreshold(){
-var threshold=parseInt(document.getElementById('pauseThreshold').value);
-if(!threshold||threshold<1){
-threshold=1;
-document.getElementById('pauseThreshold').value=threshold;
-}
-var paused=document.getElementById('songRequestPaused').checked;
-var xhr=new XMLHttpRequest();
-xhr.open('POST','/api/song-request-config',true);
-xhr.setRequestHeader('Content-Type','application/json');
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-document.getElementById('pauseThreshold').value=data.threshold;
-showToast('门槛金额已更新为'+data.threshold+'元');
-}catch(e){}
-}
-};
-xhr.send(JSON.stringify({paused:paused,threshold:threshold}));
-}
-function fetchAnnouncement(){
-var xhr=new XMLHttpRequest();
-xhr.open('GET','/api/announcement',true);
-xhr.onload=function(){
-if(xhr.status===200){
-try{
-var data=JSON.parse(xhr.responseText);
-document.getElementById('announcementText').value=data.text||'';
-}catch(e){}
-}
-};
-xhr.send();
-}
-function updateAnnouncement(){
-var text=document.getElementById('announcementText').value;
-postDebug('/api/announcement',{text:text},function(data){
-if(data.success){
-showToast('公告已更新');
-}else{
-showToast('更新失败');
-}
-});
-}
-var stressTestRunning=false;
-var stressTestTimers=[];
-var stressStats={danmaku:0,gift:0,sc:0,skip:0,errors:0};
 var stressSongNames=['打上花火','Lemon','红莲华','残酷天使的行动纲领','Only My Railgun','Butter-Fly','魂之轮回','God knows...','Don\'t say "lazy"','Cry Baby','KICK BACK','残響散歌','アイドル','怪物','夜に駆ける','群青','うっせぇわ','ドライフラワー','Shape of You','Shin Takarajima','ファンサ','シャルル','ロキ','テオ','ハレハレヤ','ビターチョコデコレーション','命に嫌われている','クライマー','フォニイ','エンヴィーベイビー','きゅうくらりん','グッバイ宣言','シリウス','メリュー','ヴァンパイア','キリギリス','キャットラビング','デビルジョー','マリーゴールド','レオ','ピーターパン','フライミー','ストリーミングハート','スーサイドパレード','アンノウン','マチガイサガシ','コスモポップ','ヒバナ','アストロ'];
 var stressUserNames=['小明的歌单','舞萌DX玩家','音游大佬','点歌达人','maimai爱好者','节奏大师','打歌人','萌新玩家','大佬来了','氪金战士','白嫖怪','舰长大人','SC狂魔','弹幕姬','直播间常客','路过的','新观众','老粉','铁粉','土豪哥'];
-function stressRand(arr){return arr[Math.floor(Math.random()*arr.length)]}
-function stressRandInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
-function stressSend(url,body,type){
-var xhr=new XMLHttpRequest();
-xhr.open('POST',url,true);
-xhr.setRequestHeader('Content-Type','application/json');
+
+var app=Vue.createApp({
+data:function(){return{
+tab:'live',
+status:{streaming:{isStreaming:false,status:'Idle',duration:'--',bitrate:0,resolution:'1280x720',fps:0},device:{batteryLevel:-1,batteryState:'unknown',thermalState:'nominal'},pipeline:{lagMs:0}},
+queueData:{queue:[],currentIndex:-1,remaining:0},
+activityMode:false,
+danmakuList:[],
+danmakuFilter:'all',
+danmakuPaused:false,
+danmakuResumeTimer:null,
+queueExpanded:false,
+searchQuery:'',
+searchResults:[],
+selectedDiffs:{},
+songRequestPaused:false,
+pauseThreshold:30,
+confirmClear:false,
+toastMsg:'',
+toastVisible:false,
+toastTimer:null,
+debugOpen:false,
+debugUsername:'',
+debugDanmaku:'',
+giftPool:[],
+announcementText:'',
+stressDuration:300,
+stressDanmakuRate:3,
+stressGiftRate:1,
+stressSCRate:0.3,
+stressSkipInterval:60,
+stressStatus:'',
+stressRunning:false,
+stressTimers:[],
+stressStats:{},
+stressStartTime:0,
+sse:null,
+sseLastId:0,
+sseReconnectAttempts:0
+}},
+computed:{
+currentSong:function(){
+if(this.queueData.queue&&this.queueData.queue.length>0&&this.queueData.currentIndex>=0&&this.queueData.currentIndex<this.queueData.queue.length){
+return this.queueData.queue[this.queueData.currentIndex]
+}
+return null
+},
+queueSongs:function(){
+if(!this.queueData.queue)return[]
+return this.queueData.queue.filter(function(_,i){return i!==this.queueData.currentIndex}.bind(this))
+},
+queueRemaining:function(){
+return this.queueData.remaining||0
+},
+thermalLabel:function(){
+var m={nominal:'正常',fair:'良好',serious:'⚠过热',critical:'🔥严重'}
+return m[this.status.device.thermalState]||'未知'
+},
+filteredDanmaku:function(){
+if(this.danmakuFilter==='all')return this.danmakuList
+return this.danmakuList.filter(function(d){return d.type===this.danmakuFilter}.bind(this))
+}
+},
+methods:{
+diffColor:function(diff){
+var d=(diff||'').toLowerCase()
+if(d.indexOf('basic')>=0)return'#22bb5b'
+if(d.indexOf('advanced')>=0)return'#fb9c2c'
+if(d.indexOf('expert')>=0)return'#f64861'
+if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'#9e45e2'
+if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'#dbaaff'
+if(d.indexOf('utage')>=0)return'#ff6b9d'
+return'#9e45e2'
+},
+diffBarClass:function(diff){
+var d=(diff||'').toLowerCase()
+if(d.indexOf('basic')>=0)return'diff-basic'
+if(d.indexOf('advanced')>=0)return'diff-advanced'
+if(d.indexOf('expert')>=0)return'diff-expert'
+if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'diff-master'
+if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'diff-remaster'
+if(d.indexOf('utage')>=0)return'diff-utage'
+return'diff-master'
+},
+diffSmallClass:function(diff){
+var d=(diff||'').toLowerCase()
+if(d.indexOf('basic')>=0)return'sr-diff-basic'
+if(d.indexOf('advanced')>=0)return'sr-diff-advanced'
+if(d.indexOf('expert')>=0)return'sr-diff-expert'
+if(d.indexOf('master')>=0&&d.indexOf('re')<0)return'sr-diff-master'
+if(d.indexOf('re:')>=0||d.indexOf('remaster')>=0)return'sr-diff-remaster'
+if(d.indexOf('utage')>=0)return'sr-diff-utage'
+return'sr-diff-master'
+},
+chartBadgeClass:function(ct){
+if(ct==='dx')return'badge-dx'
+if(ct==='standard'||ct==='std')return'badge-std'
+if(ct==='utage')return'badge-utage'
+return'badge-std'
+},
+chartLabel:function(ct){
+if(ct==='dx')return'DX'
+if(ct==='standard')return'STD'
+if(ct==='utage')return'UTAGE'
+return(ct||'').toUpperCase()
+},
+danmakuIcon:function(type){
+var m={danmaku:'💬',sc:'💰',gift:'🎁',member:'⚓'}
+return m[type]||'💬'
+},
+srBadgeClass:function(s){
+if(!s)return''
+if(s==='success')return'sr-success'
+if(s==='pending')return'sr-pending'
+return'sr-rejected'
+},
+srBadgeText:function(s){
+if(!s)return''
+if(s==='success')return'✅'
+if(s==='pending')return'⏳'
+return'❌'
+},
+formatTime:function(ts){
+if(!ts)return''
+var d=new Date(ts*1000)
+var h=d.getHours().toString().padStart(2,'0')
+var m=d.getMinutes().toString().padStart(2,'0')
+return h+':'+m
+},
+diffMap:function(r){
+if(!r.difficulties)return{}
+var map={}
+r.difficulties.forEach(function(d){
+if(!map[d.name])map[d.name]=d
+})
+return map
+},
+selectedDiff:function(musicId){
+return this.selectedDiffs[musicId]||null
+},
+selectDiff:function(musicId,diffName){
+this.selectedDiffs[musicId]=diffName
+},
+showToast:function(msg){
+this.toastMsg=msg
+this.toastVisible=true
+if(this.toastTimer)clearTimeout(this.toastTimer)
+var self=this
+this.toastTimer=setTimeout(function(){self.toastVisible=false},1500)
+},
+apiGet:function(url,cb){
+var xhr=new XMLHttpRequest()
+xhr.open('GET',url,true)
+xhr.onload=function(){if(xhr.status===200){try{cb(JSON.parse(xhr.responseText))}catch(e){}}}
+xhr.send()
+},
+apiPost:function(url,body,cb){
+var xhr=new XMLHttpRequest()
+xhr.open('POST',url,true)
+xhr.setRequestHeader('Content-Type','application/json')
 xhr.onload=function(){
-if(xhr.status===200){
-stressStats[type]=(stressStats[type]||0)+1;
-}else{
-stressStats.errors++;
+if(xhr.status===200){try{var d=JSON.parse(xhr.responseText);if(cb)cb(d)}catch(e){}}
+else{try{this.showToast(JSON.parse(xhr.responseText).message||'操作失败')}catch(e){this.showToast('操作失败')}}
+}.bind(this)
+xhr.onerror=function(){this.showToast('网络错误')}.bind(this)
+xhr.send(body?JSON.stringify(body):'{}')
+},
+fetchStatus:function(){
+this.apiGet('/api/status',function(d){this.status=d}.bind(this))
+},
+fetchQueue:function(){
+this.apiGet('/api/queue',function(d){this.queueData=d}.bind(this))
+},
+skipSong:function(){
+this.apiPost('/api/queue/skip',null,function(){this.fetchQueue()}.bind(this))
+},
+clearQueue:function(){
+this.confirmClear=false
+this.apiPost('/api/queue/clear',null,function(){this.fetchQueue();this.showToast('队列已清空')}.bind(this))
+},
+removeSong:function(idx){
+this.apiPost('/api/queue/remove',{index:idx},function(){this.fetchQueue()}.bind(this))
+},
+toggleActivityMode:function(){
+this.apiPost('/api/activity-mode',{activityMode:this.activityMode},function(d){
+this.activityMode=d.activityMode
+this.showToast(d.activityMode?'活动模式已开启':'活动模式已关闭')
+}.bind(this))
+},
+fetchActivityMode:function(){
+this.apiGet('/api/activity-mode',function(d){this.activityMode=d.activityMode}.bind(this))
+},
+fetchSongRequestConfig:function(){
+this.apiGet('/api/song-request-config',function(d){
+this.songRequestPaused=d.paused
+this.pauseThreshold=d.threshold
+}.bind(this))
+},
+updateSongRequestConfig:function(){
+this.apiPost('/api/song-request-config',{paused:this.songRequestPaused,threshold:this.pauseThreshold},function(d){
+this.songRequestPaused=d.paused
+this.pauseThreshold=d.threshold
+this.showToast(d.paused?'已开启停止点歌':'已关闭停止点歌')
+}.bind(this))
+},
+doSearch:function(){
+var q=this.searchQuery.trim()
+if(!q)return
+this.apiGet('/api/search?q='+encodeURIComponent(q),function(d){
+this.searchResults=d.results||[]
+}.bind(this))
+},
+addSong:function(r){
+var diffName=this.selectedDiffs[r.musicId]
+if(!diffName){
+var keys=Object.keys(this.diffMap(r))
+if(keys.length>0)diffName=keys[keys.length-1]
 }
-updateStressStatus();
-};
-xhr.onerror=function(){stressStats.errors++;updateStressStatus()};
-xhr.send(JSON.stringify(body));
+if(!diffName){this.showToast('请先选择难度');return}
+var diffMap={'BASIC':'绿','ADVANCED':'黄','EXPERT':'红','MASTER':'紫','Re:MASTER':'白','UTAGE':'宴'}
+var diffInput=diffMap[diffName]||diffName
+this.apiPost('/api/queue/add',{musicId:r.musicId,difficulty:diffInput,chartType:r.chartType},function(){
+this.showToast('已添加')
+this.fetchQueue()
+}.bind(this))
+},
+onDanmakuClick:function(d){
+if(d.isSongRequest){
+var content=d.content
+var query=content.replace(/^!?\s*点歌\s*/,'').trim()
+if(query){
+this.searchQuery=query
+this.tab='queue'
+this.$nextTick(function(){this.doSearch()}.bind(this))
 }
-function updateStressStatus(){
-var el=document.getElementById('stressStatus');
-if(!stressTestRunning){return}
-var elapsed=((Date.now()-stressStartTime)/1000).toFixed(0);
-el.innerHTML='⏱ '+elapsed+'s | 💬 弹幕:'+stressStats.danmaku+' 🎁 礼物:'+stressStats.gift+' 💰 SC:'+stressStats.sc+' ⏭ 切歌:'+stressStats.skip+' ❌ 错误:'+stressStats.errors;
 }
-var stressStartTime=0;
-function startStressTest(){
-if(stressTestRunning){showToast('压力测试已在运行');return}
-stressTestRunning=true;
-stressStats={danmaku:0,gift:0,sc:0,skip:0,errors:0};
-stressStartTime=Date.now();
-var duration=parseInt(document.getElementById('stressDuration').value)||300;
-var danmakuRate=parseFloat(document.getElementById('stressDanmakuRate').value)||3;
-var giftRate=parseFloat(document.getElementById('stressGiftRate').value)||1;
-var scRate=parseFloat(document.getElementById('stressSCRate').value)||0.3;
-var skipInterval=parseInt(document.getElementById('stressSkipInterval').value)||60;
-showToast('压力测试开始! '+duration+'秒');
-if(danmakuRate>0){
-var danmakuMs=Math.max(100,Math.round(1000/danmakuRate));
+},
+resumeDanmaku:function(){
+var self=this
+if(this.danmakuResumeTimer)clearTimeout(this.danmakuResumeTimer)
+this.danmakuResumeTimer=setTimeout(function(){self.danmakuPaused=false},3000)
+},
+connectSSE:function(){
+if(this.sse){this.sse.close()}
+var self=this
+var url='/api/danmaku/stream'
+this.sse=new EventSource(url)
+this.sse.onopen=function(){
+self.sseReconnectAttempts=0
+self.apiGet('/api/danmaku/history?sinceId='+self.sseLastId,function(entries){
+entries.forEach(function(e){
+var exists=self.danmakuList.some(function(d){return d.id===e.id})
+if(!exists)self.danmakuList.push(e)
+})
+if(self.danmakuList.length>200)self.danmakuList=self.danmakuList.slice(-200)
+self.scrollDanmaku()
+})
+}
+this.sse.onmessage=function(event){
+try{
+var d=JSON.parse(event.data)
+if(d.id>self.sseLastId)self.sseLastId=d.id
+var exists=self.danmakuList.some(function(e){return e.id===d.id})
+if(!exists){
+self.danmakuList.push(d)
+if(self.danmakuList.length>200)self.danmakuList.shift()
+self.scrollDanmaku()
+}
+}catch(e){}
+}
+this.sse.addEventListener('statusUpdate',function(event){
+try{
+var d=JSON.parse(event.data)
+self.danmakuList.forEach(function(e){
+if(e.originalDanmakuId===d.originalDanmakuId&&e.isSongRequest){
+e.songRequestStatus=d.status
+}
+})
+}catch(e){}
+})
+this.sse.onerror=function(){
+self.sse.close()
+self.sse=null
+var delay=Math.min(1000*Math.pow(2,self.sseReconnectAttempts),30000)
+self.sseReconnectAttempts++
+setTimeout(function(){self.connectSSE()},delay)
+}
+},
+scrollDanmaku:function(){
+if(this.danmakuPaused)return
+var self=this
+this.$nextTick(function(){
+var el=self.$refs.danmakuListEl
+if(el)el.scrollTop=el.scrollHeight
+})
+},
+simGift:function(){
+this.apiPost('/api/debug/simulate/gift',{authorName:this.debugUsername||'测试用户',totalCoin:1000},function(){this.showToast('已模拟付费礼物');this.fetchGiftPool()}.bind(this))
+},
+simSC:function(){
+this.apiPost('/api/debug/simulate/sc',{authorName:this.debugUsername||'测试用户',price:30,content:''},function(){this.showToast('已模拟SC≥30元');this.fetchGiftPool()}.bind(this))
+},
+simSCSmall:function(){
+this.apiPost('/api/debug/simulate/sc',{authorName:this.debugUsername||'测试用户',price:10,content:''},function(){this.showToast('已模拟SC<30元');this.fetchGiftPool()}.bind(this))
+},
+simMember:function(){
+this.apiPost('/api/debug/simulate/member',{authorName:this.debugUsername||'测试用户'},function(){this.showToast('已模拟上舰');this.fetchGiftPool()}.bind(this))
+},
+simDanmaku:function(){
+if(!this.debugDanmaku.trim()){this.showToast('请输入弹幕内容');return}
+this.apiPost('/api/debug/simulate/danmaku',{authorName:this.debugUsername||'测试用户',content:this.debugDanmaku.trim()},function(d){this.showToast(d.success?'已模拟弹幕':'模拟失败')}.bind(this))
+},
+simSCSong:function(){
+if(!this.debugDanmaku.trim()){this.showToast('请输入SC点歌内容');return}
+this.apiPost('/api/debug/simulate/sc',{authorName:this.debugUsername||'测试用户',price:30,content:this.debugDanmaku.trim()},function(d){this.showToast(d.success?'已模拟SC点歌':'模拟失败')}.bind(this))
+},
+fetchGiftPool:function(){
+this.apiGet('/api/debug/gift-pool',function(d){this.giftPool=d.giftPool||[]}.bind(this))
+},
+fetchAnnouncement:function(){
+this.apiGet('/api/announcement',function(d){this.announcementText=d.text||''}.bind(this))
+},
+updateAnnouncement:function(){
+this.apiPost('/api/announcement',{text:this.announcementText},function(d){this.showToast(d.success?'公告已更新':'更新失败')}.bind(this))
+},
+startStressTest:function(){
+if(this.stressRunning){this.showToast('压力测试已在运行');return}
+this.stressRunning=true
+this.stressStats={danmaku:0,gift:0,sc:0,skip:0,errors:0}
+this.stressStartTime=Date.now()
+var self=this
+function rand(a){return a[Math.floor(Math.random()*a.length)]}
+function stressSend(url,body,type){
+var xhr=new XMLHttpRequest()
+xhr.open('POST',url,true)
+xhr.setRequestHeader('Content-Type','application/json')
+xhr.onload=function(){if(xhr.status===200)self.stressStats[type]=(self.stressStats[type]||0)+1;else self.stressStats.errors++;self.updateStressStatus()}
+xhr.onerror=function(){self.stressStats.errors++;self.updateStressStatus()}
+xhr.send(JSON.stringify(body))
+}
+if(this.stressDanmakuRate>0){
+var ms=Math.max(100,Math.round(1000/this.stressDanmakuRate))
 var t1=setInterval(function(){
-if(!stressTestRunning)return;
-var name=stressRand(stressUserNames);
-var song=stressRand(stressSongNames);
-var cmds=['点歌 '+song,'!点歌 '+song];
-var content=stressRand(cmds);
-stressSend('/api/debug/simulate/danmaku',{authorName:name,content:content},'danmaku');
-},danmakuMs);
-stressTestTimers.push(t1);
+if(!self.stressRunning)return
+var name=rand(stressUserNames);var song=rand(stressSongNames)
+stressSend('/api/debug/simulate/danmaku',{authorName:name,content:Math.random()>0.5?'点歌 '+song:'!点歌 '+song},'danmaku')
+},ms)
+this.stressTimers.push(t1)
 }
-if(giftRate>0){
-var giftMs=Math.max(200,Math.round(1000/giftRate));
+if(this.stressGiftRate>0){
+var ms2=Math.max(200,Math.round(1000/this.stressGiftRate))
 var t2=setInterval(function(){
-if(!stressTestRunning)return;
-var name=stressRand(stressUserNames);
-var coins=[1000,2000,5000,10000,50000,100000];
-var coin=stressRand(coins);
-stressSend('/api/debug/simulate/gift',{authorName:name,totalCoin:coin},'gift');
-},giftMs);
-stressTestTimers.push(t2);
+if(!self.stressRunning)return
+var name=rand(stressUserNames);var coins=[1000,2000,5000,10000,50000,100000]
+stressSend('/api/debug/simulate/gift',{authorName:name,totalCoin:rand(coins)},'gift')
+},ms2)
+this.stressTimers.push(t2)
 }
-if(scRate>0){
-var scMs=Math.max(500,Math.round(1000/scRate));
+if(this.stressSCRate>0){
+var ms3=Math.max(500,Math.round(1000/this.stressSCRate))
 var t3=setInterval(function(){
-if(!stressTestRunning)return;
-var name=stressRand(stressUserNames);
-var prices=[10,30,50,100,200,500];
-var price=stressRand(prices);
-var song=stressRand(stressSongNames);
-var scContents=['点歌 '+song,'','加油！','太好听了','再来一首','点歌'+song];
-var content=stressRand(scContents);
-stressSend('/api/debug/simulate/sc',{authorName:name,price:price,content:content},'sc');
-},scMs);
-stressTestTimers.push(t3);
+if(!self.stressRunning)return
+var name=rand(stressUserNames);var prices=[10,30,50,100,200,500]
+var song=rand(stressSongNames)
+stressSend('/api/debug/simulate/sc',{authorName:name,price:rand(prices),content:Math.random()>0.5?'点歌 '+song:''},'sc')
+},ms3)
+this.stressTimers.push(t3)
 }
-if(skipInterval>0){
-var t4=setInterval(function(){
-if(!stressTestRunning)return;
-stressSend('/api/queue/skip',{},'skip');
-},skipInterval*1000);
-stressTestTimers.push(t4);
+if(this.stressSkipInterval>0){
+var t4=setInterval(function(){if(!self.stressRunning)return;stressSend('/api/queue/skip',{},'skip')},this.stressSkipInterval*1000)
+this.stressTimers.push(t4)
 }
-var t5=setTimeout(function(){stopStressTest()},duration*1000);
-stressTestTimers.push(t5);
-updateStressStatus();
+var t5=setTimeout(function(){self.stopStressTest()},this.stressDuration*1000)
+this.stressTimers.push(t5)
+this.showToast('压力测试开始! '+this.stressDuration+'秒')
+this.updateStressStatus()
+},
+stopStressTest:function(){
+this.stressRunning=false
+this.stressTimers.forEach(function(t){clearInterval(t);clearTimeout(t)})
+this.stressTimers=[]
+var elapsed=((Date.now()-this.stressStartTime)/1000).toFixed(0)
+this.stressStatus='✅ 测试结束! 用时'+elapsed+'秒 | 💬'+this.stressStats.danmaku+' 🎁'+this.stressStats.gift+' 💰'+this.stressStats.sc+' ⏭'+this.stressStats.skip+' ❌'+this.stressStats.errors
+this.showToast('压力测试已停止')
+},
+updateStressStatus:function(){
+if(!this.stressRunning)return
+var elapsed=((Date.now()-this.stressStartTime)/1000).toFixed(0)
+this.stressStatus='⏱ '+elapsed+'s | 💬'+this.stressStats.danmaku+' 🎁'+this.stressStats.gift+' 💰'+this.stressStats.sc+' ⏭'+this.stressStats.skip+' ❌'+this.stressStats.errors
 }
-function stopStressTest(){
-stressTestRunning=false;
-for(var i=0;i<stressTestTimers.length;i++){clearInterval(stressTestTimers[i]);clearTimeout(stressTestTimers[i])}
-stressTestTimers=[];
-var el=document.getElementById('stressStatus');
-var elapsed=((Date.now()-stressStartTime)/1000).toFixed(0);
-el.innerHTML='✅ 测试结束! 用时'+elapsed+'秒 | 💬 弹幕:'+stressStats.danmaku+' 🎁 礼物:'+stressStats.gift+' 💰 SC:'+stressStats.sc+' ⏭ 切歌:'+stressStats.skip+' ❌ 错误:'+stressStats.errors;
-showToast('压力测试已停止');
+},
+mounted:function(){
+this.fetchQueue()
+this.fetchStatus()
+this.fetchActivityMode()
+this.fetchSongRequestConfig()
+this.fetchAnnouncement()
+this.connectSSE()
+var self=this
+setInterval(function(){self.fetchQueue()},1500)
+setInterval(function(){self.fetchStatus()},2000)
+},
+beforeUnmount:function(){
+if(this.sse)this.sse.close()
+this.stressTimers.forEach(function(t){clearInterval(t);clearTimeout(t)})
 }
+})
+app.mount('#app')
 </script>
 </body>
 </html>
