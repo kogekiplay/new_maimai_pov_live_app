@@ -990,6 +990,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         startFPSTimer()
         debug.startFlushTimer()
+        songCardManager.startExpirationTimer()
     }
 
     func stop() {
@@ -998,6 +999,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         MotionManager.shared.stopUpdates()
         deviceStatusManager?.stopMonitoring()
         stopFPSTimer()
+        songCardManager.stopExpirationTimer()
         DispatchQueue.main.async {
             self.debug.stopFlushTimer()
         }
@@ -1242,6 +1244,14 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func onGiftValueChanged(_ song: SongCardData, queueIndex: Int) {
         scheduleRefreshLeftPanel()
+    }
+
+    func onSongsExpired(_ songs: [SongCardData]) {
+        for song in songs {
+            let name = song.requesterName ?? "未知"
+            let title = song.songName
+            postMarquee("⏰ 超过15分钟未互动 \(name) 的 \(title) 已过期，欢迎重新点歌～", type: .songExpired)
+        }
     }
 
     func triggerSongCardSwitch() {

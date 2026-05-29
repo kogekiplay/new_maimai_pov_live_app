@@ -17,6 +17,7 @@ struct MarqueeItem {
         case gift = 2
         case superChat = 3
         case member = 4
+        case songExpired = 5
     }
 
     init(text: String, type: MarqueeItemType, mergeKey: String? = nil, mergeCount: Int = 1, textPrefix: String? = nil) {

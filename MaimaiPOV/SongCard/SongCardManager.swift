@@ -12,6 +12,7 @@ protocol SongCardDataProvider: AnyObject {
     func onQueueUpdated(_ songs: [SongCardData], change: QueueChange)
     func onSongRemoved(queueIndex: Int)
     func onGiftValueChanged(_ song: SongCardData, queueIndex: Int)
+    func onSongsExpired(_ songs: [SongCardData])
 }
 
 class SongCardManager: ObservableObject {
@@ -24,6 +25,10 @@ class SongCardManager: ObservableObject {
 
     private var saveTimer: Timer?
     private let saveDebounceInterval: TimeInterval = 1.0
+
+    private var expirationTimer: Timer?
+    private let expirationCheckInterval: TimeInterval = 30
+    var expirationTimeout: TimeInterval = 15 * 60
 
     var lockedEndIndex: Int {
         guard currentIndex >= 0 else { return 0 }
@@ -172,6 +177,46 @@ class SongCardManager: ObservableObject {
                 queue[i].lastOwnerActivityAt = Date()
             }
         }
+    }
+
+    func checkAndRemoveExpiredSongs() -> [SongCardData] {
+        let now = Date()
+        var expired: [SongCardData] = []
+
+        for i in stride(from: queue.count - 1, through: max(currentIndex + 1, 0), by: -1) {
+            let song = queue[i]
+            guard song.giftValue == 0 else { continue }
+            if now.timeIntervalSince(song.lastOwnerActivityAt) > expirationTimeout {
+                expired.append(song)
+            }
+        }
+
+        for song in expired {
+            if let index = queue.firstIndex(where: { $0.id == song.id }) {
+                removeSong(at: index)
+            }
+        }
+
+        return expired
+    }
+
+    func startExpirationTimer() {
+        guard expirationTimer == nil else { return }
+        expirationTimer = Timer.scheduledTimer(
+            withTimeInterval: expirationCheckInterval,
+            repeats: true
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            let expired = self.checkAndRemoveExpiredSongs()
+            if !expired.isEmpty {
+                self.delegate?.onSongsExpired(expired)
+            }
+        }
+    }
+
+    func stopExpirationTimer() {
+        expirationTimer?.invalidate()
+        expirationTimer = nil
     }
 
     func reorderQueueByGiftValue() {
