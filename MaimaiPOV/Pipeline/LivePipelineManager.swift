@@ -205,6 +205,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             )
 
             self.handleDanmakuForSongRequest(msg)
+            self.songCardManager.updateOwnerActivity(forName: msg.authorName)
         }
 
         blivechatClient.onGift = { [weak self] msg in

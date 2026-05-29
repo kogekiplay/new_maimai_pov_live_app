@@ -166,6 +166,14 @@ class SongCardManager: ObservableObject {
         userGiftPool.removeValue(forKey: name)
     }
 
+    func updateOwnerActivity(forName name: String) {
+        for i in 0..<queue.count {
+            if queue[i].requesterName == name {
+                queue[i].lastOwnerActivityAt = Date()
+            }
+        }
+    }
+
     func reorderQueueByGiftValue() {
         let lockedEnd = lockedEndIndex
         guard currentIndex >= 0, lockedEnd < queue.count else { return }
