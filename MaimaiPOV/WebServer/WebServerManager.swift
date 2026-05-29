@@ -10,6 +10,8 @@ class WebServerManager {
     private let queueHandler = QueueAPIHandler()
     private let searchHandler = SearchAPIHandler()
     private let debugHandler = DebugAPIHandler()
+    private let danmakuBuffer = DanmakuBufferManager.shared
+    private static let maxSSEConnections = 5
 
     func start() {
         guard !isRunning else { return }
@@ -244,6 +246,59 @@ class WebServerManager {
                 }
             default:
                 return .badRequest(.text("Method not allowed"))
+            }
+        }
+
+        server["/api/danmaku/stream"] = { [weak self] _ in
+            guard let self = self else { return .internalServerError }
+
+            let clientCount = self.danmakuBuffer.currentClientCount()
+            if clientCount >= WebServerManager.maxSSEConnections {
+                return .raw(503, "Too Many Connections", ["Content-Type": "text/plain; charset=utf-8"]) { writer in
+                    try writer.write(Data("Max SSE connections reached".utf8))
+                }
+            }
+
+            return .raw(200, "OK", [
+                "Content-Type": "text/event-stream; charset=utf-8",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*"
+            ]) { [weak self] writer in
+                let semaphore = DispatchSemaphore(value: 0)
+                let client = SSEClient(writer: writer, semaphore: semaphore)
+                self?.danmakuBuffer.addClient(client)
+
+                let keepAliveTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .utility))
+                keepAliveTimer.schedule(deadline: .now(), repeating: 15)
+                keepAliveTimer.setEventHandler {
+                    guard client.isActive else {
+                        keepAliveTimer.cancel()
+                        return
+                    }
+                    client.send(": keepalive\n\n")
+                }
+                keepAliveTimer.resume()
+
+                _ = semaphore.wait(timeout: .now() + 3600)
+
+                keepAliveTimer.cancel()
+                client.isActive = false
+                self?.danmakuBuffer.removeClient(client)
+            }
+        }
+
+        server["/api/danmaku/history"] = { [weak self] request in
+            guard self != nil else { return .internalServerError }
+
+            let sinceId = Int(request.queryParams.first(where: { $0.0 == "sinceId" })?.1 ?? "0") ?? 0
+            let entries = DanmakuBufferManager.shared.getHistory(sinceId: sinceId)
+
+            guard let jsonData = try? JSONEncoder().encode(entries) else {
+                return .internalServerError
+            }
+            return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                try writer.write(jsonData)
             }
         }
     }
