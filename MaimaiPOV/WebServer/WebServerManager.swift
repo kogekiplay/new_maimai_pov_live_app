@@ -168,7 +168,51 @@ class WebServerManager {
             }
         }
 
-        server["/api/song-request-config"] = { request in
+        server["/api/activity-mode"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            switch request.method {
+            case "GET":
+                let activityMode = self.pipeline?.activityMode ?? false
+                let smoothFactor = self.pipeline?.activitySmoothFactor ?? Config.activitySmoothFactor
+                let data = try? JSONSerialization.data(withJSONObject: [
+                    "activityMode": activityMode,
+                    "smoothFactor": Double(smoothFactor)
+                ])
+                guard let jsonData = data else { return .internalServerError }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            case "POST":
+                guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any] else {
+                    return .badRequest(.text("Invalid JSON"))
+                }
+                DispatchQueue.main.async {
+                    if let enabled = bodyData["activityMode"] as? Bool {
+                        self.pipeline?.activityMode = enabled
+                        self.pipeline?.updateActivityMode()
+                    }
+                    if let sf = bodyData["smoothFactor"] as? Double {
+                        self.pipeline?.activitySmoothFactor = Float(sf)
+                        self.pipeline?.updateActivitySmoothFactor()
+                    }
+                }
+                let activityMode = self.pipeline?.activityMode ?? false
+                let smoothFactor = self.pipeline?.activitySmoothFactor ?? Config.activitySmoothFactor
+                let data = try? JSONSerialization.data(withJSONObject: [
+                    "success": true,
+                    "activityMode": activityMode,
+                    "smoothFactor": Double(smoothFactor)
+                ])
+                guard let jsonData = data else { return .internalServerError }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            default:
+                return .badRequest(.text("Method not allowed"))
+            }
+        }
+
+        server["/api/song-request-config"] = { [weak self] request in
             switch request.method {
             case "GET":
                 let data = try? JSONSerialization.data(withJSONObject: [

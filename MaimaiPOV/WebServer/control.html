@@ -132,6 +132,20 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 <span class="threshold-unit">元</span>
 </div>
 </div>
+<div class="song-control-row">
+<span class="control-label" id="activityLabel">🏃 活动模式</span>
+<label class="toggle-switch">
+<input type="checkbox" id="activityModeToggle" onchange="toggleActivityMode()">
+<span class="toggle-slider"></span>
+</label>
+</div>
+<div class="song-control-row" id="smoothFactorRow" style="display:none">
+<span class="control-label">跟随速度</span>
+<div style="display:flex;align-items:center;flex:1;margin-left:12px">
+<input type="range" id="smoothFactorSlider" min="0.01" max="0.2" step="0.01" value="0.03" onchange="updateSmoothFactor()" oninput="document.getElementById('smoothFactorValue').textContent=this.value" style="flex:1;accent-color:#c084fc" />
+<span id="smoothFactorValue" style="font-size:12px;color:#8b7ba8;min-width:30px;text-align:right">0.03</span>
+</div>
+</div>
 </div>
 <div class="search-section">
 <h2>🔍 搜索添加</h2>
@@ -554,6 +568,71 @@ fetchQueue();
 setInterval(fetchQueue,1500);
 fetchAnnouncement();
 fetchSongRequestConfig();
+fetchActivityMode();
+function fetchActivityMode(){
+var xhr=new XMLHttpRequest();
+xhr.open('GET','/api/activity-mode',true);
+xhr.onload=function(){
+if(xhr.status===200){
+try{
+var data=JSON.parse(xhr.responseText);
+document.getElementById('activityModeToggle').checked=data.activityMode;
+document.getElementById('smoothFactorSlider').value=data.smoothFactor;
+document.getElementById('smoothFactorValue').textContent=data.smoothFactor;
+updateActivityLabel(data.activityMode);
+}catch(e){}
+}
+};
+xhr.send();
+}
+function updateActivityLabel(enabled){
+var label=document.getElementById('activityLabel');
+var row=document.getElementById('smoothFactorRow');
+if(enabled){
+label.textContent='🏃 活动模式已开启';
+label.classList.add('paused-active');
+row.style.display='flex';
+}else{
+label.textContent='🏃 活动模式';
+label.classList.remove('paused-active');
+row.style.display='none';
+}
+}
+function toggleActivityMode(){
+var enabled=document.getElementById('activityModeToggle').checked;
+var sf=parseFloat(document.getElementById('smoothFactorSlider').value)||0.03;
+var xhr=new XMLHttpRequest();
+xhr.open('POST','/api/activity-mode',true);
+xhr.setRequestHeader('Content-Type','application/json');
+xhr.onload=function(){
+if(xhr.status===200){
+try{
+var data=JSON.parse(xhr.responseText);
+document.getElementById('activityModeToggle').checked=data.activityMode;
+updateActivityLabel(data.activityMode);
+showToast(data.activityMode?'活动模式已开启':'活动模式已关闭');
+}catch(e){}
+}
+};
+xhr.send(JSON.stringify({activityMode:enabled,smoothFactor:sf}));
+}
+function updateSmoothFactor(){
+var sf=parseFloat(document.getElementById('smoothFactorSlider').value)||0.03;
+var enabled=document.getElementById('activityModeToggle').checked;
+var xhr=new XMLHttpRequest();
+xhr.open('POST','/api/activity-mode',true);
+xhr.setRequestHeader('Content-Type','application/json');
+xhr.onload=function(){
+if(xhr.status===200){
+try{
+var data=JSON.parse(xhr.responseText);
+document.getElementById('smoothFactorSlider').value=data.smoothFactor;
+document.getElementById('smoothFactorValue').textContent=data.smoothFactor;
+}catch(e){}
+}
+};
+xhr.send(JSON.stringify({activityMode:enabled,smoothFactor:sf}));
+}
 function fetchSongRequestConfig(){
 var xhr=new XMLHttpRequest();
 xhr.open('GET','/api/song-request-config',true);
