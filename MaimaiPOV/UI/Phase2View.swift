@@ -78,11 +78,19 @@ struct Phase2View: View {
             Button("恢复队列") {
                 pipeline.restoreQueueFromSnapshot()
             }
+            Button("仅保留礼物值") {
+                pipeline.restoreGiftValuesOnlyFromSnapshot()
+            }
             Button("不恢复", role: .destructive) {
                 pipeline.discardSnapshot()
             }
         } message: {
-            Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？")
+            let giftCount = pipeline.preservableGiftValueUserCount
+            if giftCount > 0 {
+                Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？\n（可继承\(giftCount)位用户的礼物值）")
+            } else {
+                Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？")
+            }
         }
         .onChange(of: pipeline.selectedLens) { pipeline.handleLensChange($0) }
         .onChange(of: pipeline.focusValue) { _ in pipeline.applyExposure() }
