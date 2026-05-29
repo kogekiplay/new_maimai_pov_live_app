@@ -266,7 +266,20 @@ class WebServerManager {
                 "Access-Control-Allow-Origin": "*"
             ]) { [weak self] writer in
                 let semaphore = DispatchSemaphore(value: 0)
-                let client = SSEClient(writer: writer, semaphore: semaphore)
+
+                let client = SSEClient(
+                    sendCallback: { message in
+                        do {
+                            try writer.write(Data(message.utf8))
+                            return true
+                        } catch {
+                            return false
+                        }
+                    },
+                    onDisconnect: {
+                        semaphore.signal()
+                    }
+                )
                 self?.danmakuBuffer.addClient(client)
 
                 let keepAliveTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .utility))

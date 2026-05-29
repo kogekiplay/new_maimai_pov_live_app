@@ -1,5 +1,4 @@
 import Foundation
-import Swifter
 
 enum DanmakuEntryType: String, Codable {
     case danmaku
@@ -21,6 +20,36 @@ struct DanmakuEntry: Codable {
     var songRequestStatus: String?
     let uid: String
     let originalDanmakuId: String
+}
+
+class SSEClient {
+    typealias SendCallback = (String) -> Bool
+
+    private let sendCallback: SendCallback
+    private let onDisconnect: () -> Void
+    var isActive: Bool = true
+    private let sendLock = NSLock()
+
+    init(sendCallback: @escaping SendCallback, onDisconnect: @escaping () -> Void) {
+        self.sendCallback = sendCallback
+        self.onDisconnect = onDisconnect
+    }
+
+    func send(_ message: String) {
+        guard isActive else { return }
+        sendLock.lock()
+        defer { sendLock.unlock() }
+        let success = sendCallback(message)
+        if !success {
+            isActive = false
+            onDisconnect()
+        }
+    }
+
+    func close() {
+        isActive = false
+        onDisconnect()
+    }
 }
 
 class DanmakuBufferManager {
@@ -149,34 +178,5 @@ class DanmakuBufferManager {
         for client in clients {
             client.send(message)
         }
-    }
-}
-
-class SSEClient {
-    private let writer: SocketWriter
-    private let semaphore: DispatchSemaphore
-    var isActive: Bool = true
-    private let sendLock = NSLock()
-
-    init(writer: SocketWriter, semaphore: DispatchSemaphore) {
-        self.writer = writer
-        self.semaphore = semaphore
-    }
-
-    func send(_ message: String) {
-        guard isActive else { return }
-        sendLock.lock()
-        defer { sendLock.unlock() }
-        do {
-            try writer.write(message)
-        } catch {
-            isActive = false
-            semaphore.signal()
-        }
-    }
-
-    func close() {
-        isActive = false
-        semaphore.signal()
     }
 }
