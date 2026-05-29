@@ -671,12 +671,6 @@ struct Phase2View: View {
             Text("Stabilizer").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.stabEnabled).labelsHidden()
             Spacer()
-            Text("Horizon").font(.caption2).foregroundColor(.gray)
-            Toggle("", isOn: Binding(
-                get: { Config.horizonReference },
-                set: { Config.horizonReference = $0 }
-            )).labelsHidden()
-            Spacer()
             Text("Preview").font(.caption2).foregroundColor(.gray)
             Toggle("", isOn: Binding(
                 get: { pipeline.previewEnabled },
