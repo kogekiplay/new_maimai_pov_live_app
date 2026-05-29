@@ -26,7 +26,19 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var pitch: Float = Config.pitch
     @Published var roll: Float = Config.roll
     @Published var stabEnabled: Bool = Config.stabEnabled
-    @Published var activityMode: Bool = false
+    @Published var activityMode: Bool = false {
+        didSet {
+            if activityMode && !oldValue {
+                savedYoloEnabled = yoloEnabled
+                yoloEnabled = false
+                Config.yoloEnabled = false
+            } else if !activityMode && oldValue {
+                yoloEnabled = savedYoloEnabled
+                Config.yoloEnabled = savedYoloEnabled
+            }
+        }
+    }
+    private var savedYoloEnabled: Bool = true
     @Published var activitySmoothFactor: Float = Config.activitySmoothFactor
     @Published var lagMs: Double = 0
 
