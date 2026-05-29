@@ -24,6 +24,8 @@ class MetalStabilizer {
     var anchorQuaternion: simd_quatf?
     var lensConfig: LensConfig
 
+    var horizonReference: Bool = true
+
     var fov: Float {
         get { uniforms.fovRadHalf * 360.0 / .pi }
         set { uniforms.fovRadHalf = newValue * .pi / 360.0 }
@@ -135,6 +137,26 @@ class MetalStabilizer {
         return devToCam * q * devToCamInv
     }
 
+    static func qRot(_ q: simd_quatf, _ v: simd_float3) -> simd_float3 {
+        let a = simd_float3(q.vector.x, q.vector.y, q.vector.z)
+        let t = 2.0 * simd_cross(a, v)
+        return v + q.vector.w * t + simd_cross(a, t)
+    }
+
+    static func horizonReferenced(_ q: simd_quatf) -> simd_quatf {
+        let forward = qRot(q, simd_float3(0, 0, 1))
+        let worldUp = simd_float3(0, 0, 1)
+        var forwardHoriz = simd_float3(forward.x, forward.y, 0)
+        if simd_length(forwardHoriz) < 0.001 {
+            forwardHoriz = simd_float3(1, 0, 0)
+        }
+        forwardHoriz = simd_normalize(forwardHoriz)
+        let right = simd_normalize(simd_cross(forwardHoriz, worldUp))
+        let down = simd_cross(forwardHoriz, right)
+        let matrix = simd_float3x3(columns: (right, down, forwardHoriz))
+        return simd_quaternion(matrix)
+    }
+
     func process(
         pixelBuffer: CVPixelBuffer,
         qCenter: simd_quatf,
@@ -180,7 +202,8 @@ class MetalStabilizer {
         let qb = Self.alignIMU(qBottom)
 
         if anchorQuaternion == nil {
-            setAnchor(qc)
+            let anchorQ = horizonReference ? Self.horizonReferenced(qc) : qc
+            setAnchor(anchorQ)
         }
 
         uniforms.qCenter = StabilizerUniforms.quatToFloat4(qc)

@@ -281,6 +281,16 @@ enum Config {
         }
         set { UserDefaults.standard.set(newValue, forKey: stabEnabledKey) }
     }
+    static let defaultHorizonReference: Bool = true
+    static var horizonReference: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: horizonReferenceKey) != nil else {
+                return defaultHorizonReference
+            }
+            return UserDefaults.standard.bool(forKey: horizonReferenceKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: horizonReferenceKey) }
+    }
     static let defaultPreviewEnabled: Bool = true
     static var previewEnabled: Bool {
         get {
@@ -521,6 +531,7 @@ enum Config {
     private static let pitchKey = "com.maimai.pitch"
     private static let rollKey = "com.maimai.roll"
     private static let stabEnabledKey = "com.maimai.stabEnabled"
+    private static let horizonReferenceKey = "com.maimai.horizonReference"
     private static let previewEnabledKey = "com.maimai.previewEnabled"
     private static let yoloEnabledKey = "com.maimai.yoloEnabled"
     private static let trackTargetRatioKey = "com.maimai.trackTargetRatio"

@@ -577,6 +577,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         let lensCfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
         let stab = MetalStabilizer(device: device, commandQueue: sharedCommandQueue, lensConfig: lensCfg)
         stab?.stabilizerEnabled = stabEnabled
+        stab?.horizonReference = Config.horizonReference
         stab?.fov = fov
         stab?.distRatio = distRatio
         stab?.yawDeg = yaw
