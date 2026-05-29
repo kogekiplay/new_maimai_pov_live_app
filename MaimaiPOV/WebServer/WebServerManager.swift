@@ -301,6 +301,72 @@ class WebServerManager {
                 try writer.write(jsonData)
             }
         }
+
+        server["/api/status"] = { [weak self] _ in
+            guard let self = self else { return .internalServerError }
+
+            let sem = DispatchSemaphore(value: 0)
+            var result: [String: Any] = [:]
+
+            DispatchQueue.main.async {
+                let streamManager = self.pipeline?.streamManager
+                let debug = self.pipeline?.debug ?? DebugInfoManager.shared
+                let deviceManager = self.pipeline?.deviceStatusManager
+
+                let thermalState: String
+                switch ProcessInfo.processInfo.thermalState {
+                case .nominal: thermalState = "nominal"
+                case .fair: thermalState = "fair"
+                case .serious: thermalState = "serious"
+                case .critical: thermalState = "critical"
+                @unknown default: thermalState = "unknown"
+                }
+
+                let batteryStateStr: String
+                switch deviceManager?.batteryState ?? .unknown {
+                case .unknown: batteryStateStr = "unknown"
+                case .unplugged: batteryStateStr = "unplugged"
+                case .charging: batteryStateStr = "charging"
+                case .full: batteryStateStr = "full"
+                @unknown default: batteryStateStr = "unknown"
+                }
+
+                let resolution: String
+                switch streamManager?.streamResolution ?? .r720p {
+                case .r720p: resolution = "1280x720"
+                case .r1080p: resolution = "1920x1080"
+                }
+
+                result = [
+                    "streaming": [
+                        "isStreaming": streamManager?.isStreaming ?? false,
+                        "status": streamManager?.streamStatus ?? "Idle",
+                        "duration": debug.streamingDuration,
+                        "bitrate": debug.rtmpBitrate,
+                        "resolution": resolution,
+                        "fps": debug.rtmpFPS
+                    ],
+                    "device": [
+                        "batteryLevel": deviceManager?.effectiveBatteryLevel ?? -1,
+                        "batteryState": batteryStateStr,
+                        "thermalState": thermalState
+                    ],
+                    "pipeline": [
+                        "lagMs": debug.pipelineLagMs
+                    ]
+                ]
+                sem.signal()
+            }
+
+            sem.wait()
+
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                return .internalServerError
+            }
+            return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                try writer.write(jsonData)
+            }
+        }
     }
 
     private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
