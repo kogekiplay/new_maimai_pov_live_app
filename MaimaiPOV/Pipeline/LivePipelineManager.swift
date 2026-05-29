@@ -518,12 +518,38 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         debug.log("[持久化] 已恢复队列: \(snapshot.queue.count) 首歌曲")
     }
 
+    @MainActor func restoreGiftValuesOnlyFromSnapshot() {
+        guard let snapshot = QueuePersistenceManager.shared.load() else { return }
+        songCardManager.restoreGiftValuesOnly(from: snapshot)
+        discardSnapshot()
+        let count = preservableGiftValueCount(from: snapshot)
+        debug.log("[持久化] 已继承\(count)位用户的礼物值")
+    }
+
     @MainActor func discardSnapshot() {
         QueuePersistenceManager.shared.clearSnapshot()
     }
 
     var hasRestorableSnapshot: Bool {
         QueuePersistenceManager.shared.hasSnapshot()
+    }
+
+    var preservableGiftValueUserCount: Int {
+        guard let snapshot = QueuePersistenceManager.shared.load() else { return 0 }
+        return preservableGiftValueCount(from: snapshot)
+    }
+
+    private func preservableGiftValueCount(from snapshot: QueueSnapshot) -> Int {
+        let startIndex = snapshot.currentIndex + 1
+        guard startIndex < snapshot.queue.count else { return 0 }
+        var names = Set<String>()
+        for i in startIndex..<snapshot.queue.count {
+            let song = snapshot.queue[i]
+            if let name = song.requesterName, song.giftValue > 0 {
+                names.insert(name)
+            }
+        }
+        return names.count
     }
 
     var snapshotAgeString: String {
