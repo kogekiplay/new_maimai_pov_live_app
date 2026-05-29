@@ -1,4 +1,5 @@
 import Foundation
+import Swifter
 
 enum DanmakuEntryType: String, Codable {
     case danmaku
