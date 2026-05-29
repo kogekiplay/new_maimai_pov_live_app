@@ -95,6 +95,19 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 .debug-btn-clear{background:rgba(246,72,97,0.2);color:#f64861;border:1px solid rgba(246,72,97,0.3)}
 .debug-btn-add{background:linear-gradient(135deg,#ff6b9d,#c084fc);color:#fff}
 .debug-btn-refresh{background:rgba(192,132,252,0.2);color:#c084fc;border:1px solid rgba(192,132,252,0.3)}
+.song-control-section{padding:8px 12px}
+.song-control-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(45,27,78,0.6);border-radius:10px;margin-bottom:6px}
+.song-control-row .control-label{font-size:13px;color:#e0d0f0;font-weight:600}
+.song-control-row .control-label.paused-active{color:#f64861}
+.toggle-switch{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(107,91,138,0.4);border-radius:26px;transition:0.3s}
+.toggle-slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#e0d0f0;border-radius:50%;transition:0.3s}
+.toggle-switch input:checked+.toggle-slider{background:linear-gradient(135deg,#ff6b9d,#c084fc)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(22px)}
+.threshold-input{width:70px;padding:4px 8px;border:1px solid rgba(192,132,252,0.3);border-radius:6px;background:rgba(45,27,78,0.6);color:#f0e6ff;font-size:13px;text-align:center;outline:none}
+.threshold-input:focus{border-color:rgba(255,107,157,0.5)}
+.threshold-unit{font-size:11px;color:#8b7ba8;margin-left:4px}
 </style>
 </head>
 <body>
@@ -103,6 +116,22 @@ body{background:linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 100%);color:#e0d0f0;fo
 <div class="remaining" id="remainingInfo"></div>
 </div>
 <div id="queueList"><div class="queue-empty">暂无歌曲</div></div>
+</div>
+<div class="song-control-section">
+<div class="song-control-row">
+<span class="control-label" id="pauseLabel">🚫 停止点歌</span>
+<label class="toggle-switch">
+<input type="checkbox" id="songRequestPaused" onchange="toggleSongRequestPause()">
+<span class="toggle-slider"></span>
+</label>
+</div>
+<div class="song-control-row">
+<span class="control-label">门槛金额</span>
+<div style="display:flex;align-items:center">
+<input type="number" class="threshold-input" id="pauseThreshold" value="30" min="1" max="9999" onchange="updatePauseThreshold()" />
+<span class="threshold-unit">元</span>
+</div>
+</div>
 </div>
 <div class="search-section">
 <h2>🔍 搜索添加</h2>
@@ -524,6 +553,71 @@ xhr.send(body?JSON.stringify(body):'{}');
 fetchQueue();
 setInterval(fetchQueue,1500);
 fetchAnnouncement();
+fetchSongRequestConfig();
+function fetchSongRequestConfig(){
+var xhr=new XMLHttpRequest();
+xhr.open('GET','/api/song-request-config',true);
+xhr.onload=function(){
+if(xhr.status===200){
+try{
+var data=JSON.parse(xhr.responseText);
+document.getElementById('songRequestPaused').checked=data.paused;
+document.getElementById('pauseThreshold').value=data.threshold;
+updatePauseLabel(data.paused);
+}catch(e){}
+}
+};
+xhr.send();
+}
+function updatePauseLabel(paused){
+var label=document.getElementById('pauseLabel');
+if(paused){
+label.textContent='🚫 点歌已暂停';
+label.classList.add('paused-active');
+}else{
+label.textContent='🚫 停止点歌';
+label.classList.remove('paused-active');
+}
+}
+function toggleSongRequestPause(){
+var paused=document.getElementById('songRequestPaused').checked;
+var threshold=parseInt(document.getElementById('pauseThreshold').value)||30;
+var xhr=new XMLHttpRequest();
+xhr.open('POST','/api/song-request-config',true);
+xhr.setRequestHeader('Content-Type','application/json');
+xhr.onload=function(){
+if(xhr.status===200){
+try{
+var data=JSON.parse(xhr.responseText);
+document.getElementById('songRequestPaused').checked=data.paused;
+updatePauseLabel(data.paused);
+showToast(data.paused?'已开启停止点歌':'已关闭停止点歌');
+}catch(e){}
+}
+};
+xhr.send(JSON.stringify({paused:paused,threshold:threshold}));
+}
+function updatePauseThreshold(){
+var threshold=parseInt(document.getElementById('pauseThreshold').value);
+if(!threshold||threshold<1){
+threshold=1;
+document.getElementById('pauseThreshold').value=threshold;
+}
+var paused=document.getElementById('songRequestPaused').checked;
+var xhr=new XMLHttpRequest();
+xhr.open('POST','/api/song-request-config',true);
+xhr.setRequestHeader('Content-Type','application/json');
+xhr.onload=function(){
+if(xhr.status===200){
+try{
+var data=JSON.parse(xhr.responseText);
+document.getElementById('pauseThreshold').value=data.threshold;
+showToast('门槛金额已更新为'+data.threshold+'元');
+}catch(e){}
+}
+};
+xhr.send(JSON.stringify({paused:paused,threshold:threshold}));
+}
 function fetchAnnouncement(){
 var xhr=new XMLHttpRequest();
 xhr.open('GET','/api/announcement',true);

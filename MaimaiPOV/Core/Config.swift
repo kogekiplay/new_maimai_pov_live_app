@@ -483,6 +483,26 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: deviceStatusEnabledKey) }
     }
 
+    static let defaultSongRequestPaused: Bool = false
+    static var songRequestPaused: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: songRequestPausedKey) != nil else {
+                return defaultSongRequestPaused
+            }
+            return UserDefaults.standard.bool(forKey: songRequestPausedKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: songRequestPausedKey) }
+    }
+
+    static let defaultSongRequestPauseThreshold: Int = 30
+    static var songRequestPauseThreshold: Int {
+        get {
+            let v = UserDefaults.standard.integer(forKey: songRequestPauseThresholdKey)
+            return v == 0 ? defaultSongRequestPauseThreshold : v
+        }
+        set { UserDefaults.standard.set(newValue, forKey: songRequestPauseThresholdKey) }
+    }
+
     // UserDefaults keys
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
@@ -530,6 +550,8 @@ enum Config {
     private static let streamBitrateKey = "com.maimai.streamBitrate"
     private static let marqueeSpeedKey = "com.maimai.marqueeSpeed"
     private static let deviceStatusEnabledKey = "com.maimai.deviceStatusEnabled"
+    private static let songRequestPausedKey = "com.maimai.songRequestPaused"
+    private static let songRequestPauseThresholdKey = "com.maimai.songRequestPauseThreshold"
 
     // Video encoding
     static let videoFPS: Int = 60

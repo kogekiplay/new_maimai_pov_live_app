@@ -167,6 +167,41 @@ class WebServerManager {
                 return .badRequest(.text("Method not allowed"))
             }
         }
+
+        server["/api/song-request-config"] = { request in
+            switch request.method {
+            case "GET":
+                let data = try? JSONSerialization.data(withJSONObject: [
+                    "paused": Config.songRequestPaused,
+                    "threshold": Config.songRequestPauseThreshold
+                ])
+                guard let jsonData = data else { return .internalServerError }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            case "POST":
+                guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any] else {
+                    return .badRequest(.text("Invalid JSON"))
+                }
+                if let paused = bodyData["paused"] as? Bool {
+                    Config.songRequestPaused = paused
+                }
+                if let threshold = bodyData["threshold"] as? Int, threshold > 0 {
+                    Config.songRequestPauseThreshold = threshold
+                }
+                let data = try? JSONSerialization.data(withJSONObject: [
+                    "success": true,
+                    "paused": Config.songRequestPaused,
+                    "threshold": Config.songRequestPauseThreshold
+                ])
+                guard let jsonData = data else { return .internalServerError }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            default:
+                return .badRequest(.text("Method not allowed"))
+            }
+        }
     }
 
     private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"

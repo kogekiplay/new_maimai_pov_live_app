@@ -243,6 +243,18 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let name = msg.authorName
             let originalQuery = result.originalQuery
 
+            if Config.songRequestPaused {
+                let giftValue = songCardManager.userGiftPool[name] ?? 0
+                let thresholdCoins = Config.songRequestPauseThreshold * 1000
+                if giftValue < thresholdCoins {
+                    DispatchQueue.main.async {
+                        self.debug.log("[点歌] 🚫 \(name) 点歌已暂停，送礼值不足(\(giftValue)/\(thresholdCoins))")
+                        self.postMarquee("🚫 \(name) 点歌已暂停，SC点歌仍可使用", type: .songFailure)
+                    }
+                    return
+                }
+            }
+
             DispatchQueue.main.async {
                 self.debug.log("[点歌] 解析: query=\"\(query)\" original=\"\(originalQuery)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
             }
@@ -358,6 +370,20 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     self.postMarquee("❌ \(name) 已有歌曲在队列中", type: .songFailure)
                 }
                 return
+            }
+
+            if Config.songRequestPaused {
+                let currentGiftValue = songCardManager.userGiftPool[name] ?? 0
+                let totalWithSC = currentGiftValue + sc.price * 1000
+                let thresholdCoins = Config.songRequestPauseThreshold * 1000
+                if totalWithSC < thresholdCoins {
+                    songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
+                    DispatchQueue.main.async {
+                        self.debug.log("[SC点歌] 🚫 \(name) 点歌已暂停，送礼值不足(\(totalWithSC)/\(thresholdCoins))")
+                        self.postMarquee("🚫 \(name) 点歌已暂停，SC点歌仍可使用", type: .songFailure)
+                    }
+                    return
+                }
             }
 
             var candidates = songDatabase.findCandidates(query: originalQuery)
