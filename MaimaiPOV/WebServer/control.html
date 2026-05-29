@@ -184,13 +184,32 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 .debug-btn-add{background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff}
 .debug-btn-refresh{background:rgba(192,132,252,0.2);color:var(--accent2);border:1px solid rgba(192,132,252,0.3)}
 
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal-box{background:var(--bg2);border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:100;display:flex;align-items:flex-end;justify-content:center;padding:0}
+.modal-box{background:var(--bg2);border-radius:14px 14px 0 0;padding:16px;max-width:500px;width:100%;text-align:center}
+.modal-box.center{border-radius:14px;align-self:center;max-width:300px}
 .modal-box p{margin-bottom:16px;font-size:14px;color:var(--text)}
 .modal-btns{display:flex;gap:10px;justify-content:center}
 .modal-btn{padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
 .modal-btn-cancel{background:rgba(107,91,138,0.4);color:var(--text)}
 .modal-btn-confirm{background:var(--danger);color:#fff}
+
+.danmaku-search-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.danmaku-search-box{background:var(--bg2);border-radius:14px 14px 0 0;padding:12px;max-width:500px;width:100%;max-height:70vh;display:flex;flex-direction:column}
+.danmaku-search-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.danmaku-search-header span{font-size:13px;color:var(--text);font-weight:600}
+.danmaku-search-close{width:28px;height:28px;border:none;border-radius:50%;background:rgba(107,91,138,0.4);color:var(--text);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.danmaku-search-results{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.danmaku-search-result{background:var(--bg-input);border-radius:10px;padding:8px 10px;margin-bottom:6px;display:flex;gap:8px;align-items:center}
+.dsr-cover{width:40px;height:40px;border-radius:6px;object-fit:cover;background:rgba(30,15,50,0.6);flex-shrink:0}
+.dsr-info{flex:1;min-width:0}
+.dsr-title{font-size:12px;font-weight:600;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dsr-meta{font-size:10px;color:var(--text-dim)}
+.dsr-diffs{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;align-items:center}
+.dsr-diff{font-size:9px;padding:2px 5px;border-radius:4px;cursor:pointer;border:1px solid transparent}
+.dsr-diff.selected{border-color:var(--accent1);box-shadow:0 0 6px rgba(255,107,157,0.3)}
+.dsr-add{padding:4px 8px;border:none;border-radius:6px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0}
+.dsr-add:active{opacity:0.7}
+.dsr-empty{text-align:center;padding:20px;color:var(--text-dim);font-size:13px}
 
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity 0.3s;pointer-events:none}
 .toast.show{opacity:1}
@@ -460,11 +479,36 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 </div>
 
 <div v-if="confirmClear" class="modal-overlay" @click.self="confirmClear=false">
-<div class="modal-box">
+<div class="modal-box center">
 <p>确定要清空整个队列吗？此操作不可撤销。</p>
 <div class="modal-btns">
 <button class="modal-btn modal-btn-cancel" @click="confirmClear=false">取消</button>
 <button class="modal-btn modal-btn-confirm" @click="clearQueue">确定清空</button>
+</div>
+</div>
+</div>
+
+<div v-if="danmakuSearchVisible" class="danmaku-search-panel" @click.self="danmakuSearchVisible=false">
+<div class="danmaku-search-box">
+<div class="danmaku-search-header">
+<span>🎵 帮 {{danmakuSearchUser}} 点歌</span>
+<button class="danmaku-search-close" @click="danmakuSearchVisible=false">✕</button>
+</div>
+<div v-if="danmakuSearchResults.length===0&&!danmakuSearchLoading" class="dsr-empty">搜索中...</div>
+<div v-else-if="danmakuSearchResults.length===0" class="dsr-empty">未找到歌曲</div>
+<div class="danmaku-search-results">
+<div v-for="r in danmakuSearchResults" :key="r.musicId" class="danmaku-search-result">
+<img v-if="r.coverURL" class="dsr-cover" :src="r.coverURL" loading="lazy" @error="$event.target.style.display='none'">
+<div v-else class="dsr-cover"></div>
+<div class="dsr-info">
+<div class="dsr-title">{{r.title}}</div>
+<div v-if="r.artist" class="dsr-meta">{{r.artist}}</div>
+<div class="dsr-diffs">
+<span v-for="(dv,dk) in diffMap(r)" :key="dk" class="dsr-diff" :class="[diffSmallClass(dk), danmakuSearchDiffs[r.musicId]===dk?'selected':'']" @click="selectDanmakuDiff(r.musicId,dk)">{{dk}} Lv.{{dv.level}}</span>
+<button class="dsr-add" @click="addSongForUser(r)">添加</button>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -493,6 +537,13 @@ selectedDiffs:{},
 songRequestPaused:false,
 pauseThreshold:30,
 confirmClear:false,
+danmakuSearchVisible:false,
+danmakuSearchUser:'',
+danmakuSearchUid:'',
+danmakuSearchQuery:'',
+danmakuSearchResults:[],
+danmakuSearchDiffs:{},
+danmakuSearchLoading:false,
 toastMsg:'',
 toastVisible:false,
 toastTimer:null,
@@ -712,11 +763,37 @@ if(d.isSongRequest){
 var content=d.content
 var query=content.replace(/^!?\s*点歌\s*/,'').trim()
 if(query){
-this.searchQuery=query
-this.tab='queue'
-this.$nextTick(function(){this.doSearch()}.bind(this))
+this.danmakuSearchUser=d.username
+this.danmakuSearchUid=d.uid||d.username
+this.danmakuSearchQuery=query
+this.danmakuSearchResults=[]
+this.danmakuSearchDiffs={}
+this.danmakuSearchLoading=true
+this.danmakuSearchVisible=true
+this.apiGet('/api/search?q='+encodeURIComponent(query),function(d){
+this.danmakuSearchResults=d.results||[]
+this.danmakuSearchLoading=false
+}.bind(this))
 }
 }
+},
+selectDanmakuDiff:function(musicId,diffName){
+this.danmakuSearchDiffs[musicId]=diffName
+},
+addSongForUser:function(r){
+var diffName=this.danmakuSearchDiffs[r.musicId]
+if(!diffName){
+var keys=Object.keys(this.diffMap(r))
+if(keys.length>0)diffName=keys[keys.length-1]
+}
+if(!diffName){this.showToast('请先选择难度');return}
+var diffMap={'BASIC':'绿','ADVANCED':'黄','EXPERT':'红','MASTER':'紫','Re:MASTER':'白','UTAGE':'宴'}
+var diffInput=diffMap[diffName]||diffName
+this.apiPost('/api/queue/add-for-user',{musicId:r.musicId,difficulty:diffInput,chartType:r.chartType,username:this.danmakuSearchUser},function(){
+this.showToast('已帮 '+this.danmakuSearchUser+' 点歌')
+this.fetchQueue()
+this.danmakuSearchVisible=false
+}.bind(this))
 },
 resumeDanmaku:function(){
 var self=this

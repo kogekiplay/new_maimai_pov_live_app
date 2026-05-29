@@ -96,6 +96,11 @@ class WebServerManager {
             return self.queueHandler.add(request: request)
         }
 
+        server["/api/queue/add-for-user"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.queueHandler.addForUser(request: request)
+        }
+
         server["/api/search"] = { [weak self] request in
             guard let self = self else { return .internalServerError }
             return self.searchHandler.search(request: request)

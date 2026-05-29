@@ -130,6 +130,86 @@ class QueueAPIHandler {
         return success ? getQueue() : .badRequest(.text("Invalid index"))
     }
 
+    func addForUser(request: HttpRequest) -> HttpResponse {
+        guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
+              let musicId = body["musicId"] as? Int else {
+            return .badRequest(.text("Missing or invalid 'musicId'"))
+        }
+
+        let difficulty = body["difficulty"] as? String
+        let chartType = body["chartType"] as? String
+        let username = body["username"] as? String ?? "LAN"
+
+        let sem = DispatchSemaphore(value: 0)
+        var success = false
+        var errorMsg: String?
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let pipeline = self.pipeline else {
+                errorMsg = "Pipeline not available"
+                sem.signal()
+                return
+            }
+
+            let db = pipeline.songDatabase
+            let candidates = db.findCandidates(query: String(musicId))
+            if candidates.candidates.isEmpty {
+                errorMsg = "Song not found: \(musicId)"
+                sem.signal()
+                return
+            }
+
+            var chartTypePreference: String? = chartType
+            if chartTypePreference == "std" { chartTypePreference = "standard" }
+
+            guard let song = db.pickByChartType(
+                candidates: candidates.candidates,
+                chartTypePreference: chartTypePreference,
+                diffInput: difficulty
+            ) else {
+                errorMsg = "Cannot pick song from candidates"
+                sem.signal()
+                return
+            }
+
+            let targetDiffNum = db.resolveDiffInput(difficulty)
+            guard let noteResult = db.findNote(song: song, targetDiffNum: targetDiffNum) else {
+                errorMsg = "No available difficulty for \(song.title)"
+                sem.signal()
+                return
+            }
+
+            let diffName = db.difficultyDisplayName(noteResult.diffName)
+            let levelStr = noteResult.levelValue.truncatingRemainder(dividingBy: 1) == 0
+                ? "\(Int(noteResult.levelValue))"
+                : "\(noteResult.levelValue)"
+
+            let cardData = SongCardData(
+                songName: song.title,
+                artist: song.artist ?? "",
+                difficulty: diffName,
+                level: levelStr,
+                requester: username,
+                requesterName: username,
+                musicId: song.id,
+                chartType: song.chartType,
+                isPriority: false,
+                bpm: song.bpm
+            )
+
+            pipeline.addSongToQueue(cardData)
+            success = true
+            sem.signal()
+        }
+
+        sem.wait()
+        if success {
+            return getQueue()
+        } else {
+            return .badRequest(.text(errorMsg ?? "Failed to add song"))
+        }
+    }
+
     func add(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
               let musicId = body["musicId"] as? Int else {
