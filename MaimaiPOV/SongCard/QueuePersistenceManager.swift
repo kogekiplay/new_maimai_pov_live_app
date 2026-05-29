@@ -7,7 +7,7 @@ struct QueueSnapshot: Codable {
     var currentIndex: Int
     var userGiftPool: [String: Int]
 
-    static let currentVersion = 1
+    static let currentVersion = 2
 }
 
 class QueuePersistenceManager {
@@ -86,7 +86,7 @@ class QueuePersistenceManager {
     private func loadFromURL(_ url: URL) -> QueueSnapshot? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         guard let snapshot = try? JSONDecoder().decode(QueueSnapshot.self, from: data) else { return nil }
-        guard snapshot.version == QueueSnapshot.currentVersion else { return nil }
+        guard snapshot.version <= QueueSnapshot.currentVersion else { return nil }
         return snapshot
     }
 }

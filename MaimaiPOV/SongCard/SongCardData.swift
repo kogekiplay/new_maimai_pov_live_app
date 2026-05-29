@@ -15,8 +15,9 @@ struct SongCardData: Codable, Identifiable {
     var bpm: Int?
     var giftValue: Int
     var addedAt: Date
+    var lastOwnerActivityAt: Date
 
-    init(id: UUID = UUID(), songName: String, artist: String, difficulty: String? = nil, level: String? = nil, coverURL: String? = nil, requester: String? = nil, requesterName: String? = nil, musicId: Int? = nil, chartType: String? = nil, isPriority: Bool = false, bpm: Int? = nil, giftValue: Int = 0, addedAt: Date = Date()) {
+    init(id: UUID = UUID(), songName: String, artist: String, difficulty: String? = nil, level: String? = nil, coverURL: String? = nil, requester: String? = nil, requesterName: String? = nil, musicId: Int? = nil, chartType: String? = nil, isPriority: Bool = false, bpm: Int? = nil, giftValue: Int = 0, addedAt: Date = Date(), lastOwnerActivityAt: Date = Date()) {
         self.id = id
         self.songName = songName
         self.artist = artist
@@ -31,6 +32,7 @@ struct SongCardData: Codable, Identifiable {
         self.bpm = bpm
         self.giftValue = giftValue
         self.addedAt = addedAt
+        self.lastOwnerActivityAt = lastOwnerActivityAt
     }
 
     init(from decoder: Decoder) throws {
@@ -49,6 +51,7 @@ struct SongCardData: Codable, Identifiable {
         bpm = try container.decodeIfPresent(Int.self, forKey: .bpm)
         giftValue = try container.decodeIfPresent(Int.self, forKey: .giftValue) ?? 0
         addedAt = try container.decodeIfPresent(Date.self, forKey: .addedAt) ?? Date()
+        lastOwnerActivityAt = try container.decodeIfPresent(Date.self, forKey: .lastOwnerActivityAt) ?? Date()
     }
 
     static func previewData() -> [SongCardData] {
