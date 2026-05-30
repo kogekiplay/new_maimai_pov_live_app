@@ -82,6 +82,7 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 .sr-pending{background:rgba(251,156,44,0.2);color:var(--warning)}
 .sr-success{background:rgba(34,187,91,0.2);color:var(--success)}
 .sr-rejected{background:rgba(246,72,97,0.2);color:var(--danger)}
+.sr-cancelled{background:rgba(192,132,252,0.2);color:var(--accent2)}
 .danmaku-song-request{cursor:pointer}
 .danmaku-song-request:active{opacity:0.7}
 .danmaku-empty{text-align:center;padding:30px 20px;color:var(--text-dim);font-size:13px}
@@ -668,12 +669,14 @@ srBadgeClass:function(s){
 if(!s)return''
 if(s==='success')return'sr-success'
 if(s==='pending')return'sr-pending'
+if(s==='cancelled')return'sr-cancelled'
 return'sr-rejected'
 },
 srBadgeText:function(s){
 if(!s)return''
 if(s==='success')return'✅'
 if(s==='pending')return'⏳'
+if(s==='cancelled')return'🗑'
 return'❌'
 },
 formatTime:function(ts){

@@ -186,10 +186,16 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
             let parseResult = self.danmakuParser.parse(msg.content)
             let isSongRequest: Bool
+            let isCancelRequest: Bool
             if case .songRequest = parseResult.type {
                 isSongRequest = true
+                isCancelRequest = false
+            } else if case .cancelRequest = parseResult.type {
+                isSongRequest = true
+                isCancelRequest = true
             } else {
                 isSongRequest = false
+                isCancelRequest = false
             }
 
             danmakuBuffer.addEntry(
@@ -204,7 +210,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 userGiftValue: self.songCardManager.userGiftPool[msg.authorName] ?? 0
             )
 
-            self.handleDanmakuForSongRequest(msg)
+            if isCancelRequest {
+                self.handleCancelSongRequest(msg)
+            } else {
+                self.handleDanmakuForSongRequest(msg)
+            }
             self.songCardManager.updateOwnerActivity(forName: msg.authorName)
         }
 
@@ -427,6 +437,32 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         case .notACommand:
             break
+        }
+    }
+
+    func handleCancelSongRequest(_ msg: DanmakuMessage) {
+        let name = msg.authorName
+
+        guard let index = songCardManager.findSongIndex(byName: name) else {
+            DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "rejected_not_found")
+            DispatchQueue.main.async {
+                self.debug.log("[取消] ❌ \(name) 没有在队列中的歌曲")
+                self.postMarquee("❌ \(name) 没有在队列中的歌曲", type: .songFailure)
+            }
+            return
+        }
+
+        let removedSong = songCardManager.queue[index]
+        let giftVal = removedSong.giftValue
+
+        DispatchQueue.main.async {
+            self.songCardManager.removeSong(at: index, preserveGift: true)
+
+            DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "cancelled")
+
+            let giftTag = giftVal > 0 ? "，礼物值已保留" : ""
+            self.debug.log("[取消] 🗑 \(name) 取消了点歌 \(removedSong.songName)\(giftTag)")
+            self.postMarquee("🗑 \(name) 取消了点歌\(giftTag)", type: .songFailure)
         }
     }
 

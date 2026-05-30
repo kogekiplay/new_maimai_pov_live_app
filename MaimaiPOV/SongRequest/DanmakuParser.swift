@@ -3,6 +3,7 @@ import Foundation
 struct ParseResult {
     enum ResultType {
         case songRequest(query: String, diffInput: String?, chartTypePreference: String?)
+        case cancelRequest
         case notACommand
     }
     let type: ResultType
@@ -18,6 +19,13 @@ class DanmakuParser {
 
     func parse(_ text: String) -> ParseResult {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
+
+        let cancelPattern = "^!?取消$"
+        if let cancelRegex = try? NSRegularExpression(pattern: cancelPattern, options: []),
+           let _ = cancelRegex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) {
+            return ParseResult(type: .cancelRequest, originalQuery: trimmed)
+        }
+
         let nsRange = NSRange(trimmed.startIndex..., in: trimmed)
         guard commandPrefixPattern.firstMatch(in: trimmed, range: nsRange) != nil else {
             return ParseResult(type: .notACommand, originalQuery: "")
