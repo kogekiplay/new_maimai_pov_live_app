@@ -101,12 +101,12 @@ class SongCardManager: ObservableObject {
         scheduleSave()
     }
 
-    func removeSong(at index: Int) {
+    func removeSong(at index: Int, preserveGift: Bool = false) {
         guard index >= 0, index < queue.count else { return }
         let removedName = queue[index].requesterName
         let wasInRightPanel = index >= currentIndex + 1
         queue.remove(at: index)
-        if let name = removedName {
+        if let name = removedName, !preserveGift {
             resetGiftPool(name: name)
         }
 

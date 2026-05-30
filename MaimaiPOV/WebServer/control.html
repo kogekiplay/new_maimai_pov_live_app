@@ -739,12 +739,12 @@ if(idx===0){
 this.confirmRemoveIndex=idx
 return
 }
-this.apiPost('/api/queue/remove',{index:idx},function(){this.fetchQueue()}.bind(this))
+this.apiPost('/api/queue/remove',{index:idx,preserveGift:true},function(){this.fetchQueue()}.bind(this))
 },
 confirmRemoveSong:function(){
 var idx=this.confirmRemoveIndex
 this.confirmRemoveIndex=-1
-this.apiPost('/api/queue/remove',{index:idx},function(){this.fetchQueue();this.showToast('已删除当前播放歌曲')}.bind(this))
+this.apiPost('/api/queue/remove',{index:idx,preserveGift:true},function(){this.fetchQueue();this.showToast('已删除当前播放歌曲')}.bind(this))
 },
 toggleActivityMode:function(){
 this.apiPost('/api/activity-mode',{activityMode:this.activityMode},function(d){
@@ -837,7 +837,7 @@ for(var i=0;i<this.queueData.queue.length;i++){
 if(this.queueData.queue[i].requester===this.danmakuSearchUser){existingIndex=i;break}
 }
 if(existingIndex>=0){
-this.apiPost('/api/queue/remove',{index:existingIndex},function(){doAdd()})
+this.apiPost('/api/queue/remove',{index:existingIndex,preserveGift:true},function(){doAdd()})
 }else{
 doAdd()
 }

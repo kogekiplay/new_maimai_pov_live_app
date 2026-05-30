@@ -95,6 +95,8 @@ class QueueAPIHandler {
             return .badRequest(.text("Missing or invalid 'index'"))
         }
 
+        let preserveGift = body["preserveGift"] as? Bool ?? false
+
         let sem = DispatchSemaphore(value: 0)
         var success = false
 
@@ -113,7 +115,7 @@ class QueueAPIHandler {
             let ci = manager.currentIndex
             let wasInLockedArea = index <= ci + 1
 
-            manager.removeSong(at: index)
+            manager.removeSong(at: index, preserveGift: preserveGift)
 
             if manager.queue.isEmpty {
                 pipeline.leftPanelCompositor?.clearAll()
@@ -184,6 +186,8 @@ class QueueAPIHandler {
                 ? "\(Int(noteResult.levelValue))"
                 : "\(noteResult.levelValue)"
 
+            let giftVal = pipeline.songCardManager.userGiftPool[username] ?? 0
+
             let cardData = SongCardData(
                 songName: song.title,
                 artist: song.artist ?? "",
@@ -194,7 +198,8 @@ class QueueAPIHandler {
                 musicId: song.id,
                 chartType: song.chartType,
                 isPriority: false,
-                bpm: song.bpm
+                bpm: song.bpm,
+                giftValue: giftVal
             )
 
             pipeline.addSongToQueue(cardData)
