@@ -19,7 +19,7 @@ enum StreamResolution: String, CaseIterable {
 class RTMPStreamManager: ObservableObject {
     @Published var isStreaming: Bool = false
     @Published var streamStatus: String = "Idle"
-    @Published var streamResolution: StreamResolution = .r720p
+    @Published var streamResolution: StreamResolution = .r1080p
     @Published var videoBitrate: Int = Config.streamBitrate
 
     private struct AudioSyncEntry {
@@ -118,6 +118,7 @@ class RTMPStreamManager: ObservableObject {
                 maxKeyFrameIntervalDuration: 2
             )
             videoSettings.profileLevel = kVTProfileLevel_H264_High_AutoLevel as String
+            videoSettings.bitRateMode = .constant
             videoSettings.allowFrameReordering = false
             videoSettings.dataRateLimits = [Double(bitrateBps) / 8.0 * 2.0, 1.0]
             await stream.setVideoSettings(videoSettings)
