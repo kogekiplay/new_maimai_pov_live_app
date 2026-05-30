@@ -261,6 +261,25 @@ class SongCardManager: ObservableObject {
         delegate?.onCurrentSongChanged(nil)
     }
 
+    func restoreAllGiftValues(from snapshot: QueueSnapshot) {
+        var playedNames = Set<String>()
+        if snapshot.currentIndex >= 0 {
+            for i in 0...snapshot.currentIndex where i < snapshot.queue.count {
+                if let name = snapshot.queue[i].requesterName {
+                    playedNames.insert(name)
+                }
+            }
+        }
+        var carriedGifts: [String: Int] = [:]
+        for (name, value) in snapshot.userGiftPool where value > 0 && !playedNames.contains(name) {
+            carriedGifts[name] = value
+        }
+        guard !carriedGifts.isEmpty else { return }
+        userGiftPool.merge(carriedGifts) { $0 + $1 }
+        delegate?.onQueueUpdated([], change: .fullRefresh)
+        delegate?.onCurrentSongChanged(nil)
+    }
+
     func forceSave() {
         cancelPendingSave()
         performSave()

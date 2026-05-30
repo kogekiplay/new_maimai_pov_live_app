@@ -658,6 +658,14 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         debug.log("[持久化] 已继承\(count)位用户的礼物值")
     }
 
+    @MainActor func restoreAllGiftValuesFromSnapshot() {
+        guard let snapshot = QueuePersistenceManager.shared.load() else { return }
+        songCardManager.restoreAllGiftValues(from: snapshot)
+        discardSnapshot()
+        let count = allPreservableGiftValueCount(from: snapshot)
+        debug.log("[持久化] 已继承全部\(count)位用户的礼物值")
+    }
+
     @MainActor func discardSnapshot() {
         QueuePersistenceManager.shared.clearSnapshot()
     }
@@ -671,6 +679,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         return preservableGiftValueCount(from: snapshot)
     }
 
+    var allPreservableGiftValueUserCount: Int {
+        guard let snapshot = QueuePersistenceManager.shared.load() else { return 0 }
+        return allPreservableGiftValueCount(from: snapshot)
+    }
+
     private func preservableGiftValueCount(from snapshot: QueueSnapshot) -> Int {
         let startIndex = snapshot.currentIndex + 1
         guard startIndex < snapshot.queue.count else { return 0 }
@@ -682,6 +695,18 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
         }
         return names.count
+    }
+
+    private func allPreservableGiftValueCount(from snapshot: QueueSnapshot) -> Int {
+        var playedNames = Set<String>()
+        if snapshot.currentIndex >= 0 {
+            for i in 0...snapshot.currentIndex where i < snapshot.queue.count {
+                if let name = snapshot.queue[i].requesterName {
+                    playedNames.insert(name)
+                }
+            }
+        }
+        return snapshot.userGiftPool.filter { $0.value > 0 && !playedNames.contains($0.key) }.count
     }
 
     var snapshotAgeString: String {

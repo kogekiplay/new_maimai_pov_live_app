@@ -78,16 +78,20 @@ struct Phase2View: View {
             Button("恢复队列") {
                 pipeline.restoreQueueFromSnapshot()
             }
-            Button("仅保留礼物值") {
+            Button("保留未演奏礼物值") {
                 pipeline.restoreGiftValuesOnlyFromSnapshot()
+            }
+            Button("保留所有礼物值") {
+                pipeline.restoreAllGiftValuesFromSnapshot()
             }
             Button("不恢复", role: .destructive) {
                 pipeline.discardSnapshot()
             }
         } message: {
-            let giftCount = pipeline.preservableGiftValueUserCount
-            if giftCount > 0 {
-                Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？\n（可继承\(giftCount)位用户的礼物值）")
+            let songGiftCount = pipeline.preservableGiftValueUserCount
+            let allGiftCount = pipeline.allPreservableGiftValueUserCount
+            if allGiftCount > 0 {
+                Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？\n（未演奏\(songGiftCount)位 / 全部\(allGiftCount)位用户可继承礼物值）")
             } else {
                 Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？")
             }
