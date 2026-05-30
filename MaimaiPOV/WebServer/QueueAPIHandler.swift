@@ -331,10 +331,12 @@ class QueueAPIHandler {
     }
 
     func getUserInfo(request: HttpRequest) -> HttpResponse {
-        guard let username = request.queryParams.first(where: { $0.0 == "username" })?.1,
-              !username.isEmpty else {
+        guard let rawUsername = request.queryParams.first(where: { $0.0 == "username" })?.1,
+              !rawUsername.isEmpty else {
             return .badRequest(.text("Missing 'username' parameter"))
         }
+
+        let username = rawUsername.removingPercentEncoding ?? rawUsername
 
         let sem = DispatchSemaphore(value: 0)
         var result: [String: Any] = [:]
