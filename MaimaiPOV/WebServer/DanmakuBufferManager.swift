@@ -129,6 +129,13 @@ class DanmakuBufferManager {
         return buffer.filter { $0.id > sinceId }
     }
 
+    func getHistoryForUser(username: String, limit: Int = 20) -> [DanmakuEntry] {
+        lock.lock()
+        defer { lock.unlock() }
+        let entries = buffer.filter { $0.username == username }
+        return Array(entries.suffix(limit))
+    }
+
     func addClient(_ client: SSEClient) {
         clientLock.lock()
         sseClients.append(client)

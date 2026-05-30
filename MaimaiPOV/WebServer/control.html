@@ -213,6 +213,31 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 .dsr-add:active{opacity:0.7}
 .dsr-empty{text-align:center;padding:20px;color:var(--text-dim);font-size:13px}
 
+.user-info-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.user-info-box{background:var(--bg2);border-radius:14px 14px 0 0;padding:12px;max-width:500px;width:100%;max-height:75vh;display:flex;flex-direction:column}
+.user-info-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.user-info-header span{font-size:14px;color:var(--text-bright);font-weight:700}
+.user-info-close{width:28px;height:28px;border:none;border-radius:50%;background:rgba(107,91,138,0.4);color:var(--text);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.user-info-gift{font-size:11px;color:var(--success);margin-left:6px}
+.user-info-song{background:var(--bg-card);border-radius:10px;padding:10px;margin-bottom:8px;display:flex;gap:8px;align-items:center;border:1px solid rgba(255,107,157,0.2)}
+.user-info-song-cover{width:48px;height:48px;border-radius:8px;object-fit:cover;background:rgba(30,15,50,0.6);flex-shrink:0}
+.user-info-song-info{flex:1;min-width:0}
+.user-info-song-name{font-size:13px;font-weight:600;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-info-song-meta{font-size:10px;color:var(--text-dim);display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;margin-top:2px}
+.user-info-song-gift{font-size:10px;color:var(--success)}
+.user-info-cancel-btn{padding:6px 12px;border:none;border-radius:8px;background:rgba(246,72,97,0.2);color:var(--danger);font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0}
+.user-info-cancel-btn:active{opacity:0.7}
+.user-info-actions{display:flex;gap:8px;margin-bottom:8px}
+.user-info-action-btn{flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+.user-info-action-btn:active{opacity:0.7}
+.user-info-action-btn.primary{background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff}
+.user-info-section-title{font-size:11px;color:var(--text-dim);margin-bottom:4px;font-weight:600}
+.user-info-danmaku{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0}
+.user-info-danmaku-item{padding:4px 0;border-bottom:1px solid rgba(192,132,252,0.05);font-size:11px}
+.user-info-danmaku-content{color:var(--text);word-break:break-all}
+.user-info-danmaku-time{color:var(--text-dim);font-size:9px;margin-left:4px}
+.user-info-danmaku-empty{text-align:center;padding:12px;color:var(--text-dim);font-size:12px}
+
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity 0.3s;pointer-events:none}
 .toast.show{opacity:1}
 
@@ -501,6 +526,43 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 </div>
 </div>
 
+<div v-if="userInfoVisible" class="user-info-panel" @click.self="userInfoVisible=false">
+<div class="user-info-box">
+<div class="user-info-header">
+<span>👤 {{userInfoData.username}}<span v-if="userInfoData.giftValue>0" class="user-info-gift">🎁{{(userInfoData.giftValue/1000).toFixed(1)}}元</span></span>
+<button class="user-info-close" @click="userInfoVisible=false">✕</button>
+</div>
+<div v-if="userInfoData.currentSong" class="user-info-song">
+<img v-if="userInfoData.currentSong.coverURL" class="user-info-song-cover" :src="userInfoData.currentSong.coverURL" @error="$event.target.style.display='none'">
+<div v-else class="user-info-song-cover"></div>
+<div class="user-info-song-info">
+<div class="user-info-song-name">{{userInfoData.currentSong.songName}}</div>
+<div class="user-info-song-meta">
+<span v-if="userInfoData.currentSong.difficulty" :style="{color:diffColor(userInfoData.currentSong.difficulty)}">{{userInfoData.currentSong.difficulty}}</span>
+<span v-if="userInfoData.currentSong.level">Lv.{{userInfoData.currentSong.level}}</span>
+<span v-if="userInfoData.currentSong.chartType" class="cs-badge" :class="chartBadgeClass(userInfoData.currentSong.chartType)" style="font-size:8px">{{chartLabel(userInfoData.currentSong.chartType)}}</span>
+<span v-if="userInfoData.currentSong.giftValue>0" class="user-info-song-gift">🎁{{(userInfoData.currentSong.giftValue/1000).toFixed(1)}}元</span>
+</div>
+</div>
+<button class="user-info-cancel-btn" @click="cancelSongForUser">🗑 取消点歌</button>
+</div>
+<div class="user-info-actions">
+<button class="user-info-action-btn primary" @click="openDanmakuSearchFromUserInfo">🎵 帮点歌</button>
+</div>
+<div class="user-info-section-title">💬 最近弹幕</div>
+<div class="user-info-danmaku">
+<div v-if="userInfoData.recentDanmaku&&userInfoData.recentDanmaku.length>0">
+<div v-for="(d,i) in userInfoData.recentDanmaku" :key="i" class="user-info-danmaku-item">
+<span class="user-info-danmaku-content">{{d.content}}</span>
+<span class="user-info-danmaku-time">{{formatTime(d.timestamp)}}</span>
+<span v-if="d.isSongRequest" class="song-request-badge" :class="srBadgeClass(d.songRequestStatus)">{{srBadgeText(d.songRequestStatus)}}</span>
+</div>
+</div>
+<div v-else class="user-info-danmaku-empty">暂无弹幕记录</div>
+</div>
+</div>
+</div>
+
 <div v-if="danmakuSearchVisible" class="danmaku-search-panel" @click.self="danmakuSearchVisible=false">
 <div class="danmaku-search-box">
 <div class="danmaku-search-header">
@@ -562,6 +624,8 @@ danmakuSearchResults:[],
 danmakuSearchDiffs:{},
 danmakuSearchLoading:false,
 confirmRemoveIndex:-1,
+userInfoVisible:false,
+userInfoData:{username:'',giftValue:0,currentSong:null,recentDanmaku:[]},
 toastMsg:'',
 toastVisible:false,
 toastTimer:null,
@@ -793,17 +857,16 @@ this.fetchQueue()
 }.bind(this))
 },
 onDanmakuClick:function(d){
+this.danmakuSearchUser=d.username
+this.danmakuSearchUid=d.uid||d.username
 var content=d.content
 var query=content.replace(/^!?\s*点歌\s*/,'').trim()
 if(!query||query===content.trim())query=content.trim()
-this.danmakuSearchUser=d.username
-this.danmakuSearchUid=d.uid||d.username
 this.danmakuSearchQuery=query
-this.danmakuSearchResults=[]
-this.danmakuSearchDiffs={}
-this.danmakuSearchLoading=false
-this.danmakuSearchVisible=true
-this.doDanmakuSearch()
+this.apiGet('/api/user-info?username='+encodeURIComponent(d.username),function(info){
+this.userInfoData=info
+this.userInfoVisible=true
+}.bind(this))
 },
 doDanmakuSearch:function(){
 var q=this.danmakuSearchQuery.trim()
@@ -832,6 +895,7 @@ self.apiPost('/api/queue/add-for-user',{musicId:r.musicId,difficulty:diffInput,c
 self.showToast('已帮 '+self.danmakuSearchUser+' 点歌')
 self.fetchQueue()
 self.danmakuSearchVisible=false
+self.userInfoVisible=false
 })
 }
 if(this.danmakuSearchUserInQueue){
@@ -847,6 +911,24 @@ doAdd()
 }else{
 doAdd()
 }
+},
+cancelSongForUser:function(){
+var self=this
+this.apiPost('/api/queue/cancel-for-user',{username:this.userInfoData.username},function(){
+self.showToast('已取消 '+self.userInfoData.username+' 的点歌')
+self.userInfoVisible=false
+self.fetchQueue()
+self.apiGet('/api/user-info?username='+encodeURIComponent(self.userInfoData.username),function(info){
+self.userInfoData=info
+}.bind(self))
+})
+},
+openDanmakuSearchFromUserInfo:function(){
+this.danmakuSearchResults=[]
+this.danmakuSearchDiffs={}
+this.danmakuSearchLoading=false
+this.danmakuSearchVisible=true
+this.doDanmakuSearch()
 },
 resumeDanmaku:function(){
 var self=this

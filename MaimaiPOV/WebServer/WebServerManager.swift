@@ -101,6 +101,16 @@ class WebServerManager {
             return self.queueHandler.addForUser(request: request)
         }
 
+        server["/api/queue/cancel-for-user"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.queueHandler.cancelSongForUser(request: request)
+        }
+
+        server["/api/user-info"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            return self.queueHandler.getUserInfo(request: request)
+        }
+
         server["/api/search"] = { [weak self] request in
             guard let self = self else { return .internalServerError }
             return self.searchHandler.search(request: request)

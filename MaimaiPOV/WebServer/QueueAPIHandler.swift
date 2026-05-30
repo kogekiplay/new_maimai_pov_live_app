@@ -293,4 +293,106 @@ class QueueAPIHandler {
             return .badRequest(.text(errorMsg ?? "Failed to add song"))
         }
     }
+
+    func cancelSongForUser(request: HttpRequest) -> HttpResponse {
+        guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
+              let username = body["username"] as? String else {
+            return .badRequest(.text("Missing or invalid 'username'"))
+        }
+
+        let sem = DispatchSemaphore(value: 0)
+        var success = false
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let pipeline = self.pipeline else {
+                sem.signal()
+                return
+            }
+            let manager = pipeline.songCardManager
+
+            if let index = manager.findSongIndex(byName: username) {
+                let wasInLockedArea = index <= manager.currentIndex + 1
+                manager.removeSong(at: index, preserveGift: true)
+
+                if manager.queue.isEmpty {
+                    pipeline.leftPanelCompositor?.clearAll()
+                    pipeline.rightPanelCompositor?.clearAll()
+                } else if wasInLockedArea {
+                    pipeline.refreshRightPanel()
+                }
+                success = true
+            }
+
+            sem.signal()
+        }
+
+        sem.wait()
+        return success ? getQueue() : .badRequest(.text("User has no song in queue"))
+    }
+
+    func getUserInfo(request: HttpRequest) -> HttpResponse {
+        guard let username = request.queryParams.first(where: { $0.0 == "username" })?.1,
+              !username.isEmpty else {
+            return .badRequest(.text("Missing 'username' parameter"))
+        }
+
+        let sem = DispatchSemaphore(value: 0)
+        var result: [String: Any] = [:]
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let pipeline = self.pipeline else {
+                sem.signal()
+                return
+            }
+            let manager = pipeline.songCardManager
+
+            var info: [String: Any] = [
+                "username": username,
+                "giftValue": manager.userGiftPool[username] ?? 0
+            ]
+
+            if let index = manager.findSongIndex(byName: username) {
+                let song = manager.queue[index]
+                var songInfo: [String: Any] = [
+                    "songName": song.songName,
+                    "artist": song.artist,
+                    "giftValue": song.giftValue
+                ]
+                if let diff = song.difficulty { songInfo["difficulty"] = diff }
+                if let level = song.level { songInfo["level"] = level }
+                if let ct = song.chartType { songInfo["chartType"] = ct }
+                if let mid = song.musicId {
+                    songInfo["musicId"] = mid
+                    songInfo["coverURL"] = self.coverURL(from: mid)
+                }
+                info["currentSong"] = songInfo
+            } else {
+                info["currentSong"] = nil
+            }
+
+            let history = DanmakuBufferManager.shared.getHistoryForUser(username: username, limit: 20)
+            var danmakuList: [[String: Any]] = []
+            for entry in history {
+                var item: [String: Any] = [
+                    "content": entry.content,
+                    "timestamp": entry.timestamp,
+                    "type": entry.type.rawValue
+                ]
+                if entry.isSongRequest {
+                    item["isSongRequest"] = true
+                    if let status = entry.songRequestStatus {
+                        item["songRequestStatus"] = status
+                    }
+                }
+                danmakuList.append(item)
+            }
+            info["recentDanmaku"] = danmakuList
+
+            result = info
+            sem.signal()
+        }
+
+        sem.wait()
+        return .ok(.json(result))
+    }
 }
