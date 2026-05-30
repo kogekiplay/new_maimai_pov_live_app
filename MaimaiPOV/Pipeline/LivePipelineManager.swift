@@ -437,6 +437,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         case .notACommand:
             break
+        case .cancelRequest:
+            break
         }
     }
 
@@ -607,6 +609,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             DispatchQueue.main.async {
                 self.postMarquee("💰 感谢 \(sc.authorName) 的SC ¥\(sc.price)", type: .superChat)
             }
+        case .cancelRequest:
+            break
         }
     }
 
