@@ -2,7 +2,7 @@ name: Build iOS App
 
 on:
   push:
-    branches: [main, master, feature/rollback-main]
+    branches: [main, master, feature/rollback-main, 2026-05-31-troll1]
   workflow_dispatch:
 
 concurrency:
@@ -60,16 +60,16 @@ jobs:
         run: |
           mkdir -p build/ipa/Payload
           cp -r "${{ steps.find-app.outputs.app_path }}" build/ipa/Payload/ 2>/dev/null || \
-          cp -r "build/MaimaiPOV.xcarchive/Products/Applications/MaimaiPOV.app" build/ipa/Payload/
+          cp -r "build/MaimaiPOV.xcarchive/Products/Applications/MaimaiPOV1.app" build/ipa/Payload/
           cd build/ipa
-          zip -r MaimaiPOV.ipa Payload/
+          zip -r MaimaiPOV1.ipa Payload/
           cd ../..
           echo "=== IPA created ==="
-          ls -lh build/ipa/MaimaiPOV.ipa
+          ls -lh build/ipa/MaimaiPOV1.ipa
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MaimaiPOV
-          path: build/ipa/MaimaiPOV.ipa
+          name: MaimaiPOV1
+          path: build/ipa/MaimaiPOV1.ipa
           retention-days: 30
