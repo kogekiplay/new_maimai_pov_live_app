@@ -319,18 +319,8 @@ class RTMPStreamManager: ObservableObject {
 
         guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
 
-        let inputChannelCount = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription)?.pointee.mChannelsPerFrame ?? 1
-        let needsMonoFormat = audioMixer?.isStereoMixEnabled == true && inputChannelCount >= 2
-
-        if needsMonoFormat {
-            if cachedAudioFormat == nil || cachedAudioFormat!.channelCount != 1 {
-                let sampleRate = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription)?.pointee.mSampleRate ?? 44100.0
-                cachedAudioFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
-            }
-        } else {
-            if cachedAudioFormat == nil || cachedAudioFormat!.channelCount != inputChannelCount {
-                cachedAudioFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
-            }
+        if cachedAudioFormat == nil {
+            cachedAudioFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
         }
         guard let audioFormat = cachedAudioFormat else { return }
 
@@ -338,53 +328,42 @@ class RTMPStreamManager: ObservableObject {
         guard let pcmBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: frameCount) else { return }
         pcmBuffer.frameLength = frameCount
 
-        if needsMonoFormat {
-            let tempFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
-            guard let tempBuffer = AVAudioPCMBuffer(pcmFormat: tempFormat, frameCapacity: frameCount) else { return }
-            tempBuffer.frameLength = frameCount
-            let copyStatus = CMSampleBufferCopyPCMDataIntoAudioBufferList(
-                sampleBuffer,
-                at: 0,
-                frameCount: Int32(frameCount),
-                into: tempBuffer.mutableAudioBufferList
-            )
-            guard copyStatus == noErr else { return }
+        let copyStatus = CMSampleBufferCopyPCMDataIntoAudioBufferList(
+            sampleBuffer,
+            at: 0,
+            frameCount: Int32(frameCount),
+            into: pcmBuffer.mutableAudioBufferList
+        )
+        guard copyStatus == noErr else { return }
 
-            if let mixer = audioMixer {
-                let processedBuffer = mixer.process(tempBuffer)
-                let outputFrameLength = min(Int(processedBuffer.frameLength), Int(pcmBuffer.frameCapacity))
-                pcmBuffer.frameLength = AVAudioFrameCount(outputFrameLength)
-                if let src = processedBuffer.floatChannelData?[0], let dst = pcmBuffer.floatChannelData?[0] {
-                    dst.initialize(from: src, count: outputFrameLength)
+        let finalBuffer: AVAudioPCMBuffer
+        if let mixer = audioMixer {
+            let processedBuffer = mixer.process(pcmBuffer)
+            if processedBuffer === pcmBuffer {
+                finalBuffer = pcmBuffer
+            } else {
+                let monoFormat = AVAudioFormat(standardFormatWithSampleRate: audioFormat.sampleRate, channels: 1)
+                guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: frameCount) else {
+                    finalBuffer = pcmBuffer
+                    return
                 }
+                let copyLength = min(Int(processedBuffer.frameLength), Int(outputBuffer.frameCapacity))
+                outputBuffer.frameLength = AVAudioFrameCount(copyLength)
+                if let src = processedBuffer.floatChannelData?[0], let dst = outputBuffer.floatChannelData?[0] {
+                    dst.initialize(from: src, count: copyLength)
+                }
+                finalBuffer = outputBuffer
             }
         } else {
-            let copyStatus = CMSampleBufferCopyPCMDataIntoAudioBufferList(
-                sampleBuffer,
-                at: 0,
-                frameCount: Int32(frameCount),
-                into: pcmBuffer.mutableAudioBufferList
-            )
-            guard copyStatus == noErr else { return }
-
-            if let mixer = audioMixer {
-                let processedBuffer = mixer.process(pcmBuffer)
-                if processedBuffer !== pcmBuffer {
-                    let outputFrameLength = min(Int(processedBuffer.frameLength), Int(pcmBuffer.frameCapacity))
-                    pcmBuffer.frameLength = AVAudioFrameCount(outputFrameLength)
-                    if let src = processedBuffer.floatChannelData?[0], let dst = pcmBuffer.floatChannelData?[0] {
-                        dst.initialize(from: src, count: outputFrameLength)
-                    }
-                }
-            }
+            finalBuffer = pcmBuffer
         }
 
-        let sampleTime = AVAudioFramePosition(alignedTime * audioFormat.sampleRate)
-        let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)
+        let sampleTime = AVAudioFramePosition(alignedTime * finalBuffer.format.sampleRate)
+        let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: finalBuffer.format.sampleRate)
 
         audioSyncLock.lock()
         audioSyncQueue.append(AudioSyncEntry(
-            pcmBuffer: pcmBuffer, audioTime: audioTime, alignedTime: alignedTime
+            pcmBuffer: finalBuffer, audioTime: audioTime, alignedTime: alignedTime
         ))
         while audioSyncQueue.count > 1,
               audioSyncQueue.last!.alignedTime - audioSyncQueue.first!.alignedTime > audioQueueMaxDuration {

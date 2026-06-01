@@ -15,6 +15,8 @@ class AudioMixer: ObservableObject {
     private var smoothedLeftLevel: Float = 0
     private var smoothedRightLevel: Float = 0
     private var smoothedMixedLevel: Float = 0
+    private var levelUpdateCounter: Int = 0
+    private let levelUpdateInterval: Int = 3
 
     func process(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         if isStereoMixEnabled && input.format.channelCount >= 2 {
@@ -28,8 +30,10 @@ class AudioMixer: ObservableObject {
         let frameLength = Int(input.frameLength)
         guard frameLength > 0 else { return input }
 
-        let leftChannel = input.floatChannelData![0]
-        let rightChannel = input.floatChannelData![1]
+        guard let leftChannel = input.floatChannelData?[0],
+              let rightChannel = input.floatChannelData?[1] else {
+            return input
+        }
 
         var leftSum: Float = 0
         var rightSum: Float = 0
@@ -57,12 +61,7 @@ class AudioMixer: ObservableObject {
 
         monoBuffer?.frameLength = AVAudioFrameCount(frameLength)
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.leftLevel = self.smoothedLeftLevel
-            self.rightLevel = self.smoothedRightLevel
-            self.mixedLevel = self.smoothedMixedLevel
-        }
+        updateLevelsOnMain()
 
         return monoBuffer ?? input
     }
@@ -71,7 +70,9 @@ class AudioMixer: ObservableObject {
         let frameLength = Int(input.frameLength)
         guard frameLength > 0 else { return input }
 
-        let channelData = input.floatChannelData![0]
+        guard let channelData = input.floatChannelData?[0] else {
+            return input
+        }
 
         var sum: Float = 0
         for i in 0..<frameLength {
@@ -82,14 +83,25 @@ class AudioMixer: ObservableObject {
         smoothedRightLevel = smoothedLeftLevel
         smoothedMixedLevel = smoothedLeftLevel
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.leftLevel = self.smoothedLeftLevel
-            self.rightLevel = self.smoothedRightLevel
-            self.mixedLevel = self.smoothedMixedLevel
-        }
+        updateLevelsOnMain()
 
         return input
+    }
+
+    private func updateLevelsOnMain() {
+        levelUpdateCounter += 1
+        guard levelUpdateCounter >= levelUpdateInterval else { return }
+        levelUpdateCounter = 0
+
+        let ll = smoothedLeftLevel
+        let rl = smoothedRightLevel
+        let ml = smoothedMixedLevel
+
+        DispatchQueue.main.async { [weak self] in
+            self?.leftLevel = ll
+            self?.rightLevel = rl
+            self?.mixedLevel = ml
+        }
     }
 
     private func ensureMonoBuffer(frameLength: Int, sampleRate: Float64) {
