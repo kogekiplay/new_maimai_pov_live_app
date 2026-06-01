@@ -173,9 +173,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         }.store(in: &cancellables)
 
         audioDeviceManager.onSourceChanged = { [weak self] source in
-            self?.camera.switchAudioInput(to: source)
             self?.audioMixer.isStereoMixEnabled = (source == .externalStereo)
-            self?.streamManager.resetAudioState()
         }
 
         setupBlivechatCallbacks()
