@@ -301,6 +301,37 @@ class RTMPStreamManager: ObservableObject {
         let videoTimeSeconds = timestamp.seconds
         audioSyncLock.lock()
         var audioToRelease: [(AVAudioPCMBuffer, AVAudioTime)] = []
+
+        if lastReleasedAudioTime > 0 && !audioSyncQueue.isEmpty {
+            let firstAlignedTime = audioSyncQueue.first!.alignedTime
+            let gap = firstAlignedTime - lastReleasedAudioTime
+            if gap > 0.05 && gap < 5.0, let audioFormat = cachedAudioFormat {
+                let gapDuration = min(gap, 2.0)
+                let silenceFrameCount = AVAudioFrameCount(gapDuration * audioFormat.sampleRate)
+                let framesPerBuffer = AVAudioFrameCount(audioFormat.sampleRate * 0.01)
+                var remainingFrames = silenceFrameCount
+                var silenceTime = lastReleasedAudioTime
+
+                while remainingFrames > 0 {
+                    let chunkSize = min(remainingFrames, framesPerBuffer)
+                    if let silenceBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: chunkSize) {
+                        silenceBuffer.frameLength = chunkSize
+                        for ch in 0..<Int(audioFormat.channelCount) {
+                            if let channelData = silenceBuffer.floatChannelData?[ch] {
+                                memset(channelData, 0, Int(chunkSize) * MemoryLayout<Float>.size)
+                            }
+                        }
+                        let silenceSampleTime = AVAudioFramePosition(silenceTime * audioFormat.sampleRate)
+                        let silenceAudioTime = AVAudioTime(sampleTime: silenceSampleTime, atRate: audioFormat.sampleRate)
+                        audioToRelease.append((silenceBuffer, silenceAudioTime))
+                    }
+                    silenceTime += Double(chunkSize) / audioFormat.sampleRate
+                    remainingFrames -= chunkSize
+                }
+                lastReleasedAudioTime = firstAlignedTime
+            }
+        }
+
         while !audioSyncQueue.isEmpty, audioSyncQueue.first!.alignedTime <= videoTimeSeconds {
             let entry = audioSyncQueue.removeFirst()
             audioToRelease.append((entry.pcmBuffer, entry.audioTime))
