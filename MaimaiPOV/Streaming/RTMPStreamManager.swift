@@ -319,8 +319,13 @@ class RTMPStreamManager: ObservableObject {
 
         guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
 
-        if cachedAudioFormat == nil {
-            cachedAudioFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
+        let newFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
+        if let newFormat = newFormat {
+            if cachedAudioFormat == nil ||
+               cachedAudioFormat!.sampleRate != newFormat.sampleRate ||
+               cachedAudioFormat!.channelCount != newFormat.channelCount {
+                cachedAudioFormat = newFormat
+            }
         }
         guard let audioFormat = cachedAudioFormat else { return }
 
@@ -336,9 +341,10 @@ class RTMPStreamManager: ObservableObject {
         )
         guard copyStatus == noErr else { return }
 
+        var bufferToQueue = pcmBuffer
         if let mixer = audioMixer {
             if mixer.isStereoMixEnabled && audioFormat.channelCount >= 2 {
-                _ = mixer.process(pcmBuffer)
+                bufferToQueue = mixer.process(pcmBuffer)
             } else {
                 mixer.calculateLevel(pcmBuffer)
             }
@@ -349,7 +355,7 @@ class RTMPStreamManager: ObservableObject {
 
         audioSyncLock.lock()
         audioSyncQueue.append(AudioSyncEntry(
-            pcmBuffer: pcmBuffer, audioTime: audioTime, alignedTime: alignedTime
+            pcmBuffer: bufferToQueue, audioTime: audioTime, alignedTime: alignedTime
         ))
         while audioSyncQueue.count > 1,
               audioSyncQueue.last!.alignedTime - audioSyncQueue.first!.alignedTime > audioQueueMaxDuration {
