@@ -67,6 +67,7 @@ class RTMPStreamManager: ObservableObject {
     private var videoBufferCount: Int = 0
     private var audioBufferCount: Int = 0
     private let bufferCountLock = NSLock()
+    private var lastAudioAlignedTime: Double = 0
 
     @MainActor
     func startPublish(url: String, streamKey: String) {
@@ -352,6 +353,36 @@ class RTMPStreamManager: ObservableObject {
         let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)
 
         audioSyncLock.lock()
+
+        if lastAudioAlignedTime > 0 {
+            let gap = alignedTime - lastAudioAlignedTime
+            if gap > 0.05 && gap < 5.0 {
+                let silenceFrameCount = AVAudioFrameCount(gap * audioFormat.sampleRate)
+                let framesPerBuffer = AVAudioFrameCount(audioFormat.sampleRate * 0.01)
+                var remainingFrames = silenceFrameCount
+                var silenceTime = lastAudioAlignedTime
+
+                while remainingFrames > 0 {
+                    let chunkSize = min(remainingFrames, framesPerBuffer)
+                    if let silenceBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: chunkSize) {
+                        silenceBuffer.frameLength = chunkSize
+                        memset(silenceBuffer.mutableAudioBufferList.pointee.mBuffers.mData, 0, Int(silenceBuffer.mutableAudioBufferList.pointee.mBuffers.mDataByteSize))
+                        let silenceSampleTime = AVAudioFramePosition(silenceTime * audioFormat.sampleRate)
+                        let silenceAudioTime = AVAudioTime(sampleTime: silenceSampleTime, atRate: audioFormat.sampleRate)
+                        audioSyncQueue.append(AudioSyncEntry(
+                            pcmBuffer: silenceBuffer, audioTime: silenceAudioTime, alignedTime: silenceTime
+                        ))
+                        bufferCountLock.lock()
+                        audioBufferCount += 1
+                        bufferCountLock.unlock()
+                    }
+                    silenceTime += Double(chunkSize) / audioFormat.sampleRate
+                    remainingFrames -= chunkSize
+                }
+            }
+        }
+        lastAudioAlignedTime = alignedTime
+
         audioSyncQueue.append(AudioSyncEntry(
             pcmBuffer: bufferToQueue, audioTime: audioTime, alignedTime: alignedTime
         ))
