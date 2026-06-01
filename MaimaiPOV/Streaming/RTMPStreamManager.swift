@@ -355,6 +355,9 @@ class RTMPStreamManager: ObservableObject {
         audioSyncQueue.append(AudioSyncEntry(
             pcmBuffer: bufferToQueue, audioTime: audioTime, alignedTime: alignedTime
         ))
+        bufferCountLock.lock()
+        audioBufferCount += 1
+        bufferCountLock.unlock()
         while audioSyncQueue.count > 1,
               audioSyncQueue.last!.alignedTime - audioSyncQueue.first!.alignedTime > audioQueueMaxDuration {
             audioSyncQueue.removeFirst()
@@ -364,6 +367,12 @@ class RTMPStreamManager: ObservableObject {
 
     func resetAudioState() {
         cachedAudioFormat = nil
+        audioSyncLock.lock()
+        audioSyncQueue.removeAll()
+        audioSyncLock.unlock()
+        bufferCountLock.lock()
+        audioBufferCount = 0
+        bufferCountLock.unlock()
     }
 
     @MainActor
@@ -467,6 +476,7 @@ class RTMPStreamManager: ObservableObject {
             lock.unlock()
         }
         videoFormatDescription = nil
+        cachedAudioFormat = nil
         Task { @MainActor in
             DebugInfoManager.shared.log("RTMP: 缓冲区强制清空")
         }

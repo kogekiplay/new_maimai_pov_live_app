@@ -183,6 +183,62 @@ class CameraCaptureManager: NSObject, ObservableObject {
     }
 
     func switchAudioInput(to source: AudioDeviceManager.AudioSource) {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+
+            switch source {
+            case .builtInMic:
+                self.configureAudioSession()
+            case .externalMono, .externalStereo:
+                self.configureExternalAudioSession()
+            }
+
+            self.reconfigureAudioInput()
+            self.masterClock = self.session.masterClock
+        }
+    }
+
+    private func configureExternalAudioSession() {
+        let audioSession = AVAudioSession.sharedInstance()
+        try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+        try? audioSession.setActive(true)
+        let inputs = audioSession.availableInputs
+        let isExternal: (AVAudioSessionPortDescription) -> Bool = { $0.portType == AVAudioSession.Port.usbAudio || $0.portType == .headsetMic }
+        let externalInput = inputs?.first(where: isExternal)
+        if let externalInput {
+            try? audioSession.setPreferredInput(externalInput)
+        }
+    }
+
+    private func reconfigureAudioInput() {
+        session.beginConfiguration()
+
+        if let existing = currentAudioInput {
+            session.removeInput(existing)
+            currentAudioInput = nil
+        }
+
+        guard let audioDevice = AVCaptureDevice.default(for: .audio),
+              let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
+              session.canAddInput(audioInput) else {
+            print("CameraCaptureManager: Cannot reconfigure audio input")
+            session.commitConfiguration()
+            return
+        }
+        session.addInput(audioInput)
+        currentAudioInput = audioInput
+
+        if !session.outputs.contains(where: { $0 is AVCaptureAudioDataOutput }) {
+            guard session.canAddOutput(audioOutput) else {
+                print("CameraCaptureManager: Cannot add audio output")
+                session.commitConfiguration()
+                return
+            }
+            session.addOutput(audioOutput)
+            audioOutput.setSampleBufferDelegate(self, queue: sessionQueue)
+        }
+
+        session.commitConfiguration()
     }
 
     private func configureFormat(for device: AVCaptureDevice) {
