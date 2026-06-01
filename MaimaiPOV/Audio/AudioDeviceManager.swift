@@ -30,20 +30,23 @@ class AudioDeviceManager: ObservableObject {
         }
     }
 
+    private func isExternalPort(_ portType: AVAudioSession.Port) -> Bool {
+        return portType == AVAudioSession.Port.usbAudio || portType == .headsetMic
+    }
+
     func detectCurrentDevices() {
         availableSources = [.builtInMic]
         isExternalDeviceConnected = false
         externalDeviceName = nil
 
-        if let inputs = audioSession.availableInputs {
-            for input in inputs {
-                if input.portType == .USBAudio || input.portType == .headsetMic {
-                    availableSources.append(.externalMono)
-                    availableSources.append(.externalStereo)
-                    externalDeviceName = input.portName
-                    isExternalDeviceConnected = true
-                    break
-                }
+        guard let inputs = audioSession.availableInputs else { return }
+        for input in inputs {
+            if isExternalPort(input.portType) {
+                availableSources.append(.externalMono)
+                availableSources.append(.externalStereo)
+                externalDeviceName = input.portName
+                isExternalDeviceConnected = true
+                break
             }
         }
 
@@ -73,17 +76,19 @@ class AudioDeviceManager: ObservableObject {
             try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
             try audioSession.setActive(true)
 
-            if let inputs = audioSession.availableInputs,
-               let builtInMicInput = inputs.first(where: { $0.portType == .builtInMic }) {
-                try audioSession.setPreferredInput(builtInMicInput)
+            guard let inputs = audioSession.availableInputs else { return }
+            let builtInMicInput = inputs.first(where: { $0.portType == .builtInMic })
+            guard let builtInMicInput else { return }
+            try audioSession.setPreferredInput(builtInMicInput)
 
-                if let dataSources = builtInMicInput.dataSources,
-                   let backMic = dataSources.first(where: { $0.orientation == .back }) {
-                    if let supportedPatterns = backMic.supportedPolarPatterns, supportedPatterns.contains(.cardioid) {
-                        try? backMic.setPreferredPolarPattern(.cardioid)
-                    }
-                    try? builtInMicInput.setPreferredDataSource(backMic)
+            let dataSources = builtInMicInput.dataSources
+            let backMic = dataSources?.first(where: { $0.orientation == .back })
+            if let backMic {
+                let supportedPatterns = backMic.supportedPolarPatterns
+                if let supportedPatterns, supportedPatterns.contains(.cardioid) {
+                    try? backMic.setPreferredPolarPattern(.cardioid)
                 }
+                try? builtInMicInput.setPreferredDataSource(backMic)
             }
             try? audioSession.setPreferredInputOrientation(.portrait)
         } catch {
@@ -97,7 +102,7 @@ class AudioDeviceManager: ObservableObject {
             try audioSession.setActive(true)
 
             let inputs = audioSession.availableInputs
-            let externalInput = inputs?.first(where: { $0.portType == .USBAudio || $0.portType == .headsetMic })
+            let externalInput = inputs?.first(where: { isExternalPort($0.portType) })
             if let externalInput {
                 try audioSession.setPreferredInput(externalInput)
                 externalDeviceName = externalInput.portName
@@ -114,7 +119,6 @@ class AudioDeviceManager: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             guard let self else { return }
-            let previousSource = self.selectedSource
             self.detectCurrentDevices()
 
             if let reason = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt {

@@ -190,17 +190,22 @@ class CameraCaptureManager: NSObject, ObservableObject {
             case .builtInMic:
                 self.configureAudioSession()
             case .externalMono, .externalStereo:
-                let audioSession = AVAudioSession.sharedInstance()
-                try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
-                try? audioSession.setActive(true)
-                let inputs = audioSession.availableInputs
-                let externalInput = inputs?.first(where: { $0.portType == .USBAudio || $0.portType == .headsetMic })
-                if let externalInput {
-                    try? audioSession.setPreferredInput(externalInput)
-                }
+                self.configureExternalAudioSession()
             }
 
             self.reconfigureAudioInput()
+        }
+    }
+
+    private func configureExternalAudioSession() {
+        let audioSession = AVAudioSession.sharedInstance()
+        try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+        try? audioSession.setActive(true)
+        let inputs = audioSession.availableInputs
+        let isExternal: (AVAudioSessionPortDescription) -> Bool = { $0.portType == AVAudioSession.Port.usbAudio || $0.portType == .headsetMic }
+        let externalInput = inputs?.first(where: isExternal)
+        if let externalInput {
+            try? audioSession.setPreferredInput(externalInput)
         }
     }
 
