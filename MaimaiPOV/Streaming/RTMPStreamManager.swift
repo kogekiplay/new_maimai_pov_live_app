@@ -363,9 +363,6 @@ class RTMPStreamManager: ObservableObject {
     }
 
     func resetAudioState() {
-        audioSyncLock.lock()
-        audioSyncQueue.removeAll()
-        audioSyncLock.unlock()
         cachedAudioFormat = nil
     }
 

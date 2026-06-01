@@ -20,6 +20,7 @@ class CameraCaptureManager: NSObject, ObservableObject {
     private var currentAudioInput: AVCaptureDeviceInput?
     private var currentDuration: CMTime = CMTime(value: 1, timescale: 240)
     private var currentISO: Float = 0.0
+    private var isAudioSwitching = false
 
     var onVideoFrame: ((CVPixelBuffer, Double) -> Void)?
     var onAudioSample: ((CMSampleBuffer, Double) -> Void)?
@@ -185,6 +186,7 @@ class CameraCaptureManager: NSObject, ObservableObject {
     func switchAudioInput(to source: AudioDeviceManager.AudioSource) {
         sessionQueue.async { [weak self] in
             guard let self else { return }
+            self.isAudioSwitching = true
 
             switch source {
             case .builtInMic:
@@ -194,6 +196,11 @@ class CameraCaptureManager: NSObject, ObservableObject {
             }
 
             self.reconfigureAudioInput()
+            self.masterClock = self.session.masterClock
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                self?.isAudioSwitching = false
+            }
         }
     }
 
@@ -428,6 +435,7 @@ extension CameraCaptureManager: AVCaptureVideoDataOutputSampleBufferDelegate,
     }
 
     private func handleAudioSample(_ sampleBuffer: CMSampleBuffer) {
+        guard !isAudioSwitching else { return }
         guard let masterClock else { return }
 
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
