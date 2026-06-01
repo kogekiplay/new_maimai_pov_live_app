@@ -320,12 +320,10 @@ class RTMPStreamManager: ObservableObject {
         guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
 
         let newFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
-        if let newFormat = newFormat {
-            if cachedAudioFormat == nil ||
-               cachedAudioFormat!.sampleRate != newFormat.sampleRate ||
-               cachedAudioFormat!.channelCount != newFormat.channelCount {
-                cachedAudioFormat = newFormat
-            }
+        if cachedAudioFormat == nil ||
+           cachedAudioFormat!.sampleRate != newFormat.sampleRate ||
+           cachedAudioFormat!.channelCount != newFormat.channelCount {
+            cachedAudioFormat = newFormat
         }
         guard let audioFormat = cachedAudioFormat else { return }
 
