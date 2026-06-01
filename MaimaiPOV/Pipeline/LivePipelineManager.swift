@@ -84,6 +84,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     let sharedCommandQueue: MTLCommandQueue
     let streamManager = RTMPStreamManager()
+    let audioMixer = AudioMixer()
+    let audioDeviceManager = AudioDeviceManager()
 
     var stabilizer: MetalStabilizer?
     var yoloDetector: YOLODetector?
@@ -146,6 +148,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     init() {
         sharedCommandQueue = device.makeCommandQueue()!
 
+        streamManager.audioMixer = audioMixer
+
         camera.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)
@@ -154,11 +158,24 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             self?.objectWillChange.send()
         }.store(in: &cancellables)
 
+        audioMixer.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
+        audioDeviceManager.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
         streamManager.$isStreaming.sink { [weak self] streaming in
             DispatchQueue.main.async {
                 self?.debug.isStreaming = streaming
             }
         }.store(in: &cancellables)
+
+        audioDeviceManager.onSourceChanged = { [weak self] source in
+            self?.camera.switchAudioInput(to: source)
+            self?.audioMixer.isStereoMixEnabled = (source == .externalStereo)
+        }
 
         setupBlivechatCallbacks()
         webServerManager.pipeline = self

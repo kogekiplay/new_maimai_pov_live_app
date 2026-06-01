@@ -22,6 +22,8 @@ class RTMPStreamManager: ObservableObject {
     @Published var streamResolution: StreamResolution = .r1080p
     @Published var videoBitrate: Int = Config.streamBitrate
 
+    var audioMixer: AudioMixer?
+
     private struct AudioSyncEntry {
         let pcmBuffer: AVAudioPCMBuffer
         let audioTime: AVAudioTime
@@ -316,8 +318,18 @@ class RTMPStreamManager: ObservableObject {
         guard isStreaming else { return }
 
         guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
-        if cachedAudioFormat == nil {
-            cachedAudioFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
+
+        let inputChannelCount = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription)?.pointee.mChannelsPerFrame ?? 1
+        let needsMonoFormat = audioMixer?.isStereoMixEnabled == true && inputChannelCount >= 2
+
+        if needsMonoFormat {
+            if cachedAudioFormat == nil || cachedAudioFormat!.channelCount != 1 {
+                cachedAudioFormat = AVAudioFormat(standardFormatWithSampleRate: formatDescription.streamBasicDescription.pointee.mSampleRate, channels: 1)
+            }
+        } else {
+            if cachedAudioFormat == nil || cachedAudioFormat!.channelCount != inputChannelCount {
+                cachedAudioFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
+            }
         }
         guard let audioFormat = cachedAudioFormat else { return }
 
@@ -325,13 +337,46 @@ class RTMPStreamManager: ObservableObject {
         guard let pcmBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: frameCount) else { return }
         pcmBuffer.frameLength = frameCount
 
-        let copyStatus = CMSampleBufferCopyPCMDataIntoAudioBufferList(
-            sampleBuffer,
-            at: 0,
-            frameCount: Int32(frameCount),
-            into: pcmBuffer.mutableAudioBufferList
-        )
-        guard copyStatus == noErr else { return }
+        if needsMonoFormat {
+            guard let tempFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription),
+                  let tempBuffer = AVAudioPCMBuffer(pcmFormat: tempFormat, frameCapacity: frameCount) else { return }
+            tempBuffer.frameLength = frameCount
+            let copyStatus = CMSampleBufferCopyPCMDataIntoAudioBufferList(
+                sampleBuffer,
+                at: 0,
+                frameCount: Int32(frameCount),
+                into: tempBuffer.mutableAudioBufferList
+            )
+            guard copyStatus == noErr else { return }
+
+            if let mixer = audioMixer {
+                let processedBuffer = mixer.process(tempBuffer)
+                let outputFrameLength = min(Int(processedBuffer.frameLength), Int(pcmBuffer.frameCapacity))
+                pcmBuffer.frameLength = AVAudioFrameCount(outputFrameLength)
+                if let src = processedBuffer.floatChannelData?[0], let dst = pcmBuffer.floatChannelData?[0] {
+                    dst.initialize(from: src, count: outputFrameLength)
+                }
+            }
+        } else {
+            let copyStatus = CMSampleBufferCopyPCMDataIntoAudioBufferList(
+                sampleBuffer,
+                at: 0,
+                frameCount: Int32(frameCount),
+                into: pcmBuffer.mutableAudioBufferList
+            )
+            guard copyStatus == noErr else { return }
+
+            if let mixer = audioMixer {
+                let processedBuffer = mixer.process(pcmBuffer)
+                if processedBuffer !== pcmBuffer {
+                    let outputFrameLength = min(Int(processedBuffer.frameLength), Int(pcmBuffer.frameCapacity))
+                    pcmBuffer.frameLength = AVAudioFrameCount(outputFrameLength)
+                    if let src = processedBuffer.floatChannelData?[0], let dst = pcmBuffer.floatChannelData?[0] {
+                        dst.initialize(from: src, count: outputFrameLength)
+                    }
+                }
+            }
+        }
 
         let sampleTime = AVAudioFramePosition(alignedTime * audioFormat.sampleRate)
         let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)

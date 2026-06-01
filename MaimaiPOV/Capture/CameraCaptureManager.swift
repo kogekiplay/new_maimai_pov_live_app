@@ -13,9 +13,11 @@ class CameraCaptureManager: NSObject, ObservableObject {
     @Published var cameraAuthorized = false
     @Published var activeLens: LensType = .main
     @Published var exposureMode: AVCaptureDevice.ExposureMode = .custom
+    @Published var currentAudioChannelCount: Int = 1
 
     private var currentDevice: AVCaptureDevice?
     private var currentInput: AVCaptureDeviceInput?
+    private var currentAudioInput: AVCaptureDeviceInput?
     private var currentDuration: CMTime = CMTime(value: 1, timescale: 240)
     private var currentISO: Float = 0.0
 
@@ -146,6 +148,7 @@ class CameraCaptureManager: NSObject, ObservableObject {
                 return
             }
             session.addInput(audioInput)
+            currentAudioInput = audioInput
 
             guard session.canAddOutput(audioOutput) else {
                 print("CameraCaptureManager: Cannot add audio output")
@@ -177,6 +180,58 @@ class CameraCaptureManager: NSObject, ObservableObject {
         }
 
         try? audioSession.setPreferredInputOrientation(.portrait)
+    }
+
+    func switchAudioInput(to source: AudioDeviceManager.AudioSource) {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+
+            switch source {
+            case .builtInMic:
+                self.configureAudioSession()
+            case .externalMono, .externalStereo:
+                let audioSession = AVAudioSession.sharedInstance()
+                try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+                try? audioSession.setActive(true)
+                if let inputs = audioSession.availableInputs,
+                   let externalInput = inputs.first(where: { $0.portType == .usb || $0.portType == .headsetMic }) {
+                    try? audioSession.setPreferredInput(externalInput)
+                }
+            }
+
+            self.reconfigureAudioInput()
+        }
+    }
+
+    private func reconfigureAudioInput() {
+        session.beginConfiguration()
+
+        if let existing = currentAudioInput {
+            session.removeInput(existing)
+            currentAudioInput = nil
+        }
+
+        guard let audioDevice = AVCaptureDevice.default(for: .audio),
+              let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
+              session.canAddInput(audioInput) else {
+            print("CameraCaptureManager: Cannot reconfigure audio input")
+            session.commitConfiguration()
+            return
+        }
+        session.addInput(audioInput)
+        currentAudioInput = audioInput
+
+        if !session.outputs.contains(where: { $0 is AVCaptureAudioDataOutput }) {
+            guard session.canAddOutput(audioOutput) else {
+                print("CameraCaptureManager: Cannot add audio output")
+                session.commitConfiguration()
+                return
+            }
+            session.addOutput(audioOutput)
+            audioOutput.setSampleBufferDelegate(self, queue: sessionQueue)
+        }
+
+        session.commitConfiguration()
     }
 
     private func configureFormat(for device: AVCaptureDevice) {
@@ -372,6 +427,14 @@ extension CameraCaptureManager: AVCaptureVideoDataOutputSampleBufferDelegate,
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         let hostTime = CMSyncConvertTime(pts, from: masterClock, to: hostClock)
         let alignedTime = CMTimeGetSeconds(hostTime)
+
+        if let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {
+            let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)
+            let channels = Int(asbd?.pointee.mChannelsPerFrame ?? 1)
+            if channels != currentAudioChannelCount {
+                DispatchQueue.main.async { self.currentAudioChannelCount = channels }
+            }
+        }
 
         onAudioSample?(sampleBuffer, alignedTime)
     }
