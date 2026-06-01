@@ -54,33 +54,10 @@ class AudioMixer: ObservableObject {
     }
 
     private func calculateLevelViaConversion(_ input: AVAudioPCMBuffer) {
-        let sampleRate = input.format.sampleRate
-        let channels = input.format.channelCount
-        let frameLength = Int(input.frameLength)
+        guard let converted = convertToStandardFormat(input) else { return }
+        let convertedLength = Int(converted.frameLength)
+        guard convertedLength > 0, let floatData = converted.floatChannelData?[0] else { return }
 
-        if standardFormat == nil || standardFormat!.sampleRate != sampleRate || standardFormat!.channelCount != channels {
-            standardFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels)
-            audioConverter = AVAudioConverter(from: input.format, to: standardFormat!)
-            standardBuffer = nil
-        }
-
-        guard let format = standardFormat, let converter = audioConverter else { return }
-
-        if standardBuffer == nil || standardBuffer!.frameCapacity < AVAudioFrameCount(frameLength) {
-            standardBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameLength))
-        }
-
-        guard let buffer = standardBuffer else { return }
-
-        var error: NSError?
-        let convertedFrames = converter.convert(to: buffer, error: &error) { inNumPackets, outStatus in
-            outStatus.pointee = .haveData
-            return input
-        }
-
-        guard convertedFrames > 0, let floatData = buffer.floatChannelData?[0] else { return }
-
-        let convertedLength = Int(buffer.frameLength)
         var sum: Float = 0
         vDSP_svesq(floatData, 1, &sum, vDSP_Length(convertedLength))
         let rawLevel = sqrt(sum / Float(convertedLength)) * 5.0
@@ -94,11 +71,23 @@ class AudioMixer: ObservableObject {
         let frameLength = Int(input.frameLength)
         guard frameLength > 0 else { return input }
 
-        guard let leftChannel = input.floatChannelData?[0],
-              let rightChannel = input.floatChannelData?[1] else {
+        if let leftChannel = input.floatChannelData?[0],
+           let rightChannel = input.floatChannelData?[1] {
+            return processStereoFromFloat(leftChannel: leftChannel, rightChannel: rightChannel, frameLength: frameLength, sampleRate: input.format.sampleRate, fallback: input)
+        }
+
+        guard let converted = convertToStandardFormat(input),
+              let leftChannel = converted.floatChannelData?[0],
+              let rightChannel = converted.floatChannelData?[1] else {
+            calculateLevelViaConversion(input)
             return input
         }
 
+        let convertedLength = Int(converted.frameLength)
+        return processStereoFromFloat(leftChannel: leftChannel, rightChannel: rightChannel, frameLength: convertedLength, sampleRate: input.format.sampleRate, fallback: input)
+    }
+
+    private func processStereoFromFloat(leftChannel: UnsafePointer<Float>, rightChannel: UnsafePointer<Float>, frameLength: Int, sampleRate: Float64, fallback: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         var leftSum: Float = 0
         var rightSum: Float = 0
         vDSP_svesq(leftChannel, 1, &leftSum, vDSP_Length(frameLength))
@@ -109,8 +98,8 @@ class AudioMixer: ObservableObject {
         smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLeft, 1.0) * levelSmoothing
         smoothedRightLevel = smoothedRightLevel * (1 - levelSmoothing) + min(rawRight, 1.0) * levelSmoothing
 
-        ensureMonoBuffer(frameLength: frameLength, sampleRate: input.format.sampleRate)
-        guard let outputData = monoBuffer?.floatChannelData?[0] else { return input }
+        ensureMonoBuffer(frameLength: frameLength, sampleRate: sampleRate)
+        guard let outputData = monoBuffer?.floatChannelData?[0] else { return fallback }
 
         var mixedSum: Float = 0
         for i in 0..<frameLength {
@@ -125,27 +114,55 @@ class AudioMixer: ObservableObject {
 
         updateLevelsOnMain()
 
-        return monoBuffer ?? input
+        return monoBuffer ?? fallback
     }
 
     private func processMono(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         let frameLength = Int(input.frameLength)
         guard frameLength > 0 else { return input }
 
-        guard let channelData = input.floatChannelData?[0] else {
+        if let channelData = input.floatChannelData?[0] {
+            var sum: Float = 0
+            vDSP_svesq(channelData, 1, &sum, vDSP_Length(frameLength))
+            let rawLevel = sqrt(sum / Float(frameLength)) * 5.0
+            smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLevel, 1.0) * levelSmoothing
+            smoothedRightLevel = smoothedLeftLevel
+            smoothedMixedLevel = smoothedLeftLevel
+            updateLevelsOnMain()
             return input
         }
 
-        var sum: Float = 0
-        vDSP_svesq(channelData, 1, &sum, vDSP_Length(frameLength))
-        let rawLevel = sqrt(sum / Float(frameLength)) * 5.0
-        smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLevel, 1.0) * levelSmoothing
-        smoothedRightLevel = smoothedLeftLevel
-        smoothedMixedLevel = smoothedLeftLevel
-
-        updateLevelsOnMain()
-
+        calculateLevelViaConversion(input)
         return input
+    }
+
+    private func convertToStandardFormat(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        let sampleRate = input.format.sampleRate
+        let channels = input.format.channelCount
+        let frameLength = Int(input.frameLength)
+
+        if standardFormat == nil || standardFormat!.sampleRate != sampleRate || standardFormat!.channelCount != channels {
+            standardFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels)
+            audioConverter = AVAudioConverter(from: input.format, to: standardFormat!)
+            standardBuffer = nil
+        }
+
+        guard let format = standardFormat, let converter = audioConverter else { return nil }
+
+        if standardBuffer == nil || standardBuffer!.frameCapacity < AVAudioFrameCount(frameLength) {
+            standardBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameLength))
+        }
+
+        guard let buffer = standardBuffer else { return nil }
+
+        var error: NSError?
+        let status = converter.convert(to: buffer, error: &error) { inNumPackets, outStatus in
+            outStatus.pointee = .haveData
+            return input
+        }
+
+        guard status != .error else { return nil }
+        return buffer
     }
 
     private func updateLevelsOnMain() {
