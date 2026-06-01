@@ -336,34 +336,20 @@ class RTMPStreamManager: ObservableObject {
         )
         guard copyStatus == noErr else { return }
 
-        let finalBuffer: AVAudioPCMBuffer
         if let mixer = audioMixer {
-            let processedBuffer = mixer.process(pcmBuffer)
-            if processedBuffer === pcmBuffer {
-                finalBuffer = pcmBuffer
+            if mixer.isStereoMixEnabled && audioFormat.channelCount >= 2 {
+                _ = mixer.process(pcmBuffer)
             } else {
-                let monoFormat = AVAudioFormat(standardFormatWithSampleRate: audioFormat.sampleRate, channels: 1)!
-                guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: frameCount) else {
-                    finalBuffer = pcmBuffer
-                    return
-                }
-                let copyLength = min(Int(processedBuffer.frameLength), Int(outputBuffer.frameCapacity))
-                outputBuffer.frameLength = AVAudioFrameCount(copyLength)
-                if let src = processedBuffer.floatChannelData?[0], let dst = outputBuffer.floatChannelData?[0] {
-                    dst.initialize(from: src, count: copyLength)
-                }
-                finalBuffer = outputBuffer
+                mixer.calculateLevel(pcmBuffer)
             }
-        } else {
-            finalBuffer = pcmBuffer
         }
 
-        let sampleTime = AVAudioFramePosition(alignedTime * finalBuffer.format.sampleRate)
-        let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: finalBuffer.format.sampleRate)
+        let sampleTime = AVAudioFramePosition(alignedTime * audioFormat.sampleRate)
+        let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)
 
         audioSyncLock.lock()
         audioSyncQueue.append(AudioSyncEntry(
-            pcmBuffer: finalBuffer, audioTime: audioTime, alignedTime: alignedTime
+            pcmBuffer: pcmBuffer, audioTime: audioTime, alignedTime: alignedTime
         ))
         while audioSyncQueue.count > 1,
               audioSyncQueue.last!.alignedTime - audioSyncQueue.first!.alignedTime > audioQueueMaxDuration {

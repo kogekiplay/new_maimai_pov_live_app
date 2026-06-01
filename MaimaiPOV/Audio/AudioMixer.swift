@@ -26,6 +26,23 @@ class AudioMixer: ObservableObject {
         }
     }
 
+    func calculateLevel(_ input: AVAudioPCMBuffer) {
+        let frameLength = Int(input.frameLength)
+        guard frameLength > 0 else { return }
+        guard let channelData = input.floatChannelData?[0] else { return }
+
+        var sum: Float = 0
+        for i in 0..<frameLength {
+            sum += channelData[i] * channelData[i]
+        }
+        let rawLevel = sqrt(sum / Float(frameLength)) * 5.0
+        smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLevel, 1.0) * levelSmoothing
+        smoothedRightLevel = smoothedLeftLevel
+        smoothedMixedLevel = smoothedLeftLevel
+
+        updateLevelsOnMain()
+    }
+
     private func processStereo(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         let frameLength = Int(input.frameLength)
         guard frameLength > 0 else { return input }
