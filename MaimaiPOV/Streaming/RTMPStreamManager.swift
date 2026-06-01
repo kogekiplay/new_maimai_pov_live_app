@@ -324,7 +324,8 @@ class RTMPStreamManager: ObservableObject {
 
         if needsMonoFormat {
             if cachedAudioFormat == nil || cachedAudioFormat!.channelCount != 1 {
-                cachedAudioFormat = AVAudioFormat(standardFormatWithSampleRate: formatDescription.streamBasicDescription.pointee.mSampleRate, channels: 1)
+                let sampleRate = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription)?.pointee.mSampleRate ?? 44100.0
+                cachedAudioFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
             }
         } else {
             if cachedAudioFormat == nil || cachedAudioFormat!.channelCount != inputChannelCount {
@@ -338,8 +339,8 @@ class RTMPStreamManager: ObservableObject {
         pcmBuffer.frameLength = frameCount
 
         if needsMonoFormat {
-            guard let tempFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription),
-                  let tempBuffer = AVAudioPCMBuffer(pcmFormat: tempFormat, frameCapacity: frameCount) else { return }
+            let tempFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
+            guard let tempBuffer = AVAudioPCMBuffer(pcmFormat: tempFormat, frameCapacity: frameCount) else { return }
             tempBuffer.frameLength = frameCount
             let copyStatus = CMSampleBufferCopyPCMDataIntoAudioBufferList(
                 sampleBuffer,

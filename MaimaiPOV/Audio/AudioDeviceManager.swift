@@ -37,7 +37,7 @@ class AudioDeviceManager: ObservableObject {
 
         if let inputs = audioSession.availableInputs {
             for input in inputs {
-                if input.portType == .usb || input.portType == .headsetMic {
+                if input.portType == .USBAudio || input.portType == .headsetMic {
                     availableSources.append(.externalMono)
                     availableSources.append(.externalStereo)
                     externalDeviceName = input.portName
@@ -96,8 +96,9 @@ class AudioDeviceManager: ObservableObject {
             try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
             try audioSession.setActive(true)
 
-            if let inputs = audioSession.availableInputs,
-               let externalInput = inputs.first(where: { $0.portType == .usb || $0.portType == .headsetMic }) {
+            let inputs = audioSession.availableInputs
+            let externalInput = inputs?.first(where: { $0.portType == .USBAudio || $0.portType == .headsetMic })
+            if let externalInput {
                 try audioSession.setPreferredInput(externalInput)
                 externalDeviceName = externalInput.portName
             }

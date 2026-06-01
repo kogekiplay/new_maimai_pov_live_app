@@ -193,8 +193,9 @@ class CameraCaptureManager: NSObject, ObservableObject {
                 let audioSession = AVAudioSession.sharedInstance()
                 try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
                 try? audioSession.setActive(true)
-                if let inputs = audioSession.availableInputs,
-                   let externalInput = inputs.first(where: { $0.portType == .usb || $0.portType == .headsetMic }) {
+                let inputs = audioSession.availableInputs
+                let externalInput = inputs?.first(where: { $0.portType == .USBAudio || $0.portType == .headsetMic })
+                if let externalInput {
                     try? audioSession.setPreferredInput(externalInput)
                 }
             }
