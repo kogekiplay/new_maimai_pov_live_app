@@ -12,7 +12,6 @@ class AudioMixer: ObservableObject {
     var isStereoMixEnabled: Bool = false
 
     private var monoFormat: AVAudioFormat?
-    private var monoBuffer: AVAudioPCMBuffer?
     private let levelSmoothing: Float = 0.3
     private var smoothedLeftLevel: Float = 0
     private var smoothedRightLevel: Float = 0
@@ -98,8 +97,16 @@ class AudioMixer: ObservableObject {
         smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLeft, 1.0) * levelSmoothing
         smoothedRightLevel = smoothedRightLevel * (1 - levelSmoothing) + min(rawRight, 1.0) * levelSmoothing
 
-        ensureMonoBuffer(frameLength: frameLength, sampleRate: sampleRate)
-        guard let outputData = monoBuffer?.floatChannelData?[0] else { return fallback }
+        if monoFormat == nil || monoFormat!.sampleRate != sampleRate {
+            monoFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
+        }
+        guard let monoFmt = monoFormat,
+              let outputBuffer = AVAudioPCMBuffer(pcmFormat: monoFmt, frameCapacity: AVAudioFrameCount(frameLength)) else {
+            return fallback
+        }
+        outputBuffer.frameLength = AVAudioFrameCount(frameLength)
+
+        guard let outputData = outputBuffer.floatChannelData?[0] else { return fallback }
 
         var mixedSum: Float = 0
         for i in 0..<frameLength {
@@ -110,11 +117,9 @@ class AudioMixer: ObservableObject {
         let rawMixed = sqrt(mixedSum / Float(frameLength)) * 5.0
         smoothedMixedLevel = smoothedMixedLevel * (1 - levelSmoothing) + min(rawMixed, 1.0) * levelSmoothing
 
-        monoBuffer?.frameLength = AVAudioFrameCount(frameLength)
-
         updateLevelsOnMain()
 
-        return monoBuffer ?? fallback
+        return outputBuffer
     }
 
     private func processMono(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
@@ -178,17 +183,6 @@ class AudioMixer: ObservableObject {
             self?.leftLevel = ll
             self?.rightLevel = rl
             self?.mixedLevel = ml
-        }
-    }
-
-    private func ensureMonoBuffer(frameLength: Int, sampleRate: Float64) {
-        if monoFormat == nil || monoFormat!.sampleRate != sampleRate {
-            monoFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
-        }
-        if monoBuffer == nil || monoBuffer!.frameCapacity < AVAudioFrameCount(frameLength) {
-            if let format = monoFormat {
-                monoBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameLength))
-            }
         }
     }
 }
