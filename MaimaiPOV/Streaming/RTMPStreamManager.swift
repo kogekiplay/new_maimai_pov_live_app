@@ -67,7 +67,7 @@ class RTMPStreamManager: ObservableObject {
     private var videoBufferCount: Int = 0
     private var audioBufferCount: Int = 0
     private let bufferCountLock = NSLock()
-    private var lastAudioAlignedTime: Double = 0
+    private var lastReleasedAudioTime: Double = 0
 
     @MainActor
     func startPublish(url: String, streamKey: String) {
@@ -304,6 +304,35 @@ class RTMPStreamManager: ObservableObject {
         while !audioSyncQueue.isEmpty, audioSyncQueue.first!.alignedTime <= videoTimeSeconds {
             let entry = audioSyncQueue.removeFirst()
             audioToRelease.append((entry.pcmBuffer, entry.audioTime))
+            lastReleasedAudioTime = entry.alignedTime
+        }
+
+        if lastReleasedAudioTime > 0 && audioToRelease.isEmpty && videoTimeSeconds - lastReleasedAudioTime > 0.05 {
+            if let audioFormat = cachedAudioFormat {
+                let gapDuration = min(videoTimeSeconds - lastReleasedAudioTime, 2.0)
+                let silenceFrameCount = AVAudioFrameCount(gapDuration * audioFormat.sampleRate)
+                let framesPerBuffer = AVAudioFrameCount(audioFormat.sampleRate * 0.01)
+                var remainingFrames = silenceFrameCount
+                var silenceTime = lastReleasedAudioTime
+
+                while remainingFrames > 0 {
+                    let chunkSize = min(remainingFrames, framesPerBuffer)
+                    if let silenceBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: chunkSize) {
+                        silenceBuffer.frameLength = chunkSize
+                        for ch in 0..<Int(audioFormat.channelCount) {
+                            if let channelData = silenceBuffer.floatChannelData?[ch] {
+                                memset(channelData, 0, Int(chunkSize) * MemoryLayout<Float>.size)
+                            }
+                        }
+                        let silenceSampleTime = AVAudioFramePosition(silenceTime * audioFormat.sampleRate)
+                        let silenceAudioTime = AVAudioTime(sampleTime: silenceSampleTime, atRate: audioFormat.sampleRate)
+                        audioToRelease.append((silenceBuffer, silenceAudioTime))
+                    }
+                    silenceTime += Double(chunkSize) / audioFormat.sampleRate
+                    remainingFrames -= chunkSize
+                }
+                lastReleasedAudioTime = videoTimeSeconds
+            }
         }
         audioSyncLock.unlock()
 
@@ -353,36 +382,6 @@ class RTMPStreamManager: ObservableObject {
         let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)
 
         audioSyncLock.lock()
-
-        if lastAudioAlignedTime > 0 {
-            let gap = alignedTime - lastAudioAlignedTime
-            if gap > 0.05 && gap < 5.0 {
-                let silenceFrameCount = AVAudioFrameCount(gap * audioFormat.sampleRate)
-                let framesPerBuffer = AVAudioFrameCount(audioFormat.sampleRate * 0.01)
-                var remainingFrames = silenceFrameCount
-                var silenceTime = lastAudioAlignedTime
-
-                while remainingFrames > 0 {
-                    let chunkSize = min(remainingFrames, framesPerBuffer)
-                    if let silenceBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: chunkSize) {
-                        silenceBuffer.frameLength = chunkSize
-                        memset(silenceBuffer.mutableAudioBufferList.pointee.mBuffers.mData, 0, Int(silenceBuffer.mutableAudioBufferList.pointee.mBuffers.mDataByteSize))
-                        let silenceSampleTime = AVAudioFramePosition(silenceTime * audioFormat.sampleRate)
-                        let silenceAudioTime = AVAudioTime(sampleTime: silenceSampleTime, atRate: audioFormat.sampleRate)
-                        audioSyncQueue.append(AudioSyncEntry(
-                            pcmBuffer: silenceBuffer, audioTime: silenceAudioTime, alignedTime: silenceTime
-                        ))
-                        bufferCountLock.lock()
-                        audioBufferCount += 1
-                        bufferCountLock.unlock()
-                    }
-                    silenceTime += Double(chunkSize) / audioFormat.sampleRate
-                    remainingFrames -= chunkSize
-                }
-            }
-        }
-        lastAudioAlignedTime = alignedTime
-
         audioSyncQueue.append(AudioSyncEntry(
             pcmBuffer: bufferToQueue, audioTime: audioTime, alignedTime: alignedTime
         ))
@@ -397,7 +396,6 @@ class RTMPStreamManager: ObservableObject {
     }
 
     func resetAudioState() {
-        cachedAudioFormat = nil
         audioSyncLock.lock()
         audioSyncQueue.removeAll()
         audioSyncLock.unlock()
@@ -494,6 +492,7 @@ class RTMPStreamManager: ObservableObject {
         bufferCountLock.unlock()
         audioSyncLock.lock()
         audioSyncQueue.removeAll()
+        lastReleasedAudioTime = 0
         audioSyncLock.unlock()
         videoContinuation?.finish()
         audioContinuation?.finish()
