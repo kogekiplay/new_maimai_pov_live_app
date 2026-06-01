@@ -1,4 +1,5 @@
 import AVFoundation
+import Accelerate
 
 class AudioMixer: ObservableObject {
     @Published var leftGain: Float = 1.0
@@ -6,6 +7,7 @@ class AudioMixer: ObservableObject {
     @Published var leftLevel: Float = 0.0
     @Published var rightLevel: Float = 0.0
     @Published var mixedLevel: Float = 0.0
+    @Published var audioFormatInfo: String = "--"
 
     var isStereoMixEnabled: Bool = false
 
@@ -18,6 +20,10 @@ class AudioMixer: ObservableObject {
     private var levelUpdateCounter: Int = 0
     private let levelUpdateInterval: Int = 3
 
+    private var standardFormat: AVAudioFormat?
+    private var standardBuffer: AVAudioPCMBuffer?
+    private var audioConverter: AVAudioConverter?
+
     func process(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         if isStereoMixEnabled && input.format.channelCount >= 2 {
             return processStereo(input)
@@ -29,17 +35,58 @@ class AudioMixer: ObservableObject {
     func calculateLevel(_ input: AVAudioPCMBuffer) {
         let frameLength = Int(input.frameLength)
         guard frameLength > 0 else { return }
-        guard let channelData = input.floatChannelData?[0] else { return }
 
-        var sum: Float = 0
-        for i in 0..<frameLength {
-            sum += channelData[i] * channelData[i]
+        if let floatData = input.floatChannelData?[0] {
+            calculateLevelFromFloat(floatData, frameLength: frameLength)
+        } else {
+            calculateLevelViaConversion(input)
         }
+    }
+
+    private func calculateLevelFromFloat(_ data: UnsafePointer<Float>, frameLength: Int) {
+        var sum: Float = 0
+        vDSP_svesq(data, 1, &sum, vDSP_Length(frameLength))
         let rawLevel = sqrt(sum / Float(frameLength)) * 5.0
         smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLevel, 1.0) * levelSmoothing
         smoothedRightLevel = smoothedLeftLevel
         smoothedMixedLevel = smoothedLeftLevel
+        updateLevelsOnMain()
+    }
 
+    private func calculateLevelViaConversion(_ input: AVAudioPCMBuffer) {
+        let sampleRate = input.format.sampleRate
+        let channels = input.format.channelCount
+        let frameLength = Int(input.frameLength)
+
+        if standardFormat == nil || standardFormat!.sampleRate != sampleRate || standardFormat!.channelCount != channels {
+            standardFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels)
+            audioConverter = AVAudioConverter(from: input.format, to: standardFormat!)
+            standardBuffer = nil
+        }
+
+        guard let format = standardFormat, let converter = audioConverter else { return }
+
+        if standardBuffer == nil || standardBuffer!.frameCapacity < AVAudioFrameCount(frameLength) {
+            standardBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameLength))
+        }
+
+        guard let buffer = standardBuffer else { return }
+
+        var error: NSError?
+        let convertedFrames = converter.convert(to: buffer, error: &error) { inNumPackets, outStatus in
+            outStatus.pointee = .haveData
+            return input
+        }
+
+        guard convertedFrames > 0, let floatData = buffer.floatChannelData?[0] else { return }
+
+        let convertedLength = Int(buffer.frameLength)
+        var sum: Float = 0
+        vDSP_svesq(floatData, 1, &sum, vDSP_Length(convertedLength))
+        let rawLevel = sqrt(sum / Float(convertedLength)) * 5.0
+        smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLevel, 1.0) * levelSmoothing
+        smoothedRightLevel = smoothedLeftLevel
+        smoothedMixedLevel = smoothedLeftLevel
         updateLevelsOnMain()
     }
 
@@ -54,10 +101,8 @@ class AudioMixer: ObservableObject {
 
         var leftSum: Float = 0
         var rightSum: Float = 0
-        for i in 0..<frameLength {
-            leftSum += leftChannel[i] * leftChannel[i]
-            rightSum += rightChannel[i] * rightChannel[i]
-        }
+        vDSP_svesq(leftChannel, 1, &leftSum, vDSP_Length(frameLength))
+        vDSP_svesq(rightChannel, 1, &rightSum, vDSP_Length(frameLength))
         let rawLeft = sqrt(leftSum / Float(frameLength)) * 5.0
         let rawRight = sqrt(rightSum / Float(frameLength)) * 5.0
 
@@ -92,9 +137,7 @@ class AudioMixer: ObservableObject {
         }
 
         var sum: Float = 0
-        for i in 0..<frameLength {
-            sum += channelData[i] * channelData[i]
-        }
+        vDSP_svesq(channelData, 1, &sum, vDSP_Length(frameLength))
         let rawLevel = sqrt(sum / Float(frameLength)) * 5.0
         smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLevel, 1.0) * levelSmoothing
         smoothedRightLevel = smoothedLeftLevel
