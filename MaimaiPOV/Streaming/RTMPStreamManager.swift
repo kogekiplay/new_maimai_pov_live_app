@@ -342,7 +342,7 @@ class RTMPStreamManager: ObservableObject {
             if processedBuffer === pcmBuffer {
                 finalBuffer = pcmBuffer
             } else {
-                let monoFormat = AVAudioFormat(standardFormatWithSampleRate: audioFormat.sampleRate, channels: 1)
+                let monoFormat = AVAudioFormat(standardFormatWithSampleRate: audioFormat.sampleRate, channels: 1)!
                 guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: frameCount) else {
                     finalBuffer = pcmBuffer
                     return
