@@ -1025,14 +1025,20 @@ struct Phase2View: View {
     private var audioMixerSection: some View {
         if pipeline.audioDeviceManager.selectedSource == .externalStereo {
             labeledRow("机台") {
-                Slider(value: $pipeline.audioMixer.leftGain, in: 0...2, step: 0.05)
+                Slider(value: Binding(
+                    get: { pipeline.audioMixer.leftGain },
+                    set: { pipeline.audioMixer.leftGain = $0 }
+                ), in: 0...2, step: 0.05)
             } valueLabel: {
                 Text(String(format: "%.0f%%", pipeline.audioMixer.leftGain * 100))
                     .font(.caption2).monospacedDigit().frame(width: 38)
             }
 
             labeledRow("领夹") {
-                Slider(value: $pipeline.audioMixer.rightGain, in: 0...2, step: 0.05)
+                Slider(value: Binding(
+                    get: { pipeline.audioMixer.rightGain },
+                    set: { pipeline.audioMixer.rightGain = $0 }
+                ), in: 0...2, step: 0.05)
             } valueLabel: {
                 Text(String(format: "%.0f%%", pipeline.audioMixer.rightGain * 100))
                     .font(.caption2).monospacedDigit().frame(width: 38)
