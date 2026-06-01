@@ -476,6 +476,9 @@ struct Phase2View: View {
             streamKeyRow
             resolutionRow
             bitrateRow
+            audioSourceRow
+            audioMixerSection
+            audioMeterRow
             streamButtonRow
         }
         .padding(12)
@@ -998,6 +1001,71 @@ struct Phase2View: View {
         }
     }
 
+    private var audioSourceRow: some View {
+        HStack(spacing: 4) {
+            Text("音频源").font(.caption).frame(width: 55, alignment: .leading)
+            Picker("", selection: Binding(
+                get: { pipeline.audioDeviceManager.selectedSource },
+                set: { pipeline.audioDeviceManager.switchToSource($0) }
+            )) {
+                ForEach(pipeline.audioDeviceManager.availableSources, id: \.self) { source in
+                    Text(source.rawValue).tag(source)
+                }
+            }
+            .pickerStyle(.segmented)
+            if pipeline.audioDeviceManager.isExternalDeviceConnected {
+                Image(systemName: "mic.fill")
+                    .foregroundColor(.green)
+                    .font(.caption2)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var audioMixerSection: some View {
+        if pipeline.audioDeviceManager.selectedSource == .externalStereo {
+            labeledRow("机台") {
+                Slider(value: $pipeline.audioMixer.leftGain, in: 0...2, step: 0.05)
+            } valueLabel: {
+                Text(String(format: "%.0f%%", pipeline.audioMixer.leftGain * 100))
+                    .font(.caption2).monospacedDigit().frame(width: 38)
+            }
+
+            labeledRow("领夹") {
+                Slider(value: $pipeline.audioMixer.rightGain, in: 0...2, step: 0.05)
+            } valueLabel: {
+                Text(String(format: "%.0f%%", pipeline.audioMixer.rightGain * 100))
+                    .font(.caption2).monospacedDigit().frame(width: 38)
+            }
+        }
+    }
+
+    private var audioMeterRow: some View {
+        HStack(spacing: 4) {
+            Text("电平").font(.caption).frame(width: 55, alignment: .leading)
+
+            if pipeline.audioDeviceManager.selectedSource == .externalStereo {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("L").font(.system(size: 8)).foregroundColor(.green)
+                    LevelBar(level: pipeline.audioMixer.leftLevel, color: .green)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("R").font(.system(size: 8)).foregroundColor(.blue)
+                    LevelBar(level: pipeline.audioMixer.rightLevel, color: .blue)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Mix").font(.system(size: 8)).foregroundColor(.orange)
+                    LevelBar(level: pipeline.audioMixer.mixedLevel, color: .orange)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Level").font(.system(size: 8)).foregroundColor(.green)
+                    LevelBar(level: pipeline.audioMixer.mixedLevel, color: .green)
+                }
+            }
+        }
+    }
+
     private var streamButtonRow: some View {
         HStack {
             if pipeline.streamManager.isStreaming {
@@ -1073,6 +1141,24 @@ struct Phase2View: View {
             content()
             valueLabel()
         }
+    }
+}
+
+struct LevelBar: View {
+    let level: Float
+    let color: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.gray.opacity(0.3))
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(color)
+                    .frame(width: geo.size.width * CGFloat(max(0, min(1, level))))
+            }
+        }
+        .frame(height: 6)
     }
 }
 
