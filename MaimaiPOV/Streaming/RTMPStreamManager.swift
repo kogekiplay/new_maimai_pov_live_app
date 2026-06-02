@@ -68,6 +68,7 @@ class RTMPStreamManager: ObservableObject {
     private var audioBufferCount: Int = 0
     private let bufferCountLock = NSLock()
     private var lastReleasedAudioTime: Double = 0
+    private var avSyncLogCounter: Int = 0
 
     @MainActor
     func startPublish(url: String, streamKey: String) {
@@ -372,6 +373,15 @@ class RTMPStreamManager: ObservableObject {
             audioContinuation?.yield((buffer, time))
         }
 
+        // 每 600 帧（约 10 秒@60fps）记录一次音画同步状态
+        avSyncLogCounter += 1
+        if avSyncLogCounter >= 600 {
+            avSyncLogCounter = 0
+            let drift = videoTimeSeconds - lastReleasedAudioTime
+            let fmtInfo = cachedAudioFormat.map { "\($0.sampleRate)Hz/\($0.channelCount)ch" } ?? "nil"
+            DebugInfoManager.shared.log(String(format: "AVSync: drift=%.1fms queue=%d fmt=%@", drift * 1000, audioSyncQueue.count, fmtInfo))
+        }
+
         videoContinuation?.yield(finalSampleBuffer)
     }
 
@@ -384,6 +394,7 @@ class RTMPStreamManager: ObservableObject {
         if cachedAudioFormat == nil ||
            cachedAudioFormat!.sampleRate != newFormat.sampleRate ||
            cachedAudioFormat!.channelCount != newFormat.channelCount {
+            DebugInfoManager.shared.log("Audio: format changed to \(newFormat.sampleRate)Hz/\(newFormat.channelCount)ch")
             cachedAudioFormat = newFormat
         }
         guard let audioFormat = cachedAudioFormat else { return }
@@ -404,11 +415,18 @@ class RTMPStreamManager: ObservableObject {
         if let mixer = audioMixer {
             if mixer.isStereoMixEnabled && audioFormat.channelCount >= 2 {
                 bufferToQueue = mixer.process(pcmBuffer)
+                // 立体声降混后输出为单声道，更新 cachedAudioFormat 以匹配实际 buffer 格式
+                // 确保后续静音 buffer 和 AVAudioTime 使用正确的单声道格式
+                if bufferToQueue.format.channelCount != cachedAudioFormat?.channelCount {
+                    DebugInfoManager.shared.log("Audio: stereo downmix -> cachedFormat updated to \(bufferToQueue.format.sampleRate)Hz/\(bufferToQueue.format.channelCount)ch")
+                    cachedAudioFormat = bufferToQueue.format
+                }
             } else {
                 mixer.calculateLevel(pcmBuffer)
             }
         }
 
+        guard let audioFormat = cachedAudioFormat else { return }
         let sampleTime = AVAudioFramePosition(alignedTime * audioFormat.sampleRate)
         let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)
 
@@ -524,6 +542,7 @@ class RTMPStreamManager: ObservableObject {
         audioSyncLock.lock()
         audioSyncQueue.removeAll()
         lastReleasedAudioTime = 0
+        avSyncLogCounter = 0
         audioSyncLock.unlock()
         videoContinuation?.finish()
         audioContinuation?.finish()
