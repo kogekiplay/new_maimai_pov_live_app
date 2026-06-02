@@ -54,6 +54,9 @@ class RTMPStreamManager: ObservableObject {
 
     private var videoFormatDescription: CMVideoFormatDescription?
     private var cachedAudioFormat: AVAudioFormat?
+    /// 处理后的音频格式（可能与输入格式不同，如立体声降混为单声道后）
+    /// 用于创建 AVAudioTime 和静音 buffer
+    private var outputAudioFormat: AVAudioFormat?
     private let lock = NSLock()
 
     private var rtmpUrl: String = ""
@@ -306,7 +309,7 @@ class RTMPStreamManager: ObservableObject {
         if lastReleasedAudioTime > 0 && !audioSyncQueue.isEmpty {
             let firstAlignedTime = audioSyncQueue.first!.alignedTime
             let gap = firstAlignedTime - lastReleasedAudioTime
-            if gap > 0.05 && gap < 5.0, let audioFormat = cachedAudioFormat {
+            if gap > 0.05 && gap < 5.0, let audioFormat = outputAudioFormat {
                 let gapDuration = min(gap, 2.0)
                 let silenceFrameCount = AVAudioFrameCount(gapDuration * audioFormat.sampleRate)
                 let framesPerBuffer = AVAudioFrameCount(audioFormat.sampleRate * 0.01)
@@ -340,7 +343,7 @@ class RTMPStreamManager: ObservableObject {
         }
 
         if lastReleasedAudioTime > 0 && audioToRelease.isEmpty && videoTimeSeconds - lastReleasedAudioTime > 0.05 {
-            if let audioFormat = cachedAudioFormat {
+            if let audioFormat = outputAudioFormat {
                 let gapDuration = min(videoTimeSeconds - lastReleasedAudioTime, 2.0)
                 let silenceFrameCount = AVAudioFrameCount(gapDuration * audioFormat.sampleRate)
                 let framesPerBuffer = AVAudioFrameCount(audioFormat.sampleRate * 0.01)
@@ -378,7 +381,7 @@ class RTMPStreamManager: ObservableObject {
         if avSyncLogCounter >= 600 {
             avSyncLogCounter = 0
             let drift = videoTimeSeconds - lastReleasedAudioTime
-            let fmtInfo = cachedAudioFormat.map { "\($0.sampleRate)Hz/\($0.channelCount)ch" } ?? "nil"
+            let fmtInfo = outputAudioFormat.map { "\($0.sampleRate)Hz/\($0.channelCount)ch" } ?? "nil"
             DebugInfoManager.shared.logAsync(String(format: "AVSync: drift=%.1fms queue=%d fmt=%@", drift * 1000, audioSyncQueue.count, fmtInfo))
         }
 
@@ -390,11 +393,12 @@ class RTMPStreamManager: ObservableObject {
 
         guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
 
+        // cachedAudioFormat 始终与 CMSampleBuffer 格式一致（用于创建 pcmBuffer）
         let newFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
         if cachedAudioFormat == nil ||
            cachedAudioFormat!.sampleRate != newFormat.sampleRate ||
            cachedAudioFormat!.channelCount != newFormat.channelCount {
-            DebugInfoManager.shared.logAsync("Audio: format changed to \(newFormat.sampleRate)Hz/\(newFormat.channelCount)ch")
+            DebugInfoManager.shared.logAsync("Audio: input format changed to \(newFormat.sampleRate)Hz/\(newFormat.channelCount)ch")
             cachedAudioFormat = newFormat
         }
         guard let audioFormat = cachedAudioFormat else { return }
@@ -415,20 +419,22 @@ class RTMPStreamManager: ObservableObject {
         if let mixer = audioMixer {
             if mixer.isStereoMixEnabled && audioFormat.channelCount >= 2 {
                 bufferToQueue = mixer.process(pcmBuffer)
-                // 立体声降混后输出为单声道，更新 cachedAudioFormat 以匹配实际 buffer 格式
-                // 确保后续静音 buffer 和 AVAudioTime 使用正确的单声道格式
-                if bufferToQueue.format.channelCount != cachedAudioFormat?.channelCount {
-                    DebugInfoManager.shared.logAsync("Audio: stereo downmix -> cachedFormat updated to \(bufferToQueue.format.sampleRate)Hz/\(bufferToQueue.format.channelCount)ch")
-                    cachedAudioFormat = bufferToQueue.format
-                }
             } else {
                 mixer.calculateLevel(pcmBuffer)
             }
         }
 
-        guard let audioFormat = cachedAudioFormat else { return }
-        let sampleTime = AVAudioFramePosition(alignedTime * audioFormat.sampleRate)
-        let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: audioFormat.sampleRate)
+        // outputAudioFormat 与处理后的 buffer 格式一致（用于 AVAudioTime 和静音 buffer）
+        if outputAudioFormat == nil ||
+           outputAudioFormat!.sampleRate != bufferToQueue.format.sampleRate ||
+           outputAudioFormat!.channelCount != bufferToQueue.format.channelCount {
+            DebugInfoManager.shared.logAsync("Audio: output format set to \(bufferToQueue.format.sampleRate)Hz/\(bufferToQueue.format.channelCount)ch")
+            outputAudioFormat = bufferToQueue.format
+        }
+
+        guard let outFormat = outputAudioFormat else { return }
+        let sampleTime = AVAudioFramePosition(alignedTime * outFormat.sampleRate)
+        let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: outFormat.sampleRate)
 
         audioSyncLock.lock()
         audioSyncQueue.append(AudioSyncEntry(
@@ -557,6 +563,7 @@ class RTMPStreamManager: ObservableObject {
         }
         videoFormatDescription = nil
         cachedAudioFormat = nil
+        outputAudioFormat = nil
         Task { @MainActor in
             DebugInfoManager.shared.log("RTMP: 缓冲区强制清空")
         }
