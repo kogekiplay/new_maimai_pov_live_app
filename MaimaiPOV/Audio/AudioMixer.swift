@@ -12,6 +12,8 @@ class AudioMixer: ObservableObject {
     var isStereoMixEnabled: Bool = false
 
     private var monoFormat: AVAudioFormat?
+    /// 立体声输出格式（用于 processStereo 输出，保持与输入相同的通道数以避免 HaishinKit 格式切换）
+    private var stereoOutputFormat: AVAudioFormat?
     private let levelSmoothing: Float = 0.3
     private var smoothedLeftLevel: Float = 0
     private var smoothedRightLevel: Float = 0
@@ -97,22 +99,27 @@ class AudioMixer: ObservableObject {
         smoothedLeftLevel = smoothedLeftLevel * (1 - levelSmoothing) + min(rawLeft, 1.0) * levelSmoothing
         smoothedRightLevel = smoothedRightLevel * (1 - levelSmoothing) + min(rawRight, 1.0) * levelSmoothing
 
-        if monoFormat == nil || monoFormat!.sampleRate != sampleRate {
-            monoFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
+        // 使用立体声输出格式（2通道），避免 HaishinKit 因格式切换导致时间戳漂移
+        // 两个声道都填充混合后的音频
+        if stereoOutputFormat == nil || stereoOutputFormat!.sampleRate != sampleRate {
+            stereoOutputFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)
         }
-        guard let monoFmt = monoFormat,
-              let outputBuffer = AVAudioPCMBuffer(pcmFormat: monoFmt, frameCapacity: AVAudioFrameCount(frameLength)) else {
+        guard let stereoFmt = stereoOutputFormat,
+              let outputBuffer = AVAudioPCMBuffer(pcmFormat: stereoFmt, frameCapacity: AVAudioFrameCount(frameLength)) else {
             return fallback
         }
         outputBuffer.frameLength = AVAudioFrameCount(frameLength)
 
-        guard let outputData = outputBuffer.floatChannelData?[0] else { return fallback }
+        guard let outputLeft = outputBuffer.floatChannelData?[0],
+              let outputRight = outputBuffer.floatChannelData?[1] else { return fallback }
 
         var mixedSum: Float = 0
         for i in 0..<frameLength {
             let mixed = leftChannel[i] * leftGain + rightChannel[i] * rightGain
-            outputData[i] = mixed * 0.5
-            mixedSum += outputData[i] * outputData[i]
+            let sample = mixed * 0.5
+            outputLeft[i] = sample
+            outputRight[i] = sample
+            mixedSum += sample * sample
         }
         let rawMixed = sqrt(mixedSum / Float(frameLength)) * 5.0
         smoothedMixedLevel = smoothedMixedLevel * (1 - levelSmoothing) + min(rawMixed, 1.0) * levelSmoothing
