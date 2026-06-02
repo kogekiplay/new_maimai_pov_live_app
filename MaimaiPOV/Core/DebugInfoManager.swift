@@ -126,7 +126,7 @@ class DebugInfoManager: ObservableObject {
     nonisolated func logAsync(_ msg: String) {
         let msg = msg
         Task { @MainActor in
-            shared.log(msg)
+            DebugInfoManager.shared.log(msg)
         }
     }
 
