@@ -72,6 +72,10 @@ class RTMPStreamManager: ObservableObject {
     private let bufferCountLock = NSLock()
     private var lastReleasedAudioTime: Double = 0
     private var avSyncLogCounter: Int = 0
+    // 音频时间戳诊断
+    private var prevAudioAlignedTime: Double = 0
+    private var prevAudioFrameLength: AVAudioFrameCount = 0
+    private var audioTimeAccumError: Double = 0  // 累积时间戳误差
 
     @MainActor
     func startPublish(url: String, streamKey: String) {
@@ -436,6 +440,20 @@ class RTMPStreamManager: ObservableObject {
         let sampleTime = AVAudioFramePosition(alignedTime * outFormat.sampleRate)
         let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: outFormat.sampleRate)
 
+        // 诊断：检测音频 PTS 与帧数的一致性
+        if prevAudioAlignedTime > 0 {
+            let ptsDelta = alignedTime - prevAudioAlignedTime
+            let expectedDuration = Double(bufferToQueue.frameLength) / outFormat.sampleRate
+            let error = ptsDelta - expectedDuration
+            audioTimeAccumError += error
+            // 每 100 帧音频（约 2 秒）输出一次诊断
+            if audioBufferCount % 100 == 0 {
+                DebugInfoManager.shared.logAsync(String(format: "AudioDiag: ptsDelta=%.4fms expected=%.4fms err=%.4fms accum=%.1fms frames=%u", ptsDelta * 1000, expectedDuration * 1000, error * 1000, audioTimeAccumError * 1000, bufferToQueue.frameLength))
+            }
+        }
+        prevAudioAlignedTime = alignedTime
+        prevAudioFrameLength = bufferToQueue.frameLength
+
         audioSyncLock.lock()
         audioSyncQueue.append(AudioSyncEntry(
             pcmBuffer: bufferToQueue, audioTime: audioTime, alignedTime: alignedTime
@@ -549,6 +567,8 @@ class RTMPStreamManager: ObservableObject {
         audioSyncQueue.removeAll()
         lastReleasedAudioTime = 0
         avSyncLogCounter = 0
+        prevAudioAlignedTime = 0
+        audioTimeAccumError = 0
         audioSyncLock.unlock()
         videoContinuation?.finish()
         audioContinuation?.finish()
