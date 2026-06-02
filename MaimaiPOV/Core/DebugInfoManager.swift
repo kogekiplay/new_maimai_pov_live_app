@@ -122,6 +122,14 @@ class DebugInfoManager: ObservableObject {
         }
     }
 
+    /// 从非 MainActor 上下文安全调用 log
+    nonisolated func logAsync(_ msg: String) {
+        let msg = msg
+        Task { @MainActor in
+            shared.log(msg)
+        }
+    }
+
     func stageFrameData(_ data: FrameDebugData) {
         os_unfair_lock_lock(&stagingLock)
         stagingData = data

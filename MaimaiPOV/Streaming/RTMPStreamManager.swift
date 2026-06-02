@@ -379,7 +379,7 @@ class RTMPStreamManager: ObservableObject {
             avSyncLogCounter = 0
             let drift = videoTimeSeconds - lastReleasedAudioTime
             let fmtInfo = cachedAudioFormat.map { "\($0.sampleRate)Hz/\($0.channelCount)ch" } ?? "nil"
-            DebugInfoManager.shared.log(String(format: "AVSync: drift=%.1fms queue=%d fmt=%@", drift * 1000, audioSyncQueue.count, fmtInfo))
+            DebugInfoManager.shared.logAsync(String(format: "AVSync: drift=%.1fms queue=%d fmt=%@", drift * 1000, audioSyncQueue.count, fmtInfo))
         }
 
         videoContinuation?.yield(finalSampleBuffer)
@@ -394,7 +394,7 @@ class RTMPStreamManager: ObservableObject {
         if cachedAudioFormat == nil ||
            cachedAudioFormat!.sampleRate != newFormat.sampleRate ||
            cachedAudioFormat!.channelCount != newFormat.channelCount {
-            DebugInfoManager.shared.log("Audio: format changed to \(newFormat.sampleRate)Hz/\(newFormat.channelCount)ch")
+            DebugInfoManager.shared.logAsync("Audio: format changed to \(newFormat.sampleRate)Hz/\(newFormat.channelCount)ch")
             cachedAudioFormat = newFormat
         }
         guard let audioFormat = cachedAudioFormat else { return }
@@ -418,7 +418,7 @@ class RTMPStreamManager: ObservableObject {
                 // 立体声降混后输出为单声道，更新 cachedAudioFormat 以匹配实际 buffer 格式
                 // 确保后续静音 buffer 和 AVAudioTime 使用正确的单声道格式
                 if bufferToQueue.format.channelCount != cachedAudioFormat?.channelCount {
-                    DebugInfoManager.shared.log("Audio: stereo downmix -> cachedFormat updated to \(bufferToQueue.format.sampleRate)Hz/\(bufferToQueue.format.channelCount)ch")
+                    DebugInfoManager.shared.logAsync("Audio: stereo downmix -> cachedFormat updated to \(bufferToQueue.format.sampleRate)Hz/\(bufferToQueue.format.channelCount)ch")
                     cachedAudioFormat = bufferToQueue.format
                 }
             } else {
