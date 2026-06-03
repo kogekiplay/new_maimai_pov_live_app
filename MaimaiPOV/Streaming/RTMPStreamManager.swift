@@ -449,17 +449,25 @@ class RTMPStreamManager: ObservableObject {
             let expectedDuration = Double(bufferToQueue.frameLength) / outFormat.sampleRate
             let error = ptsDelta - expectedDuration
             audioTimeAccumError += error
-            // 更新浮窗固定显示字段（每帧更新，无滚动日志压力）
+            // 更新浮窗固定显示字段
             if audioBufferCount % 100 == 0 {
+                let prevErr = DebugInfoManager.shared.audioDiagErr  // 上一轮 err
+                let errMs = error * 1000
                 Task { @MainActor in
-                    DebugInfoManager.shared.audioDiagErr = error * 1000
+                    DebugInfoManager.shared.audioDiagErr = errMs
                     DebugInfoManager.shared.audioDiagAccum = audioTimeAccumError * 1000
+                    DebugInfoManager.shared.audioPtsDelta = ptsDelta * 1000
+                }
+                // 跳变检测：err 相比上一轮变化超过 0.05ms
+                if audioBufferCount > 200 && abs(errMs - prevErr) > 0.05 {
+                    let mode = isStereo ? "S" : "M"
+                    DebugInfoManager.shared.logAsync(String(format: "ADiag[JUMP %@]: err %.3f→%.3fms acc=%.1fms ptsD=%.4f exp=%.4f frames=%u q=%d", mode, prevErr, errMs, audioTimeAccumError * 1000, ptsDelta * 1000, expectedDuration * 1000, bufferToQueue.frameLength, audioSyncQueue.count))
                 }
             }
-            // 每 300 帧输出一条紧凑滚动日志（约6秒一次）
+            // 每 300 帧输出一条紧凑滚动日志
             if audioBufferCount % 300 == 0 {
                 let mode = isStereo ? "S" : "M"
-                DebugInfoManager.shared.logAsync(String(format: "ADiag[%@]: err=%.3f acc=%.1fms q=%d", mode, error * 1000, audioTimeAccumError * 1000, audioSyncQueue.count))
+                DebugInfoManager.shared.logAsync(String(format: "ADiag[%@]: err=%.3f acc=%.1fms ptsD=%.4f q=%d", mode, error * 1000, audioTimeAccumError * 1000, ptsDelta * 1000, audioSyncQueue.count))
             }
         }
         prevAudioAlignedTime = alignedTime

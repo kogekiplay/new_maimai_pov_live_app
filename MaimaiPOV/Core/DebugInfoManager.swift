@@ -16,6 +16,7 @@ class DebugInfoManager: ObservableObject {
     @Published var audioQueueDepth: Int = 0
     @Published var audioDiagErr: Double = 0      // 最新 err (ms)
     @Published var audioDiagAccum: Double = 0     // 累积 error (ms)
+    @Published var audioPtsDelta: Double = 0      // 最新 ptsDelta (ms)
     @Published var audioMode: String = "--"       // STEREO / MONO
     @Published var audioInFmt: String = "--"      // 输入格式
     @Published var audioOutFmt: String = "--"     // 输出格式
