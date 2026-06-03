@@ -148,12 +148,13 @@ class AudioMixer: ObservableObject {
 
         updateLevelsOnMain()
 
-        // 每 100 帧输出一次立体声处理诊断
+        // 更新混音耗时字段（浮窗固定显示）
         stereoDiagCounter += 1
-        if stereoDiagCounter % 100 == 0 {
+        if stereoDiagCounter % 20 == 0 {
             let elapsed = (CACurrentMediaTime() - t0) * 1000
-            DebugInfoManager.shared.logAsync(String(format: "MixerDiag: frames=%d sr=%.0f elapsed=%.3fms gainL=%.2f gainR=%.2f lvl=%.3f/%.3f",
-                frameLength, sampleRate, elapsed, leftGain, rightGain, smoothedLeftLevel, smoothedRightLevel))
+            Task { @MainActor in
+                DebugInfoManager.shared.audioMixTime = elapsed
+            }
         }
 
         return outputBuffer

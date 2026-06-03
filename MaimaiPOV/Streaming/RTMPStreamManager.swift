@@ -450,17 +450,33 @@ class RTMPStreamManager: ObservableObject {
             let expectedDuration = Double(bufferToQueue.frameLength) / outFormat.sampleRate
             let error = ptsDelta - expectedDuration
             audioTimeAccumError += error
-            // 每 100 帧音频（约 2 秒）输出一次诊断
+            // 更新浮窗固定显示字段（每帧更新，无滚动日志压力）
             if audioBufferCount % 100 == 0 {
-                let mode = isStereo ? "STEREO" : "MONO"
-                let inFmt = audioFormat
-                let inDesc = "sr=\(inFmt.sampleRate) ch=\(inFmt.channelCount) il=\(inFmt.isInterleaved) cf=\(inFmt.commonFormat.rawValue)"
-                let outDesc = "sr=\(outFormat.sampleRate) ch=\(outFormat.channelCount) il=\(outFormat.isInterleaved) cf=\(outFormat.commonFormat.rawValue)"
-                DebugInfoManager.shared.logAsync(String(format: "AudioDiag[%@]: ptsΔ=%.4fms exp=%.4fms err=%.4fms accum=%.1fms frames=%u in=[%@] out=[%@] q=%d", mode, ptsDelta * 1000, expectedDuration * 1000, error * 1000, audioTimeAccumError * 1000, bufferToQueue.frameLength, inDesc, outDesc, audioSyncQueue.count))
+                Task { @MainActor in
+                    DebugInfoManager.shared.audioDiagErr = error * 1000
+                    DebugInfoManager.shared.audioDiagAccum = audioTimeAccumError * 1000
+                }
+            }
+            // 每 300 帧输出一条紧凑滚动日志（约6秒一次）
+            if audioBufferCount % 300 == 0 {
+                let mode = isStereo ? "S" : "M"
+                DebugInfoManager.shared.logAsync(String(format: "ADiag[%@]: err=%.3f acc=%.1fms q=%d", mode, error * 1000, audioTimeAccumError * 1000, audioSyncQueue.count))
             }
         }
         prevAudioAlignedTime = alignedTime
         prevAudioFrameLength = bufferToQueue.frameLength
+
+        // 更新浮窗固定字段
+        let inFmt = audioFormat
+        let fmtStr = { (f: AVAudioFormat) in "\(Int(f.sampleRate)) \(f.channelCount)ch \(f.isInterleaved ? "I" : "N") \(f.commonFormat.rawValue)" }
+        let inStr = fmtStr(inFmt)
+        let outStr = fmtStr(outFormat)
+        let modeStr = isStereo ? "STEREO" : "MONO"
+        Task { @MainActor in
+            DebugInfoManager.shared.audioMode = modeStr
+            DebugInfoManager.shared.audioInFmt = inStr
+            DebugInfoManager.shared.audioOutFmt = outStr
+        }
 
         audioSyncLock.lock()
         audioSyncQueue.append(AudioSyncEntry(
@@ -473,17 +489,7 @@ class RTMPStreamManager: ObservableObject {
               audioSyncQueue.last!.alignedTime - audioSyncQueue.first!.alignedTime > audioQueueMaxDuration {
             audioSyncQueue.removeFirst()
         }
-        let qDepth = audioSyncQueue.count
-        let qFirst = audioSyncQueue.first?.alignedTime ?? 0
-        let qLast = audioSyncQueue.last?.alignedTime ?? 0
-        let qSpan = qLast - qFirst
         audioSyncLock.unlock()
-
-        // 每 50 帧记录一次队列状态
-        if audioBufferCount % 50 == 0 {
-            let mode = isStereo ? "S" : "M"
-            DebugInfoManager.shared.logAsync(String(format: "AudioQ[%@]: depth=%d span=%.2fms maxSpan=%.0fms", mode, qDepth, qSpan * 1000, audioQueueMaxDuration * 1000))
-        }
     }
 
     func resetAudioState() {

@@ -141,6 +141,16 @@ struct DebugOverlayView: View {
             infoRow("Readback", debug.streamInfo,
                     color: debug.streamInfo != "--" ? .green : .gray)
             infoRow("AQueue", "\(debug.audioQueueDepth) bufs")
+            infoRow("AMode", debug.audioMode,
+                    color: debug.audioMode == "STEREO" ? .cyan : .white)
+            infoRow("AErr", String(format: "%.3fms", debug.audioDiagErr),
+                    color: abs(debug.audioDiagErr) < 0.1 ? .green : (debug.audioDiagErr < 0 ? .red : .yellow))
+            infoRow("AAccum", String(format: "%.1fms", debug.audioDiagAccum),
+                    color: abs(debug.audioDiagAccum) < 5 ? .green : .red)
+            infoRow("AInFmt", debug.audioInFmt)
+            infoRow("AOutFmt", debug.audioOutFmt)
+            infoRow("AMix", String(format: "%.3fms", debug.audioMixTime),
+                    color: debug.audioMixTime < 1.0 ? .green : .yellow)
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 
