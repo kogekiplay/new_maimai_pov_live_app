@@ -26,8 +26,6 @@ class AudioMixer: ObservableObject {
     private var standardBuffer: AVAudioPCMBuffer?
     private var audioConverter: AVAudioConverter?
 
-    /// 缓存的立体声输出 buffer（复用避免每帧分配）
-    private var cachedStereoBuffer: AVAudioPCMBuffer?
     /// 立体声处理诊断计数器
     private var stereoDiagCounter: Int = 0
 
@@ -113,21 +111,9 @@ class AudioMixer: ObservableObject {
         // 两个声道都填充混合后的音频
         if stereoOutputFormat == nil || stereoOutputFormat!.sampleRate != sampleRate {
             stereoOutputFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)
-            cachedStereoBuffer = nil  // 格式变化，废弃旧缓存
         }
-
-        // 复用 output buffer，避免每帧分配
-        let outputBuffer: AVAudioPCMBuffer
-        if let cached = cachedStereoBuffer,
-           cached.frameCapacity >= AVAudioFrameCount(frameLength),
-           cached.format.sampleRate == sampleRate,
-           cached.format.channelCount == 2 {
-            outputBuffer = cached
-        } else if let stereoFmt = stereoOutputFormat,
-                  let newBuffer = AVAudioPCMBuffer(pcmFormat: stereoFmt, frameCapacity: AVAudioFrameCount(frameLength)) {
-            outputBuffer = newBuffer
-            cachedStereoBuffer = newBuffer
-        } else {
+        guard let stereoFmt = stereoOutputFormat,
+              let outputBuffer = AVAudioPCMBuffer(pcmFormat: stereoFmt, frameCapacity: AVAudioFrameCount(frameLength)) else {
             return fallback
         }
         outputBuffer.frameLength = AVAudioFrameCount(frameLength)

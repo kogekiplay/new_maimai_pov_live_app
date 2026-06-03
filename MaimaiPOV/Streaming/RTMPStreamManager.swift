@@ -440,8 +440,7 @@ class RTMPStreamManager: ObservableObject {
 
         guard let outFormat = outputAudioFormat else { return }
         let sampleTime = AVAudioFramePosition(alignedTime * outFormat.sampleRate)
-        let hostTimeUInt64 = UInt64(alignedTime * Double(NSEC_PER_SEC))
-        let audioTime = AVAudioTime(hostTime: hostTimeUInt64, sampleTime: sampleTime, atRate: outFormat.sampleRate)
+        let audioTime = AVAudioTime(hostTime: AVAudioTime.hostTime(forSeconds: alignedTime), sampleTime: sampleTime, atRate: outFormat.sampleRate)
 
         // 诊断：检测音频 PTS 与帧数的一致性
         let isStereo = audioMixer?.isStereoMixEnabled ?? false
