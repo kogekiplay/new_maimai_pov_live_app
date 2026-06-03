@@ -190,6 +190,8 @@ class AudioMixer: ObservableObject {
 
         guard let buffer = standardBuffer else { return nil }
 
+        // 重置 converter 避免跨帧累积状态导致 frameLength 漂移
+        converter.reset()
         var error: NSError?
         let status = converter.convert(to: buffer, error: &error) { inNumPackets, outStatus in
             outStatus.pointee = .haveData
@@ -197,6 +199,11 @@ class AudioMixer: ObservableObject {
         }
 
         guard status != .error else { return nil }
+        // 防御性裁剪：确保输出帧数不超过输入帧数
+        if buffer.frameLength > AVAudioFrameCount(frameLength) {
+            DebugInfoManager.shared.logAsync("MixerCvt: trimmed fl from \(buffer.frameLength) to \(frameLength)")
+            buffer.frameLength = AVAudioFrameCount(frameLength)
+        }
         return buffer
     }
 
