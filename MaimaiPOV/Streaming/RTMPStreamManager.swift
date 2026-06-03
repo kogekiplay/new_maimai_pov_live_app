@@ -364,6 +364,7 @@ class RTMPStreamManager: ObservableObject {
                     DebugInfoManager.shared.audioDiagErr = errMs
                     DebugInfoManager.shared.audioDiagAccum = audioTimeAccumError * 1000
                     DebugInfoManager.shared.audioPtsDelta = ptsDelta * 1000
+                    DebugInfoManager.shared.audioFrameLen = Int(bufferToQueue.frameLength)
                 }
                 // 跳变检测：err 相比上一轮变化超过 0.05ms
                 if audioBufferCount > 200 && abs(errMs - prevErr) > 0.05 {

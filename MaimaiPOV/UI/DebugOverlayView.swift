@@ -145,7 +145,7 @@ struct DebugOverlayView: View {
                     color: debug.audioMode == "STEREO" ? .cyan : .white)
             infoRow("AErr", String(format: "%.3fms", debug.audioDiagErr),
                     color: abs(debug.audioDiagErr) < 0.1 ? .green : (debug.audioDiagErr < 0 ? .red : .yellow))
-            infoRow("APtsD", String(format: "%.3fms", debug.audioPtsDelta),
+            infoRow("APtsD", String(format: "%.3fms fl=%d", debug.audioPtsDelta, debug.audioFrameLen),
                     color: .white)
             infoRow("AAccum", String(format: "%.1fms", debug.audioDiagAccum),
                     color: abs(debug.audioDiagAccum) < 5 ? .green : .red)

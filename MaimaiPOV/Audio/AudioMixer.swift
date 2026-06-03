@@ -28,6 +28,8 @@ class AudioMixer: ObservableObject {
 
     /// 立体声处理诊断计数器
     private var stereoDiagCounter: Int = 0
+    /// 格式转换路径计数器
+    private var conversionDiagCounter: Int = 0
 
     func process(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         if isStereoMixEnabled && input.format.channelCount >= 2 {
@@ -76,13 +78,18 @@ class AudioMixer: ObservableObject {
         let frameLength = Int(input.frameLength)
         guard frameLength > 0 else { return input }
 
+        stereoDiagCounter += 1
+
         if let leftChannel = input.floatChannelData?[0],
            let rightChannel = input.floatChannelData?[1] {
             return processStereoFromFloat(leftChannel: leftChannel, rightChannel: rightChannel, frameLength: frameLength, sampleRate: input.format.sampleRate, fallback: input)
         }
 
         // 非 Float32 格式需要先转换（如 interleaved Int16）
-        DebugInfoManager.shared.logAsync("Mixer: converting non-float input sr=\(input.format.sampleRate) ch=\(input.format.channelCount) il=\(input.format.isInterleaved) cf=\(input.format.commonFormat.rawValue)")
+        conversionDiagCounter += 1
+        if conversionDiagCounter % 100 == 0 {
+            DebugInfoManager.shared.logAsync("MixerCvt: non-float sr=\(Int(input.format.sampleRate)) ch=\(input.format.channelCount) il=\(input.format.isInterleaved) cf=\(input.format.commonFormat.rawValue) inFL=\(frameLength) cnt=\(conversionDiagCounter)")
+        }
         guard let converted = convertToStandardFormat(input),
               let leftChannel = converted.floatChannelData?[0],
               let rightChannel = converted.floatChannelData?[1] else {
@@ -135,7 +142,6 @@ class AudioMixer: ObservableObject {
         updateLevelsOnMain()
 
         // 更新混音耗时字段（浮窗固定显示）
-        stereoDiagCounter += 1
         if stereoDiagCounter % 20 == 0 {
             let elapsed = (CACurrentMediaTime() - t0) * 1000
             Task { @MainActor in
