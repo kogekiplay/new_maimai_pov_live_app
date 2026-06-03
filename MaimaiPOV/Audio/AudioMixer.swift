@@ -1,5 +1,6 @@
 import AVFoundation
 import Accelerate
+import QuartzCore
 
 class AudioMixer: ObservableObject {
     @Published var leftGain: Float = 1.0
@@ -24,6 +25,11 @@ class AudioMixer: ObservableObject {
     private var standardFormat: AVAudioFormat?
     private var standardBuffer: AVAudioPCMBuffer?
     private var audioConverter: AVAudioConverter?
+
+    /// 缓存的立体声输出 buffer（复用避免每帧分配）
+    private var cachedStereoBuffer: AVAudioPCMBuffer?
+    /// 立体声处理诊断计数器
+    private var stereoDiagCounter: Int = 0
 
     func process(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         if isStereoMixEnabled && input.format.channelCount >= 2 {
@@ -77,6 +83,8 @@ class AudioMixer: ObservableObject {
             return processStereoFromFloat(leftChannel: leftChannel, rightChannel: rightChannel, frameLength: frameLength, sampleRate: input.format.sampleRate, fallback: input)
         }
 
+        // 非 Float32 格式需要先转换（如 interleaved Int16）
+        DebugInfoManager.shared.logAsync("Mixer: converting non-float input sr=\(input.format.sampleRate) ch=\(input.format.channelCount) il=\(input.format.isInterleaved) cf=\(input.format.commonFormat.rawValue)")
         guard let converted = convertToStandardFormat(input),
               let leftChannel = converted.floatChannelData?[0],
               let rightChannel = converted.floatChannelData?[1] else {
@@ -89,6 +97,8 @@ class AudioMixer: ObservableObject {
     }
 
     private func processStereoFromFloat(leftChannel: UnsafePointer<Float>, rightChannel: UnsafePointer<Float>, frameLength: Int, sampleRate: Float64, fallback: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
+        let t0 = CACurrentMediaTime()
+
         var leftSum: Float = 0
         var rightSum: Float = 0
         vDSP_svesq(leftChannel, 1, &leftSum, vDSP_Length(frameLength))
@@ -103,9 +113,21 @@ class AudioMixer: ObservableObject {
         // 两个声道都填充混合后的音频
         if stereoOutputFormat == nil || stereoOutputFormat!.sampleRate != sampleRate {
             stereoOutputFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)
+            cachedStereoBuffer = nil  // 格式变化，废弃旧缓存
         }
-        guard let stereoFmt = stereoOutputFormat,
-              let outputBuffer = AVAudioPCMBuffer(pcmFormat: stereoFmt, frameCapacity: AVAudioFrameCount(frameLength)) else {
+
+        // 复用 output buffer，避免每帧分配
+        let outputBuffer: AVAudioPCMBuffer
+        if let cached = cachedStereoBuffer,
+           cached.frameCapacity >= AVAudioFrameCount(frameLength),
+           cached.format.sampleRate == sampleRate,
+           cached.format.channelCount == 2 {
+            outputBuffer = cached
+        } else if let stereoFmt = stereoOutputFormat,
+                  let newBuffer = AVAudioPCMBuffer(pcmFormat: stereoFmt, frameCapacity: AVAudioFrameCount(frameLength)) {
+            outputBuffer = newBuffer
+            cachedStereoBuffer = newBuffer
+        } else {
             return fallback
         }
         outputBuffer.frameLength = AVAudioFrameCount(frameLength)
@@ -125,6 +147,14 @@ class AudioMixer: ObservableObject {
         smoothedMixedLevel = smoothedMixedLevel * (1 - levelSmoothing) + min(rawMixed, 1.0) * levelSmoothing
 
         updateLevelsOnMain()
+
+        // 每 100 帧输出一次立体声处理诊断
+        stereoDiagCounter += 1
+        if stereoDiagCounter % 100 == 0 {
+            let elapsed = (CACurrentMediaTime() - t0) * 1000
+            DebugInfoManager.shared.logAsync(String(format: "MixerDiag: frames=%d sr=%.0f elapsed=%.3fms gainL=%.2f gainR=%.2f lvl=%.3f/%.3f",
+                frameLength, sampleRate, elapsed, leftGain, rightGain, smoothedLeftLevel, smoothedRightLevel))
+        }
 
         return outputBuffer
     }

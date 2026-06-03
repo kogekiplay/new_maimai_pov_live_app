@@ -401,8 +401,10 @@ class RTMPStreamManager: ObservableObject {
         let newFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
         if cachedAudioFormat == nil ||
            cachedAudioFormat!.sampleRate != newFormat.sampleRate ||
-           cachedAudioFormat!.channelCount != newFormat.channelCount {
-            DebugInfoManager.shared.logAsync("Audio: input format changed to \(newFormat.sampleRate)Hz/\(newFormat.channelCount)ch")
+           cachedAudioFormat!.channelCount != newFormat.channelCount ||
+           cachedAudioFormat!.isInterleaved != newFormat.isInterleaved ||
+           cachedAudioFormat!.commonFormat != newFormat.commonFormat {
+            DebugInfoManager.shared.logAsync("Audio: input fmt changed sr=\(newFormat.sampleRate) ch=\(newFormat.channelCount) il=\(newFormat.isInterleaved) cf=\(newFormat.commonFormat.rawValue)")
             cachedAudioFormat = newFormat
         }
         guard let audioFormat = cachedAudioFormat else { return }
@@ -429,18 +431,20 @@ class RTMPStreamManager: ObservableObject {
         }
 
         // outputAudioFormat 与处理后的 buffer 格式一致（用于 AVAudioTime 和静音 buffer）
-        if outputAudioFormat == nil ||
-           outputAudioFormat!.sampleRate != bufferToQueue.format.sampleRate ||
-           outputAudioFormat!.channelCount != bufferToQueue.format.channelCount {
-            DebugInfoManager.shared.logAsync("Audio: output format set to \(bufferToQueue.format.sampleRate)Hz/\(bufferToQueue.format.channelCount)ch")
-            outputAudioFormat = bufferToQueue.format
+        let outFmt = bufferToQueue.format
+        if outputAudioFormat == nil || outputAudioFormat != outFmt {
+            let oldDesc = outputAudioFormat.map { "sr=\($0.sampleRate) ch=\($0.channelCount) il=\($0.isInterleaved) cf=\($0.commonFormat.rawValue)" } ?? "nil"
+            DebugInfoManager.shared.logAsync("Audio: out fmt changed \(oldDesc) -> sr=\(outFmt.sampleRate) ch=\(outFmt.channelCount) il=\(outFmt.isInterleaved) cf=\(outFmt.commonFormat.rawValue)")
+            outputAudioFormat = outFmt
         }
 
         guard let outFormat = outputAudioFormat else { return }
         let sampleTime = AVAudioFramePosition(alignedTime * outFormat.sampleRate)
-        let audioTime = AVAudioTime(sampleTime: sampleTime, atRate: outFormat.sampleRate)
+        let hostTimeUInt64 = UInt64(alignedTime * Double(NSEC_PER_SEC))
+        let audioTime = AVAudioTime(hostTime: hostTimeUInt64, sampleTime: sampleTime, atRate: outFormat.sampleRate)
 
         // 诊断：检测音频 PTS 与帧数的一致性
+        let isStereo = audioMixer?.isStereoMixEnabled ?? false
         if prevAudioAlignedTime > 0 {
             let ptsDelta = alignedTime - prevAudioAlignedTime
             let expectedDuration = Double(bufferToQueue.frameLength) / outFormat.sampleRate
@@ -448,7 +452,11 @@ class RTMPStreamManager: ObservableObject {
             audioTimeAccumError += error
             // 每 100 帧音频（约 2 秒）输出一次诊断
             if audioBufferCount % 100 == 0 {
-                DebugInfoManager.shared.logAsync(String(format: "AudioDiag: ptsDelta=%.4fms expected=%.4fms err=%.4fms accum=%.1fms frames=%u", ptsDelta * 1000, expectedDuration * 1000, error * 1000, audioTimeAccumError * 1000, bufferToQueue.frameLength))
+                let mode = isStereo ? "STEREO" : "MONO"
+                let inFmt = audioFormat
+                let inDesc = "sr=\(inFmt.sampleRate) ch=\(inFmt.channelCount) il=\(inFmt.isInterleaved) cf=\(inFmt.commonFormat.rawValue)"
+                let outDesc = "sr=\(outFormat.sampleRate) ch=\(outFormat.channelCount) il=\(outFormat.isInterleaved) cf=\(outFormat.commonFormat.rawValue)"
+                DebugInfoManager.shared.logAsync(String(format: "AudioDiag[%@]: ptsΔ=%.4fms exp=%.4fms err=%.4fms accum=%.1fms frames=%u in=[%@] out=[%@] q=%d", mode, ptsDelta * 1000, expectedDuration * 1000, error * 1000, audioTimeAccumError * 1000, bufferToQueue.frameLength, inDesc, outDesc, audioSyncQueue.count))
             }
         }
         prevAudioAlignedTime = alignedTime
@@ -465,16 +473,34 @@ class RTMPStreamManager: ObservableObject {
               audioSyncQueue.last!.alignedTime - audioSyncQueue.first!.alignedTime > audioQueueMaxDuration {
             audioSyncQueue.removeFirst()
         }
+        let qDepth = audioSyncQueue.count
+        let qFirst = audioSyncQueue.first?.alignedTime ?? 0
+        let qLast = audioSyncQueue.last?.alignedTime ?? 0
+        let qSpan = qLast - qFirst
         audioSyncLock.unlock()
+
+        // 每 50 帧记录一次队列状态
+        if audioBufferCount % 50 == 0 {
+            let mode = isStereo ? "S" : "M"
+            DebugInfoManager.shared.logAsync(String(format: "AudioQ[%@]: depth=%d span=%.2fms maxSpan=%.0fms", mode, qDepth, qSpan * 1000, audioQueueMaxDuration * 1000))
+        }
     }
 
     func resetAudioState() {
         audioSyncLock.lock()
         audioSyncQueue.removeAll()
+        lastReleasedAudioTime = 0
+        avSyncLogCounter = 0
+        prevAudioAlignedTime = 0
+        prevAudioFrameLength = 0
+        audioTimeAccumError = 0
         audioSyncLock.unlock()
         bufferCountLock.lock()
         audioBufferCount = 0
         bufferCountLock.unlock()
+        cachedAudioFormat = nil
+        outputAudioFormat = nil
+        DebugInfoManager.shared.logAsync("Audio: state fully reset")
     }
 
     @MainActor
