@@ -24,20 +24,10 @@ class RTMPStreamManager: ObservableObject {
 
     var audioMixer: AudioMixer?
 
-    private struct AudioSyncEntry {
-        let pcmBuffer: AVAudioPCMBuffer
-        let audioTime: AVAudioTime
-        let alignedTime: Double
-    }
-
-    private var audioSyncQueue: [AudioSyncEntry] = []
-    private let audioSyncLock = NSLock()
-    private let audioQueueMaxDuration: Double = 0.2
-
     var audioSyncQueueDepth: Int {
-        audioSyncLock.lock()
-        defer { audioSyncLock.unlock() }
-        return audioSyncQueue.count
+        bufferCountLock.lock()
+        defer { bufferCountLock.unlock() }
+        return audioBufferCount
     }
 
     private var connection: RTMPConnection?
@@ -70,12 +60,11 @@ class RTMPStreamManager: ObservableObject {
     private var videoBufferCount: Int = 0
     private var audioBufferCount: Int = 0
     private let bufferCountLock = NSLock()
-    private var lastReleasedAudioTime: Double = 0
-    private var avSyncLogCounter: Int = 0
     // 音频时间戳诊断
     private var prevAudioAlignedTime: Double = 0
     private var prevAudioFrameLength: AVAudioFrameCount = 0
     private var audioTimeAccumError: Double = 0  // 累积时间戳误差
+    private var prevDisplayedErr: Double = 0       // 上一轮显示的 err 值（用于跳变检测）
 
     @MainActor
     func startPublish(url: String, streamKey: String) {
@@ -306,89 +295,6 @@ class RTMPStreamManager: ObservableObject {
             return
         }
 
-        let videoTimeSeconds = timestamp.seconds
-        audioSyncLock.lock()
-        var audioToRelease: [(AVAudioPCMBuffer, AVAudioTime)] = []
-
-        if lastReleasedAudioTime > 0 && !audioSyncQueue.isEmpty {
-            let firstAlignedTime = audioSyncQueue.first!.alignedTime
-            let gap = firstAlignedTime - lastReleasedAudioTime
-            if gap > 0.05 && gap < 5.0, let audioFormat = outputAudioFormat {
-                let gapDuration = min(gap, 2.0)
-                let silenceFrameCount = AVAudioFrameCount(gapDuration * audioFormat.sampleRate)
-                let framesPerBuffer = AVAudioFrameCount(audioFormat.sampleRate * 0.01)
-                var remainingFrames = silenceFrameCount
-                var silenceTime = lastReleasedAudioTime
-
-                while remainingFrames > 0 {
-                    let chunkSize = min(remainingFrames, framesPerBuffer)
-                    if let silenceBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: chunkSize) {
-                        silenceBuffer.frameLength = chunkSize
-                        for ch in 0..<Int(audioFormat.channelCount) {
-                            if let channelData = silenceBuffer.floatChannelData?[ch] {
-                                memset(channelData, 0, Int(chunkSize) * MemoryLayout<Float>.size)
-                            }
-                        }
-                        let silenceSampleTime = AVAudioFramePosition(silenceTime * audioFormat.sampleRate)
-                        let silenceAudioTime = AVAudioTime(sampleTime: silenceSampleTime, atRate: audioFormat.sampleRate)
-                        audioToRelease.append((silenceBuffer, silenceAudioTime))
-                    }
-                    silenceTime += Double(chunkSize) / audioFormat.sampleRate
-                    remainingFrames -= chunkSize
-                }
-                lastReleasedAudioTime = firstAlignedTime
-            }
-        }
-
-        while !audioSyncQueue.isEmpty, audioSyncQueue.first!.alignedTime <= videoTimeSeconds {
-            let entry = audioSyncQueue.removeFirst()
-            audioToRelease.append((entry.pcmBuffer, entry.audioTime))
-            lastReleasedAudioTime = entry.alignedTime
-        }
-
-        if lastReleasedAudioTime > 0 && audioToRelease.isEmpty && videoTimeSeconds - lastReleasedAudioTime > 0.05 {
-            if let audioFormat = outputAudioFormat {
-                let gapDuration = min(videoTimeSeconds - lastReleasedAudioTime, 2.0)
-                let silenceFrameCount = AVAudioFrameCount(gapDuration * audioFormat.sampleRate)
-                let framesPerBuffer = AVAudioFrameCount(audioFormat.sampleRate * 0.01)
-                var remainingFrames = silenceFrameCount
-                var silenceTime = lastReleasedAudioTime
-
-                while remainingFrames > 0 {
-                    let chunkSize = min(remainingFrames, framesPerBuffer)
-                    if let silenceBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: chunkSize) {
-                        silenceBuffer.frameLength = chunkSize
-                        for ch in 0..<Int(audioFormat.channelCount) {
-                            if let channelData = silenceBuffer.floatChannelData?[ch] {
-                                memset(channelData, 0, Int(chunkSize) * MemoryLayout<Float>.size)
-                            }
-                        }
-                        let silenceSampleTime = AVAudioFramePosition(silenceTime * audioFormat.sampleRate)
-                        let silenceAudioTime = AVAudioTime(sampleTime: silenceSampleTime, atRate: audioFormat.sampleRate)
-                        audioToRelease.append((silenceBuffer, silenceAudioTime))
-                    }
-                    silenceTime += Double(chunkSize) / audioFormat.sampleRate
-                    remainingFrames -= chunkSize
-                }
-                lastReleasedAudioTime = videoTimeSeconds
-            }
-        }
-        audioSyncLock.unlock()
-
-        for (buffer, time) in audioToRelease {
-            decrementAudioBufferCount()
-            audioContinuation?.yield((buffer, time))
-        }
-
-        // 每 600 帧（约 10 秒@60fps）记录一次音画同步状态
-        avSyncLogCounter += 1
-        if avSyncLogCounter >= 600 {
-            avSyncLogCounter = 0
-            let drift = videoTimeSeconds - lastReleasedAudioTime
-            let fmtInfo = outputAudioFormat.map { "\($0.sampleRate)Hz/\($0.channelCount)ch" } ?? "nil"
-            DebugInfoManager.shared.logAsync(String(format: "AVSync: drift=%.1fms queue=%d fmt=%@", drift * 1000, audioSyncQueue.count, fmtInfo))
-        }
-
         videoContinuation?.yield(finalSampleBuffer)
     }
 
@@ -461,13 +367,13 @@ class RTMPStreamManager: ObservableObject {
                 // 跳变检测：err 相比上一轮变化超过 0.05ms
                 if audioBufferCount > 200 && abs(errMs - prevErr) > 0.05 {
                     let mode = isStereo ? "S" : "M"
-                    DebugInfoManager.shared.logAsync(String(format: "ADiag[JUMP %@]: err %.3f→%.3fms acc=%.1fms ptsD=%.4f exp=%.4f frames=%u q=%d", mode, prevErr, errMs, audioTimeAccumError * 1000, ptsDelta * 1000, expectedDuration * 1000, bufferToQueue.frameLength, audioSyncQueue.count))
+                    DebugInfoManager.shared.logAsync(String(format: "ADiag[JUMP %@]: err %.3f→%.3fms acc=%.1fms ptsD=%.4f exp=%.4f frames=%u", mode, prevErr, errMs, audioTimeAccumError * 1000, ptsDelta * 1000, expectedDuration * 1000, bufferToQueue.frameLength))
                 }
             }
             // 每 300 帧输出一条紧凑滚动日志
             if audioBufferCount % 300 == 0 {
                 let mode = isStereo ? "S" : "M"
-                DebugInfoManager.shared.logAsync(String(format: "ADiag[%@]: err=%.3f acc=%.1fms ptsD=%.4f q=%d", mode, error * 1000, audioTimeAccumError * 1000, ptsDelta * 1000, audioSyncQueue.count))
+                DebugInfoManager.shared.logAsync(String(format: "ADiag[%@]: err=%.3f acc=%.1fms ptsD=%.4f buf=%d", mode, error * 1000, audioTimeAccumError * 1000, ptsDelta * 1000, audioBufferCount))
             }
         }
         prevAudioAlignedTime = alignedTime
@@ -485,32 +391,28 @@ class RTMPStreamManager: ObservableObject {
             DebugInfoManager.shared.audioOutFmt = outStr
         }
 
-        audioSyncLock.lock()
-        audioSyncQueue.append(AudioSyncEntry(
-            pcmBuffer: bufferToQueue, audioTime: audioTime, alignedTime: alignedTime
-        ))
+        // 直接 yield 到编码管线，无 sync queue
         bufferCountLock.lock()
         audioBufferCount += 1
+        let count = audioBufferCount
         bufferCountLock.unlock()
-        while audioSyncQueue.count > 1,
-              audioSyncQueue.last!.alignedTime - audioSyncQueue.first!.alignedTime > audioQueueMaxDuration {
-            audioSyncQueue.removeFirst()
+
+        if count > Int(Double(Config.streamAudioBufferFrames) * 1.5) {
+            forceClearBuffers()
+            return
         }
-        audioSyncLock.unlock()
+
+        audioContinuation?.yield((bufferToQueue, audioTime))
     }
 
     func resetAudioState() {
-        audioSyncLock.lock()
-        audioSyncQueue.removeAll()
-        lastReleasedAudioTime = 0
-        avSyncLogCounter = 0
-        prevAudioAlignedTime = 0
-        prevAudioFrameLength = 0
-        audioTimeAccumError = 0
-        audioSyncLock.unlock()
         bufferCountLock.lock()
         audioBufferCount = 0
         bufferCountLock.unlock()
+        prevAudioAlignedTime = 0
+        prevAudioFrameLength = 0
+        audioTimeAccumError = 0
+        prevDisplayedErr = 0
         cachedAudioFormat = nil
         outputAudioFormat = nil
         DebugInfoManager.shared.logAsync("Audio: state fully reset")
@@ -602,13 +504,9 @@ class RTMPStreamManager: ObservableObject {
         videoBufferCount = 0
         audioBufferCount = 0
         bufferCountLock.unlock()
-        audioSyncLock.lock()
-        audioSyncQueue.removeAll()
-        lastReleasedAudioTime = 0
-        avSyncLogCounter = 0
         prevAudioAlignedTime = 0
         audioTimeAccumError = 0
-        audioSyncLock.unlock()
+        prevDisplayedErr = 0
         videoContinuation?.finish()
         audioContinuation?.finish()
         lock.lock()
@@ -636,9 +534,6 @@ class RTMPStreamManager: ObservableObject {
         audioContinuation?.finish(); audioContinuation = nil
         videoIngestTask?.cancel(); videoIngestTask = nil
         audioIngestTask?.cancel(); audioIngestTask = nil
-        audioSyncLock.lock()
-        audioSyncQueue.removeAll()
-        audioSyncLock.unlock()
         lock.lock()
         let oldStream = stream
         let oldConnection = connection
