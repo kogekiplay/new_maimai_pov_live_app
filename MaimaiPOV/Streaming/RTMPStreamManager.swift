@@ -357,8 +357,9 @@ class RTMPStreamManager: ObservableObject {
             audioTimeAccumError += error
             // 更新浮窗固定显示字段
             if audioBufferCount % 100 == 0 {
-                let prevErr = DebugInfoManager.shared.audioDiagErr  // 上一轮 err
+                let prevErr = prevDisplayedErr  // 上一轮 err（局部变量，线程安全）
                 let errMs = error * 1000
+                prevDisplayedErr = errMs
                 Task { @MainActor in
                     DebugInfoManager.shared.audioDiagErr = errMs
                     DebugInfoManager.shared.audioDiagAccum = audioTimeAccumError * 1000
