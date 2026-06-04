@@ -66,6 +66,11 @@ class RTMPStreamManager: ObservableObject {
     private var audioTimeAccumError: Double = 0  // 累积时间戳误差
     private var prevDisplayedErr: Double = 0       // 上一轮显示的 err 值（用于跳变检测）
 
+    // 音频PTS漂移补偿
+    private var audioCumulativeSamples: Int64 = 0   // 实际累积音频样本数
+    private var audioFirstAlignedTime: Double = 0    // 第一帧的alignedTime（减去初始偏移后）
+    private var audioHasFirstFrame: Bool = false     // 是否已收到第一帧
+
     @MainActor
     func startPublish(url: String, streamKey: String) {
         guard !isStreaming else { return }
@@ -345,8 +350,29 @@ class RTMPStreamManager: ObservableObject {
         }
 
         guard let outFormat = outputAudioFormat else { return }
-        let sampleTime = AVAudioFramePosition(alignedTime * outFormat.sampleRate)
-        let audioTime = AVAudioTime(hostTime: AVAudioTime.hostTime(forSeconds: alignedTime), sampleTime: sampleTime, atRate: outFormat.sampleRate)
+
+        // 音频PTS漂移补偿：用实际累积样本数计算PTS，消除音频设备时钟与主机时钟的漂移
+        let frameLength = bufferToQueue.frameLength
+        if !audioHasFirstFrame {
+            // 初始偏移补偿：提前音频PTS以补偿AudioCodec启动延迟
+            audioFirstAlignedTime = alignedTime - (Config.audioInitialOffsetMs / 1000.0)
+            audioHasFirstFrame = true
+            DebugInfoManager.shared.logAsync(String(format: "Audio: first frame alignedTime=%.3f offset=%.1fms", alignedTime, Config.audioInitialOffsetMs))
+        }
+        // 基于实际样本数计算预期时间（消除时钟漂移）
+        let correctedTime = audioFirstAlignedTime + Double(audioCumulativeSamples) / outFormat.sampleRate
+        audioCumulativeSamples += Int64(frameLength)
+
+        // 漂移量诊断
+        let driftMs = (alignedTime - correctedTime) * 1000.0
+        if audioBufferCount % 100 == 0 {
+            Task { @MainActor in
+                DebugInfoManager.shared.audioDriftMs = driftMs
+            }
+        }
+
+        let sampleTime = AVAudioFramePosition(correctedTime * outFormat.sampleRate)
+        let audioTime = AVAudioTime(hostTime: AVAudioTime.hostTime(forSeconds: correctedTime), sampleTime: sampleTime, atRate: outFormat.sampleRate)
 
         // 诊断：检测音频 PTS 与帧数的一致性
         let isStereo = audioMixer?.isStereoMixEnabled ?? false
@@ -417,6 +443,10 @@ class RTMPStreamManager: ObservableObject {
         prevDisplayedErr = 0
         cachedAudioFormat = nil
         outputAudioFormat = nil
+        // 重置漂移补偿状态
+        audioCumulativeSamples = 0
+        audioFirstAlignedTime = 0
+        audioHasFirstFrame = false
         DebugInfoManager.shared.logAsync("Audio: state fully reset")
     }
 
@@ -509,6 +539,10 @@ class RTMPStreamManager: ObservableObject {
         prevAudioAlignedTime = 0
         audioTimeAccumError = 0
         prevDisplayedErr = 0
+        // 重置漂移补偿状态
+        audioCumulativeSamples = 0
+        audioFirstAlignedTime = 0
+        audioHasFirstFrame = false
         videoContinuation?.finish()
         audioContinuation?.finish()
         lock.lock()

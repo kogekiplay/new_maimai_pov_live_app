@@ -564,6 +564,7 @@ enum Config {
     private static let deviceStatusEnabledKey = "com.maimai.deviceStatusEnabled"
     private static let songRequestPausedKey = "com.maimai.songRequestPaused"
     private static let songRequestPauseThresholdKey = "com.maimai.songRequestPauseThreshold"
+    private static let audioInitialOffsetMsKey = "com.maimai.audioInitialOffsetMs"
 
     // Video encoding
     static let videoFPS: Int = 60
@@ -571,6 +572,18 @@ enum Config {
     // Audio encoding
     static let audioSampleRate: Double = 44100.0
     static let audioBitrate: Int = 128_000
+
+    // Audio AV sync compensation
+    static let defaultAudioInitialOffsetMs: Double = 50.0
+    static var audioInitialOffsetMs: Double {
+        get {
+            guard UserDefaults.standard.object(forKey: audioInitialOffsetMsKey) != nil else {
+                return defaultAudioInitialOffsetMs
+            }
+            return UserDefaults.standard.double(forKey: audioInitialOffsetMsKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: audioInitialOffsetMsKey) }
+    }
 
     // Streaming buffer & reconnect
     static let streamVideoBufferFrames: Int = 120
