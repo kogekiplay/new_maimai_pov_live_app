@@ -53,6 +53,26 @@ venv/
 # Trae
 .trae/
 
+# HaishinKit local dependency - exclude unnecessary large files
+HaishinKit_source/SRTHaishinKit/
+HaishinKit_source/MoQTHaishinKit/
+HaishinKit_source/RTCHaishinKit/
+HaishinKit_source/Examples/
+HaishinKit_source/DebugDescription/
+HaishinKit_source/Tests/
+HaishinKit_source/HaishinKit/Tests/
+HaishinKit_source/RTMPHaishinKit/Tests/
+HaishinKit_source/.github/
+HaishinKit_source/fastlane/
+HaishinKit_source/Dangerfile
+HaishinKit_source/Gemfile
+HaishinKit_source/Gemfile.lock
+HaishinKit_source/.ruby-version
+HaishinKit_source/.swiftlint.yml
+HaishinKit_source/LICENSE.md
+HaishinKit_source/README.md
+HaishinKit_source/Package.resolved
+
 # Temp scripts
 export_onnx.py
 

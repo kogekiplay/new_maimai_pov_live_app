@@ -8,8 +8,7 @@ options:
 
 packages:
   HaishinKit:
-    url: https://github.com/HaishinKit/HaishinKit.swift
-    minorVersion: 2.0
+    path: ./HaishinKit_source
   Swifter:
     url: https://github.com/httpswift/swifter
     minorVersion: 1.5
