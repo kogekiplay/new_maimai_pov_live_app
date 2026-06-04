@@ -59,7 +59,12 @@ struct RTMPTimestamp<T: RTMPTimeConvertible> {
 
 extension AVAudioTime: RTMPTimeConvertible {
     var seconds: TimeInterval {
-        AVAudioTime.seconds(forHostTime: hostTime)
+        // MaimaiPOV: use integer sampleTime/sampleRate to avoid hostTime round-trip precision loss.
+        if sampleRate > 0 {
+            return Double(sampleTime) / sampleRate
+        }
+        // Fallback for playback path where sampleTime may be 0
+        return AVAudioTime.seconds(forHostTime: hostTime)
     }
 }
 

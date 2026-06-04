@@ -124,12 +124,10 @@ final class AudioCodec {
             }
             switch outputStatus {
             case .haveData:
-                if audioTime.hasAnchor {
-                    continuation?.yield((outputBuffer, audioTime.at))
-                    audioTime.advanced(AVAudioFramePosition(audioConverter.outputFormat.streamDescription.pointee.mFramesPerPacket))
-                } else {
-                    continuation?.yield((outputBuffer, when))
-                }
+                // MaimaiPOV: bypass AudioTime.at (extrapolateTime causes hostTime drift).
+                // Pass input 'when' directly — RTMPTimestamp uses sampleTime/sampleRate,
+                // avoiding floating-point round-trip in the hostTime path.
+                continuation?.yield((outputBuffer, when))
                 inputBuffersCursor += 1
                 if inputBuffersCursor == inputBuffers.count {
                     inputBuffersCursor = Self.defaultInputBuffersCursor
