@@ -541,8 +541,7 @@ class RTMPStreamManager: ObservableObject {
         prevDisplayedErr = 0
         // 重置漂移补偿状态
         audioCumulativeSamples = 0
-        audioFirstAlignedTime = 0
-        audioHasFirstFrame = false
+        videoDriftCompensationSec = 0.0
         videoContinuation?.finish()
         audioContinuation?.finish()
         lock.lock()
