@@ -30,7 +30,7 @@ class RTMPStreamManager: ObservableObject {
 
     private var audioSyncQueue: [AudioSyncEntry] = []
     private let audioSyncLock = NSLock()
-    private let audioQueueMaxDuration: Double = 0.2
+    private let audioQueueMaxDuration: Double = 1.0
 
     var audioSyncQueueDepth: Int {
         audioSyncLock.lock()
@@ -296,9 +296,10 @@ class RTMPStreamManager: ObservableObject {
         }
 
         let videoTimeSeconds = timestamp.seconds
+        let audioReleaseThreshold = videoTimeSeconds - (Config.audioOffsetMs / 1000.0)
         audioSyncLock.lock()
         var audioToRelease: [(AVAudioPCMBuffer, AVAudioTime)] = []
-        while !audioSyncQueue.isEmpty, audioSyncQueue.first!.alignedTime <= videoTimeSeconds {
+        while !audioSyncQueue.isEmpty, audioSyncQueue.first!.alignedTime <= audioReleaseThreshold {
             let entry = audioSyncQueue.removeFirst()
             audioToRelease.append((entry.pcmBuffer, entry.audioTime))
         }

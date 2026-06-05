@@ -141,6 +141,8 @@ struct DebugOverlayView: View {
             infoRow("Readback", debug.streamInfo,
                     color: debug.streamInfo != "--" ? .green : .gray)
             infoRow("AQueue", "\(debug.audioQueueDepth) bufs")
+            infoRow("AOffset", String(format: "%+.0fms", Config.audioOffsetMs),
+                    color: Config.audioOffsetMs == 0 ? .gray : .yellow)
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 

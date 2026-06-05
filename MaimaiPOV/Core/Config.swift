@@ -302,6 +302,20 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: yoloEnabledKey) }
     }
 
+    // Audio sync offset (runtime-adjustable, persisted)
+    // Positive = audio delayed (audio plays later relative to video)
+    // Negative = audio advanced (audio plays earlier relative to video)
+    static var audioOffsetMs: Double {
+        get {
+            guard UserDefaults.standard.object(forKey: audioOffsetKey) != nil else {
+                return defaultAudioOffsetMs
+            }
+            return UserDefaults.standard.double(forKey: audioOffsetKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: audioOffsetKey) }
+    }
+    static let defaultAudioOffsetMs: Double = 0.0
+
     // IMU sync (runtime-adjustable, persisted)
     static var syncOffsetMs: Double {
         get {
@@ -515,6 +529,7 @@ enum Config {
     }
 
     // UserDefaults keys
+    private static let audioOffsetKey = "com.maimai.audioOffsetMs"
     private static let syncOffsetKey = "com.maimai.syncOffsetMs"
     private static let readoutTimeKey = "com.maimai.readoutTimeMs"
     private static let yoloPaddingKey = "com.maimai.yoloPadding"
