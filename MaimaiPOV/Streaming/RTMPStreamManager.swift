@@ -68,8 +68,9 @@ class RTMPStreamManager: ObservableObject {
 
     // 音频PTS漂移补偿
     private var audioCumulativeSamples: Int64 = 0   // 实际累积音频样本数
-    private var audioFirstAlignedTime: Double = 0    // 第一帧的alignedTime（减去初始偏移后）
-    private var audioHasFirstFrame: Bool = false     // 是否已收到第一帧
+
+    // 视频PTS漂移补偿（补偿音频设备时钟与主机时钟的偏差）
+    private var videoDriftCompensationSec: Double = 0.0
 
     @MainActor
     func startPublish(url: String, streamKey: String) {
@@ -275,7 +276,10 @@ class RTMPStreamManager: ObservableObject {
 
         var timingInfo = CMSampleTimingInfo(
             duration: CMTimeMake(value: 1, timescale: 60),
-            presentationTimeStamp: timestamp,
+            presentationTimeStamp: CMTimeAdd(
+                timestamp,
+                CMTime(seconds: videoDriftCompensationSec, preferredTimescale: 1000000000)
+            ),
             decodeTimeStamp: .invalid
         )
 
@@ -353,21 +357,18 @@ class RTMPStreamManager: ObservableObject {
 
         // 音频PTS漂移补偿：用实际累积样本数计算PTS，消除音频设备时钟与主机时钟的漂移
         let frameLength = bufferToQueue.frameLength
-        if !audioHasFirstFrame {
-            // 初始偏移补偿：提前音频PTS以补偿AudioCodec启动延迟
-            audioFirstAlignedTime = alignedTime - (Config.audioInitialOffsetMs / 1000.0)
-            audioHasFirstFrame = true
-            DebugInfoManager.shared.logAsync(String(format: "Audio: first frame alignedTime=%.3f offset=%.1fms", alignedTime, Config.audioInitialOffsetMs))
-        }
         // 基于实际样本数计算预期时间（消除时钟漂移）
-        let correctedTime = audioFirstAlignedTime + Double(audioCumulativeSamples) / outFormat.sampleRate
+        let correctedTime = Double(audioCumulativeSamples) / outFormat.sampleRate
         audioCumulativeSamples += Int64(frameLength)
 
-        // 漂移量诊断
+        // 漂移量诊断 & 视频PTS补偿
         let driftMs = (alignedTime - correctedTime) * 1000.0
+        // 反向补偿视频PTS：driftMs<0(音频快) → 补偿量>0(视频PTS加大)
+        videoDriftCompensationSec = -driftMs / 1000.0
         if audioBufferCount % 100 == 0 {
             Task { @MainActor in
                 DebugInfoManager.shared.audioDriftMs = driftMs
+                DebugInfoManager.shared.videoDriftCompensationMs = -driftMs
             }
         }
 
@@ -445,8 +446,7 @@ class RTMPStreamManager: ObservableObject {
         outputAudioFormat = nil
         // 重置漂移补偿状态
         audioCumulativeSamples = 0
-        audioFirstAlignedTime = 0
-        audioHasFirstFrame = false
+        videoDriftCompensationSec = 0.0
         DebugInfoManager.shared.logAsync("Audio: state fully reset")
     }
 
