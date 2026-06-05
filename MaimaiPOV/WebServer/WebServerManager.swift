@@ -340,6 +340,36 @@ class WebServerManager {
             }
         }
 
+        server["/api/audio-offset"] = { request in
+            switch request.method {
+            case "GET":
+                let data = try? JSONSerialization.data(withJSONObject: [
+                    "audioOffsetMs": Config.audioOffsetMs
+                ])
+                guard let jsonData = data else { return .internalServerError }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            case "POST":
+                guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
+                      let offset = bodyData["audioOffsetMs"] as? Double else {
+                    return .badRequest(.text("Missing 'audioOffsetMs' field"))
+                }
+                Config.audioOffsetMs = offset
+                DebugInfoManager.shared.log("[Audio] offset set to \(offset)ms")
+                let data = try? JSONSerialization.data(withJSONObject: [
+                    "success": true,
+                    "audioOffsetMs": Config.audioOffsetMs
+                ])
+                guard let jsonData = data else { return .internalServerError }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            default:
+                return .badRequest(.text("Method not allowed"))
+            }
+        }
+
         server["/api/status"] = { [weak self] _ in
             guard let self = self else { return .internalServerError }
 
