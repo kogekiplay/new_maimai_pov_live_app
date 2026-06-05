@@ -3,7 +3,7 @@ name: Build iOS App
 # Trigger on push to main branch or manual dispatch
 on:
   push:
-    branches: [main, master, feature/rollback-main]
+    branches: [main, master, feature/rollback-main, audio-redo]
   workflow_dispatch:
 
 concurrency:
