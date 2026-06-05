@@ -356,7 +356,9 @@ class WebServerManager {
                     return .badRequest(.text("Missing 'audioOffsetMs' field"))
                 }
                 Config.audioOffsetMs = offset
-                DebugInfoManager.shared.log("[Audio] offset set to \(offset)ms")
+                DispatchQueue.main.async {
+                    DebugInfoManager.shared.log("[Audio] offset set to \(offset)ms")
+                }
                 let data = try? JSONSerialization.data(withJSONObject: [
                     "success": true,
                     "audioOffsetMs": Config.audioOffsetMs
