@@ -270,7 +270,7 @@ class RTMPStreamManager: ObservableObject {
 
         var timingInfo = CMSampleTimingInfo(
             duration: CMTimeMake(value: 1, timescale: 60),
-            presentationTimeStamp: timestamp,
+            presentationTimeStamp: CMTimeAdd(timestamp, CMTime(seconds: Config.audioOffsetMs / 1000.0, preferredTimescale: 1000000000)),
             decodeTimeStamp: .invalid
         )
 
@@ -296,10 +296,9 @@ class RTMPStreamManager: ObservableObject {
         }
 
         let videoTimeSeconds = timestamp.seconds
-        let audioReleaseThreshold = videoTimeSeconds - (Config.audioOffsetMs / 1000.0)
         audioSyncLock.lock()
         var audioToRelease: [(AVAudioPCMBuffer, AVAudioTime)] = []
-        while !audioSyncQueue.isEmpty, audioSyncQueue.first!.alignedTime <= audioReleaseThreshold {
+        while !audioSyncQueue.isEmpty, audioSyncQueue.first!.alignedTime <= videoTimeSeconds {
             let entry = audioSyncQueue.removeFirst()
             audioToRelease.append((entry.pcmBuffer, entry.audioTime))
         }

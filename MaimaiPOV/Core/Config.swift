@@ -303,8 +303,7 @@ enum Config {
     }
 
     // Audio sync offset (runtime-adjustable, persisted)
-    // Positive = audio delayed (audio plays later relative to video)
-    // Negative = audio advanced (audio plays earlier relative to video)
+    // Applied to video PTS: positive = video delayed (sound earlier), negative = video earlier (sound later)
     static var audioOffsetMs: Double {
         get {
             guard UserDefaults.standard.object(forKey: audioOffsetKey) != nil else {
