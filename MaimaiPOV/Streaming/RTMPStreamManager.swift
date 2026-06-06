@@ -614,6 +614,16 @@ class RTMPStreamManager: ObservableObject {
         videoBufferCount = 0
         audioBufferCount = 0
         bufferCountLock.unlock()
+        // 重置漂移补偿和初始偏移状态
+        audioCumulativeSamples = 0
+        audioFirstAlignedTime = 0
+        audioHasFirstFrame = false
+        videoDriftCompensationSec = 0.0
+        videoInitialOffsetSec = 0.0
+        videoFrameCount = 0
+        prevAudioAlignedTime = 0
+        audioTimeAccumError = 0
+        prevDisplayedErr = 0
     }
 
     private func cleanup() {
