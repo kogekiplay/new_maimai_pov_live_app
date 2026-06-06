@@ -68,6 +68,8 @@ class RTMPStreamManager: ObservableObject {
 
     // 音频PTS漂移补偿
     private var audioCumulativeSamples: Int64 = 0   // 实际累积音频样本数
+    private var audioFirstAlignedTime: Double = 0    // 第一帧的alignedTime（起始参考点）
+    private var audioHasFirstFrame: Bool = false     // 是否已收到第一帧
 
     // 视频PTS漂移补偿（补偿音频设备时钟与主机时钟的偏差）
     private var videoDriftCompensationSec: Double = 0.0
@@ -357,8 +359,12 @@ class RTMPStreamManager: ObservableObject {
 
         // 音频PTS漂移补偿：用实际累积样本数计算PTS，消除音频设备时钟与主机时钟的漂移
         let frameLength = bufferToQueue.frameLength
+        if !audioHasFirstFrame {
+            audioFirstAlignedTime = alignedTime
+            audioHasFirstFrame = true
+        }
         // 基于实际样本数计算预期时间（消除时钟漂移）
-        let correctedTime = Double(audioCumulativeSamples) / outFormat.sampleRate
+        let correctedTime = audioFirstAlignedTime + Double(audioCumulativeSamples) / outFormat.sampleRate
         audioCumulativeSamples += Int64(frameLength)
 
         // 漂移量诊断 & 视频PTS补偿
@@ -446,6 +452,8 @@ class RTMPStreamManager: ObservableObject {
         outputAudioFormat = nil
         // 重置漂移补偿状态
         audioCumulativeSamples = 0
+        audioFirstAlignedTime = 0
+        audioHasFirstFrame = false
         videoDriftCompensationSec = 0.0
         DebugInfoManager.shared.logAsync("Audio: state fully reset")
     }
