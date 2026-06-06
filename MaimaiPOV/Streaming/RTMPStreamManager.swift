@@ -280,10 +280,10 @@ class RTMPStreamManager: ObservableObject {
 
         guard let formatDescription = videoFormatDescription else { return }
 
-        // 渐进式初始偏移：前50帧内每帧减1ms，累积到-50ms后固定
+        // 渐进式初始偏移：前50帧内每帧加1ms，累积到+50ms后固定（补偿AAC编码延迟，让视频延后）
         videoFrameCount += 1
         if videoFrameCount <= 50 {
-            videoInitialOffsetSec = -Double(videoFrameCount) / 1000.0
+            videoInitialOffsetSec = Double(videoFrameCount) / 1000.0
             if videoFrameCount % 10 == 0 {
                 Task { @MainActor in
                     DebugInfoManager.shared.videoInitialOffsetMs = videoInitialOffsetSec * 1000.0
