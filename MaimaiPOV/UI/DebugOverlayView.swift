@@ -153,6 +153,8 @@ struct DebugOverlayView: View {
                     color: abs(debug.audioDriftMs) < 5 ? .green : .yellow)
             infoRow("VComp", String(format: "%.1fms", debug.videoDriftCompensationMs),
                     color: abs(debug.videoDriftCompensationMs) < 5 ? .green : .yellow)
+            infoRow("VInit", String(format: "%.1fms", debug.videoInitialOffsetMs),
+                    color: debug.videoInitialOffsetMs > -55 ? .green : .yellow)
             infoRow("AInFmt", debug.audioInFmt)
             infoRow("AOutFmt", debug.audioOutFmt)
             infoRow("AMix", String(format: "%.3fms", debug.audioMixTime),

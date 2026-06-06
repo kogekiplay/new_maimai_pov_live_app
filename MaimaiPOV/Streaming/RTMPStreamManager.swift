@@ -74,6 +74,10 @@ class RTMPStreamManager: ObservableObject {
     // 视频PTS漂移补偿（补偿音频设备时钟与主机时钟的偏差）
     private var videoDriftCompensationSec: Double = 0.0
 
+    // 视频PTS初始偏移（补偿AAC编码延迟~46ms，推流开始后50帧内渐进施加）
+    private var videoInitialOffsetSec: Double = 0.0
+    private var videoFrameCount: Int = 0
+
     @MainActor
     func startPublish(url: String, streamKey: String) {
         guard !isStreaming else { return }
@@ -276,11 +280,24 @@ class RTMPStreamManager: ObservableObject {
 
         guard let formatDescription = videoFormatDescription else { return }
 
+        // 渐进式初始偏移：前50帧内每帧减1ms，累积到-50ms后固定
+        videoFrameCount += 1
+        if videoFrameCount <= 50 {
+            videoInitialOffsetSec = -Double(videoFrameCount) / 1000.0
+            if videoFrameCount % 10 == 0 {
+                Task { @MainActor in
+                    DebugInfoManager.shared.videoInitialOffsetMs = videoInitialOffsetSec * 1000.0
+                }
+            }
+        }
+
+        let totalOffsetSec = videoInitialOffsetSec + videoDriftCompensationSec
+
         var timingInfo = CMSampleTimingInfo(
             duration: CMTimeMake(value: 1, timescale: 60),
             presentationTimeStamp: CMTimeAdd(
                 timestamp,
-                CMTime(seconds: videoDriftCompensationSec, preferredTimescale: 1000000000)
+                CMTime(seconds: totalOffsetSec, preferredTimescale: 1000000000)
             ),
             decodeTimeStamp: .invalid
         )
@@ -455,6 +472,9 @@ class RTMPStreamManager: ObservableObject {
         audioFirstAlignedTime = 0
         audioHasFirstFrame = false
         videoDriftCompensationSec = 0.0
+        // 重置初始偏移状态
+        videoInitialOffsetSec = 0.0
+        videoFrameCount = 0
         DebugInfoManager.shared.logAsync("Audio: state fully reset")
     }
 
@@ -550,6 +570,8 @@ class RTMPStreamManager: ObservableObject {
         // 重置漂移补偿状态
         audioCumulativeSamples = 0
         videoDriftCompensationSec = 0.0
+        videoInitialOffsetSec = 0.0
+        videoFrameCount = 0
         videoContinuation?.finish()
         audioContinuation?.finish()
         lock.lock()

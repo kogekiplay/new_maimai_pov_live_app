@@ -20,6 +20,7 @@ class DebugInfoManager: ObservableObject {
     @Published var audioFrameLen: Int = 0          // 最新音频帧长度
     @Published var audioDriftMs: Double = 0        // alignedTime与correctedTime的差值(ms)，正值=音频PTS落后
     @Published var videoDriftCompensationMs: Double = 0  // 视频PTS漂移补偿量(ms)，正值=视频PTS加大
+    @Published var videoInitialOffsetMs: Double = 0      // 视频PTS初始偏移量(ms)，负值=视频PTS减小
     @Published var audioMode: String = "--"       // STEREO / MONO
     @Published var audioInFmt: String = "--"      // 输入格式
     @Published var audioOutFmt: String = "--"     // 输出格式
