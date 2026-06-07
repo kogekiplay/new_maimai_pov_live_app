@@ -194,7 +194,7 @@ final class WebServerManager: @unchecked Sendable {
                     return .badRequest(.text("Missing 'text' field"))
                 }
                 Config.announcementText = text
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.pipeline?.renderLeftPanelAnnouncement()
                 }
                 let data = try? JSONSerialization.data(withJSONObject: ["success": true])
@@ -225,7 +225,7 @@ final class WebServerManager: @unchecked Sendable {
                 guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any] else {
                     return .badRequest(.text("Invalid JSON"))
                 }
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     if let enabled = bodyData["activityMode"] as? Bool {
                         self.pipeline?.activityMode = enabled
                         self.pipeline?.updateActivityMode()
@@ -358,7 +358,7 @@ final class WebServerManager: @unchecked Sendable {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
                 let result = LockedValue<[String: Any]>([:])
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     result.set([
                         "iso": pipeline.isoValue,
@@ -385,7 +385,7 @@ final class WebServerManager: @unchecked Sendable {
                 }
                 let sem = DispatchSemaphore(value: 0)
                 let result = LockedValue<[String: Any]>([:])
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let iso = bodyData["iso"] as? Double {
                         pipeline.isoValue = iso
@@ -447,7 +447,7 @@ final class WebServerManager: @unchecked Sendable {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
                 let result = LockedValue<[String: Any]>([:])
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     result.set([
                         "stabEnabled": pipeline.stabEnabled,
@@ -474,7 +474,7 @@ final class WebServerManager: @unchecked Sendable {
                 }
                 let sem = DispatchSemaphore(value: 0)
                 let result = LockedValue<[String: Any]>([:])
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let enabled = bodyData["stabEnabled"] as? Bool {
                         pipeline.stabEnabled = enabled
@@ -539,7 +539,7 @@ final class WebServerManager: @unchecked Sendable {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
                 let result = LockedValue<[String: Any]>([:])
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     result.set([
                         "leftGain": Double(pipeline.audioMixer.leftGain),
@@ -564,7 +564,7 @@ final class WebServerManager: @unchecked Sendable {
                 }
                 let sem = DispatchSemaphore(value: 0)
                 let result = LockedValue<[String: Any]>([:])
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let leftGain = bodyData["leftGain"] as? Double {
                         pipeline.audioMixer.leftGain = Float(leftGain)
@@ -656,7 +656,7 @@ final class WebServerManager: @unchecked Sendable {
             let sem = DispatchSemaphore(value: 0)
             let result = LockedValue<[String: Any]>([:])
 
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 let streamManager = self.pipeline?.streamManager
                 let debug = self.pipeline?.debug ?? DebugInfoManager.shared
                 let deviceManager = self.pipeline?.deviceStatusManager
@@ -735,7 +735,6 @@ final class WebServerManager: @unchecked Sendable {
         let baseId = baseCoverId(from: musicId)
         let idPart = String(format: "%06d", baseId)
 
-        let sem = DispatchSemaphore(value: 0)
         var imageData: Data?
         var contentType: String?
 
@@ -764,8 +763,6 @@ final class WebServerManager: @unchecked Sendable {
                 break
             }
         }
-
-        sem.signal()
 
         guard let data = imageData, let ct = contentType else {
             return .notFound
