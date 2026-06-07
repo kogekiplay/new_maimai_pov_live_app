@@ -268,6 +268,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     DispatchQueue.main.async { self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子") }
                 } else {
                     self.scheduleRefreshLeftPanel()
+                    self.songCardManager.scheduleSave()
                 }
             }
         }
@@ -304,6 +305,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 }
             } else {
                 self.scheduleRefreshLeftPanel()
+                self.songCardManager.scheduleSave()
             }
             DispatchQueue.main.async { self.debug.log("[上舰] \(msg.authorName)") }
 
@@ -520,6 +522,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 let thresholdCoins = Config.songRequestPauseThreshold * 1000
                 if totalWithSC < thresholdCoins {
                     songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
+                    songCardManager.scheduleSave()
                     DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_paused")
                     DispatchQueue.main.async {
                         self.debug.log("[SC点歌] 🚫 \(name) 点歌已暂停，送礼值不足(\(totalWithSC)/\(thresholdCoins))")
@@ -543,6 +546,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
             if candidates.candidates.isEmpty {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
+                songCardManager.scheduleSave()
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_not_found")
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] 未找到歌曲: \"\(query)\"，SC金额累积到送礼池")
@@ -557,6 +561,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 diffInput: resolvedDiffInput
             ) else {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
+                songCardManager.scheduleSave()
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_no_match")
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] 候选\(candidates.candidates.count)首但无法选择，SC金额累积到送礼池")
@@ -568,6 +573,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let targetDiffNum = songDatabase.resolveDiffInput(resolvedDiffInput)
             guard let noteResult = songDatabase.findNote(song: song, targetDiffNum: targetDiffNum) else {
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
+                songCardManager.scheduleSave()
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_no_diff")
                 DispatchQueue.main.async {
                     self.debug.log("[SC点歌] \(song.title) 没有可用难度，SC金额累积到送礼池")
@@ -623,6 +629,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                 }
+            } else {
+                songCardManager.scheduleSave()
             }
             DispatchQueue.main.async {
                 self.postMarquee("💰 感谢 \(sc.authorName) 的SC ¥\(sc.price)", type: .superChat)

@@ -27,7 +27,7 @@ class QueuePersistenceManager {
     }
 
     func save(snapshot: QueueSnapshot) {
-        guard !snapshot.queue.isEmpty else { return }
+        guard !snapshot.queue.isEmpty || !snapshot.userGiftPool.isEmpty else { return }
 
         do {
             try FileManager.default.createDirectory(at: snapshotDirectory, withIntermediateDirectories: true)

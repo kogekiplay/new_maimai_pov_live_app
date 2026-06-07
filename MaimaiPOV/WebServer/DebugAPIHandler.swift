@@ -49,6 +49,7 @@ class DebugAPIHandler {
                         }
                     } else {
                         pipeline.scheduleRefreshLeftPanel()
+                        pipeline.songCardManager.scheduleSave()
                     }
                     let prefix = "🎁 感谢 \(authorName) 送出 \(gift.giftName)"
                     pipeline.postMarquee("\(prefix) ×\(gift.num)", type: .gift, mergeKey: "gift_\(authorName)_\(gift.giftName)", mergeCount: gift.num, textPrefix: prefix)
@@ -166,6 +167,7 @@ class DebugAPIHandler {
                     }
                 } else {
                     pipeline.scheduleRefreshLeftPanel()
+                    pipeline.songCardManager.scheduleSave()
                 }
                 pipeline.postMarquee("⭐ \(authorName) 上舰了!", type: .member)
                 pipeline.debug.log("[上舰] \(authorName) 上舰了!")

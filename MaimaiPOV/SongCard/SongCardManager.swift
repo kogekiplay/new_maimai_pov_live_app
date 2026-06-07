@@ -285,7 +285,7 @@ class SongCardManager: ObservableObject {
         performSave()
     }
 
-    private func scheduleSave() {
+    func scheduleSave() {
         saveTimer?.invalidate()
         saveTimer = Timer.scheduledTimer(withTimeInterval: saveDebounceInterval, repeats: false) { [weak self] _ in
             self?.performSave()
@@ -298,7 +298,7 @@ class SongCardManager: ObservableObject {
     }
 
     private func performSave() {
-        guard !queue.isEmpty else { return }
+        guard !queue.isEmpty || !userGiftPool.isEmpty else { return }
         let snapshot = QueueSnapshot(
             version: QueueSnapshot.currentVersion,
             savedAt: Date(),
