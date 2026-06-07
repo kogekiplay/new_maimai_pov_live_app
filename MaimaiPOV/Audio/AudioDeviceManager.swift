@@ -1,7 +1,10 @@
 import AVFoundation
 import Combine
+import OSLog
 
 final class AudioDeviceManager: ObservableObject, @unchecked Sendable {
+    private static let logger = Logger(subsystem: "com.maimai.MaimaiPOV", category: "AudioDeviceManager")
+
     enum AudioSource: String, CaseIterable {
         case builtInMic
         case externalMono
@@ -100,7 +103,7 @@ final class AudioDeviceManager: ObservableObject, @unchecked Sendable {
             }
             try? audioSession.setPreferredInputOrientation(.portrait)
         } catch {
-            print("AudioDeviceManager: Built-in mic config failed: \(error)")
+            Self.logger.error("Built-in mic config failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -116,7 +119,7 @@ final class AudioDeviceManager: ObservableObject, @unchecked Sendable {
                 externalDeviceName = externalInput.portName
             }
         } catch {
-            print("AudioDeviceManager: External device config failed: \(error)")
+            Self.logger.error("External device config failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

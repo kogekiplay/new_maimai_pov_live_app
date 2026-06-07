@@ -1,8 +1,10 @@
 import Metal
 import CoreVideo
+import OSLog
 import simd
 
 class MetalStabilizer {
+    private static let logger = Logger(subsystem: "com.maimai.MaimaiPOV", category: "MetalStabilizer")
 
     let device: MTLDevice
     private let commandQueue: MTLCommandQueue
@@ -77,7 +79,7 @@ class MetalStabilizer {
         guard let library = device.makeDefaultLibrary(),
               let kernel = library.makeFunction(name: "stabilize"),
               let ps = try? device.makeComputePipelineState(function: kernel) else {
-            print("MetalStabilizer: cannot compile shader")
+            Self.logger.error("Cannot compile stabilize shader")
             return nil
         }
         self.pipelineState = ps

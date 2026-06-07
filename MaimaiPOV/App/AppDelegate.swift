@@ -1,7 +1,9 @@
 import UIKit
 import AVFoundation
+import OSLog
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
+    private static let logger = Logger(subsystem: "com.maimai.MaimaiPOV", category: "AppDelegate")
 
     func application(
         _ application: UIApplication,
@@ -35,7 +37,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             )
             try session.setActive(true)
         } catch {
-            print("AppDelegate: AudioSession config failed: \(error)")
+            Self.logger.error("AudioSession config failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }
