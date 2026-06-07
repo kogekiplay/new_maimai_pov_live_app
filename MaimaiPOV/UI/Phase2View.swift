@@ -184,6 +184,15 @@ struct Phase2View: View {
             controlPanel(for: tab)
         }
         .background(Color.black)
+        .padding(.bottom, rootTabBarClearance)
+    }
+
+    private var rootTabBarClearance: CGFloat {
+        if #available(iOS 26.0, *) {
+            return 66
+        } else {
+            return 0
+        }
     }
 
     // MARK: - Preview
@@ -320,11 +329,13 @@ struct Phase2View: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
+                .frame(minHeight: 36)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .adaptiveGlassPanel(cornerRadius: 8, tint: Color.white.opacity(0.04), interactive: true)
             }
             .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .accessibilityLabel(tab.title)
             .accessibilityHint(L10n.string(panelExpanded ? "Collapse control panel" : "Expand control panel"))
 

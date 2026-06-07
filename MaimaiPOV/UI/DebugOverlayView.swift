@@ -35,6 +35,7 @@ struct DebugOverlayView: View {
         }
         .font(.system(size: 10, design: .monospaced))
         .foregroundColor(.white)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .adaptiveGlassPanel(cornerRadius: 10, tint: Color.black.opacity(isCollapsed ? 0.28 : 0.42))
     }
 
@@ -75,10 +76,13 @@ struct DebugOverlayView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
+            .frame(minHeight: 34)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+        .contentShape(Rectangle())
         .accessibilityLabel("Debug")
         .accessibilityHint(L10n.string(isCollapsed ? "Expand debug details" : "Collapse debug details"))
     }
