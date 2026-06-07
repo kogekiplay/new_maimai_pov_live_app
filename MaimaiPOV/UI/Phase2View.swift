@@ -50,7 +50,6 @@ struct Phase2View: View {
     @State private var rotationStarted = false
     @AppStorage("rtmpUrl") private var rtmpUrl: String = ""
     @AppStorage("streamKey") private var streamKey: String = ""
-    @State private var showImagePicker = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showRestoreAlert = false
 
@@ -189,86 +188,91 @@ struct Phase2View: View {
     // MARK: - Preview
 
     private var previewSection: some View {
-        ZStack(alignment: .topTrailing) {
-            ZStack {
-                if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
-                    if let texture = pipeline.previewTexture {
-                        MetalView(device: pipeline.device, texture: texture, previewEnabled: pipeline.previewEnabled, commandQueue: pipeline.sharedCommandQueue)
-                            .aspectRatio(pipeline.isCropActive ? CGFloat(Config.outputWidth) / CGFloat(Config.outputHeight) : 3.0 / 4.0, contentMode: .fit)
+        GeometryReader { geometry in
+            ZStack(alignment: .topTrailing) {
+                ZStack {
+                    if pipeline.stabEnabled, pipeline.camera.cameraAuthorized {
+                        if let texture = pipeline.previewTexture {
+                            MetalView(device: pipeline.device, texture: texture, previewEnabled: pipeline.previewEnabled, commandQueue: pipeline.sharedCommandQueue)
+                                .aspectRatio(pipeline.isCropActive ? CGFloat(Config.outputWidth) / CGFloat(Config.outputHeight) : 3.0 / 4.0, contentMode: .fit)
+                        }
+                    } else if pipeline.camera.cameraAuthorized {
+                        CameraPreviewView(session: pipeline.camera.session)
+                            .aspectRatio(3.0 / 4.0, contentMode: .fit)
+                    } else {
+                        Rectangle()
+                            .fill(Color.black)
+                            .aspectRatio(3.0 / 4.0, contentMode: .fit)
+                            .overlay(Text("Camera not authorized").foregroundColor(.gray))
                     }
-                } else if pipeline.camera.cameraAuthorized {
-                    CameraPreviewView(session: pipeline.camera.session)
-                        .aspectRatio(3.0 / 4.0, contentMode: .fit)
-                } else {
-                    Rectangle()
-                        .fill(Color.black)
-                        .aspectRatio(3.0 / 4.0, contentMode: .fit)
-                        .overlay(Text("Camera not authorized").foregroundColor(.gray))
+
+                    if pipeline.stabEnabled, pipeline.previewEnabled {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .gesture(
+                                DragGesture(minimumDistance: 10)
+                                    .onChanged { value in
+                                        if !dragStarted {
+                                            dragStarted = true
+                                            gestureStartYaw = pipeline.yaw
+                                            gestureStartPitch = pipeline.pitch
+                                        }
+                                        let dx = Float(value.translation.width)
+                                        let dy = Float(value.translation.height)
+                                        let sensitivity: Float = 0.3
+                                        pipeline.yaw = clamp(gestureStartYaw - dx * sensitivity, -90, 90)
+                                        pipeline.pitch = clamp(gestureStartPitch + dy * sensitivity, -90, 90)
+                                    }
+                                    .onEnded { _ in
+                                        dragStarted = false
+                                    }
+                            )
+                            .simultaneousGesture(
+                                RotationGesture()
+                                    .onChanged { angle in
+                                        if !rotationStarted {
+                                            rotationStarted = true
+                                            gestureStartRoll = pipeline.roll
+                                        }
+                                        pipeline.roll = clamp(gestureStartRoll - Float(angle.degrees), -45, 45)
+                                    }
+                                    .onEnded { _ in
+                                        rotationStarted = false
+                                    }
+                            )
+                            .simultaneousGesture(
+                                TapGesture()
+                                    .onEnded { _ in
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            pipeline.yaw = 0
+                                            pipeline.pitch = 0
+                                            pipeline.roll = 0
+                                        }
+                                    }
+                            )
+                    }
                 }
 
-                if pipeline.stabEnabled, pipeline.previewEnabled {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(minimumDistance: 10)
-                                .onChanged { value in
-                                    if !dragStarted {
-                                        dragStarted = true
-                                        gestureStartYaw = pipeline.yaw
-                                        gestureStartPitch = pipeline.pitch
-                                    }
-                                    let dx = Float(value.translation.width)
-                                    let dy = Float(value.translation.height)
-                                    let sensitivity: Float = 0.3
-                                    pipeline.yaw = clamp(gestureStartYaw - dx * sensitivity, -90, 90)
-                                    pipeline.pitch = clamp(gestureStartPitch + dy * sensitivity, -90, 90)
-                                }
-                                .onEnded { _ in
-                                    dragStarted = false
-                                }
-                        )
-                        .simultaneousGesture(
-                            RotationGesture()
-                                .onChanged { angle in
-                                    if !rotationStarted {
-                                        rotationStarted = true
-                                        gestureStartRoll = pipeline.roll
-                                    }
-                                    pipeline.roll = clamp(gestureStartRoll - Float(angle.degrees), -45, 45)
-                                }
-                                .onEnded { _ in
-                                    rotationStarted = false
-                                }
-                        )
-                        .simultaneousGesture(
-                            TapGesture()
-                                .onEnded { _ in
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        pipeline.yaw = 0
-                                        pipeline.pitch = 0
-                                        pipeline.roll = 0
-                                    }
-                                }
-                        )
-                }
-            }
+                DebugOverlayView(debug: pipeline.debug, isAntiTouchMode: $isAntiTouchMode)
+                    .padding(.leading, 4)
+                    .padding(.top, 4)
 
-            DebugOverlayView(debug: pipeline.debug, isAntiTouchMode: $isAntiTouchMode)
-                .padding(.leading, 4)
-                .padding(.top, 4)
-
-            if pipeline.yoloOverlayEnabled, pipeline.yoloEnabled {
-                VStack {
-                    Spacer()
-                    HStack {
-                        YOLOOverlayView(
-                            debug: pipeline.debug,
-                            device: pipeline.device,
-                            texture: pipeline.stabTexture
-                        )
-                        .frame(maxWidth: UIScreen.main.bounds.width * 0.7, maxHeight: UIScreen.main.bounds.height * 0.5)
-                        .padding(4)
+                if pipeline.yoloOverlayEnabled, pipeline.yoloEnabled {
+                    VStack {
                         Spacer()
+                        HStack {
+                            YOLOOverlayView(
+                                debug: pipeline.debug,
+                                device: pipeline.device,
+                                texture: pipeline.stabTexture
+                            )
+                            .frame(
+                                maxWidth: geometry.size.width * 0.7,
+                                maxHeight: geometry.size.height * 0.5
+                            )
+                            .padding(4)
+                            Spacer()
+                        }
                     }
                 }
             }
@@ -430,6 +434,7 @@ struct Phase2View: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    .adaptiveGlassGroup(spacing: 8)
                 }
             }
 
@@ -443,7 +448,7 @@ struct Phase2View: View {
                 .font(.caption)
             }
             .sheet(isPresented: $showAddPresetSheet) {
-                NavigationView {
+                NavigationStack {
                     Form {
                         TextField("Name", text: $newPresetName)
                         TextField("RTMP URL", text: $newPresetUrl)

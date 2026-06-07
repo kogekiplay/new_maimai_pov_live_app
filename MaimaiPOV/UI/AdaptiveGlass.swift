@@ -39,4 +39,15 @@ extension View {
             }
         }
     }
+
+    @ViewBuilder
+    func adaptiveGlassGroup(spacing: CGFloat = 12) -> some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                self
+            }
+        } else {
+            self
+        }
+    }
 }

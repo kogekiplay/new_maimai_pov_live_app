@@ -109,6 +109,7 @@ struct DebugOverlayView: View {
                 .buttonStyle(.plain)
             }
         }
+        .adaptiveGlassGroup(spacing: 6)
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
     }
