@@ -1,5 +1,7 @@
 import Foundation
 import Swifter
+import CoreImage
+import UIKit
 
 class WebServerManager {
     private let server = HttpServer()
@@ -577,6 +579,64 @@ class WebServerManager {
                 }
             default:
                 return .badRequest(.text("Method not allowed"))
+            }
+        }
+
+        server["/api/preview/mjpeg"] = { [weak self] _ in
+            guard let self = self else { return .internalServerError }
+
+            let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+            let targetWidth = 640
+            let targetHeight = 360
+            let jpegQuality: CGFloat = 0.5
+            let frameIntervalMs: Int = 150 // ~6-7 fps
+
+            return .raw(200, "OK", [
+                "Content-Type": "multipart/x-mixed-replace; boundary=frame",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*"
+            ]) { [weak self] writer in
+                var running = true
+
+                while running {
+                    guard let pool = self?.pipeline?.ioSurfacePool,
+                          let completedBuffer = pool.lastCompletedBuffer else {
+                        Thread.sleep(forTimeInterval: 0.1)
+                        continue
+                    }
+
+                    let pixelBuffer = completedBuffer.pixelBuffer
+                    var jpegData: Data?
+
+                    CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
+                    defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+
+                    let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+                    let scaleX = CGFloat(targetWidth) / ciImage.extent.width
+                    let scaledImage = ciImage.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleX))
+
+                    if let cgImage = ciContext.createCGImage(scaledImage, from: CGRect(x: 0, y: 0, width: targetWidth, height: targetHeight)) {
+                        jpegData = UIImage(cgImage: cgImage).jpegData(compressionQuality: jpegQuality)
+                    }
+
+                    if let data = jpegData {
+                        let header = "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: \(data.count)\r\n\r\n"
+                        let footer = "\r\n"
+                        var frameData = Data(header.utf8)
+                        frameData.append(data)
+                        frameData.append(Data(footer.utf8))
+
+                        do {
+                            try writer.write(frameData)
+                        } catch {
+                            running = false
+                            break
+                        }
+                    }
+
+                    Thread.sleep(forTimeInterval: Double(frameIntervalMs) / 1000.0)
+                }
             }
         }
 
