@@ -489,8 +489,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         let name = msg.authorName
 
         guard let index = songCardManager.findSongIndex(byName: name) else {
-            DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "rejected_not_found")
-            DispatchQueue.main.async {
+            let danmakuId = msg.id
+            DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: danmakuId, status: "rejected_not_found")
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
                 self.debug.log("[取消] ❌ \(name) 没有在队列中的歌曲")
                 self.postMarquee("❌ \(name) 没有在队列中的歌曲", type: .songFailure)
             }
@@ -499,14 +501,17 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
         let removedSong = songCardManager.queue[index]
         let giftVal = removedSong.giftValue
+        let danmakuId = msg.id
+        let removedSongName = removedSong.songName
 
-        DispatchQueue.main.async {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
             self.songCardManager.removeSong(at: index, preserveGift: true)
 
-            DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "cancelled")
+            DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: danmakuId, status: "cancelled")
 
             let giftTag = giftVal > 0 ? "，礼物值已保留" : ""
-            self.debug.log("[取消] 🗑 \(name) 取消了点歌 \(removedSong.songName)\(giftTag)")
+            self.debug.log("[取消] 🗑 \(name) 取消了点歌 \(removedSongName)\(giftTag)")
             self.postMarquee("🗑 \(name) 取消了点歌\(giftTag)", type: .songFailure)
         }
     }
