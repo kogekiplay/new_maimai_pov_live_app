@@ -11,7 +11,7 @@ struct MarqueeItem {
     var mergeCount: Int = 1
     var textPrefix: String?
 
-    enum MarqueeItemType: Int {
+    enum MarqueeItemType: Int, Sendable {
         case songSuccess = 0
         case songFailure = 1
         case gift = 2

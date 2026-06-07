@@ -1,23 +1,6 @@
 import UIKit
 @preconcurrency import Metal
 
-private final class LockedDeviceStatusRenderResult: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: (MTLTexture?, Int) = (nil, 0)
-
-    func set(_ newValue: (MTLTexture?, Int)) {
-        lock.withLock {
-            value = newValue
-        }
-    }
-
-    func get() -> (MTLTexture?, Int) {
-        lock.withLock {
-            value
-        }
-    }
-}
-
 final class DeviceStatusRenderer: @unchecked Sendable {
     private let device: MTLDevice
 
@@ -38,9 +21,9 @@ final class DeviceStatusRenderer: @unchecked Sendable {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDeviceStatusRenderResult()
+        let result = LockedValue<(MTLTexture?, Int)>((nil, 0))
 
-        DispatchQueue.main.async { [self] in
+        Task { @MainActor [self] in
             result.set(renderOnMainThread(text: text))
             sem.signal()
         }
