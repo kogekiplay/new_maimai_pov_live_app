@@ -225,23 +225,36 @@ final class WebServerManager: @unchecked Sendable {
                 guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any] else {
                     return .badRequest(.text("Invalid JSON"))
                 }
+                let sem = DispatchSemaphore(value: 0)
+                let result = LockedValue<[String: Any]>([:])
                 Task { @MainActor in
+                    guard let pipeline = self.pipeline else {
+                        result.set([
+                            "success": true,
+                            "activityMode": false,
+                            "smoothFactor": Double(Config.activitySmoothFactor)
+                        ])
+                        sem.signal()
+                        return
+                    }
+
                     if let enabled = bodyData["activityMode"] as? Bool {
-                        self.pipeline?.activityMode = enabled
-                        self.pipeline?.updateActivityMode()
+                        pipeline.activityMode = enabled
+                        pipeline.updateActivityMode()
                     }
                     if let sf = bodyData["smoothFactor"] as? Double {
-                        self.pipeline?.activitySmoothFactor = Float(sf)
-                        self.pipeline?.updateActivitySmoothFactor()
+                        pipeline.activitySmoothFactor = Float(sf)
+                        pipeline.updateActivitySmoothFactor()
                     }
+                    result.set([
+                        "success": true,
+                        "activityMode": pipeline.activityMode,
+                        "smoothFactor": Double(pipeline.activitySmoothFactor)
+                    ])
+                    sem.signal()
                 }
-                let activityMode = self.pipeline?.activityMode ?? false
-                let smoothFactor = self.pipeline?.activitySmoothFactor ?? Config.activitySmoothFactor
-                let data = try? JSONSerialization.data(withJSONObject: [
-                    "success": true,
-                    "activityMode": activityMode,
-                    "smoothFactor": Double(smoothFactor)
-                ])
+                sem.wait()
+                let data = try? JSONSerialization.data(withJSONObject: result.get())
                 guard let jsonData = data else { return .internalServerError }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
                     try writer.write(jsonData)
