@@ -257,6 +257,7 @@ struct Phase2View: View {
                 DebugOverlayView(
                     debug: pipeline.debug,
                     isAntiTouchMode: $isAntiTouchMode,
+                    antiTouchTimer: $antiTouchTimer,
                     selectedTab: $selectedDebugTab
                 )
                     .padding(.leading, 4)
@@ -289,7 +290,9 @@ struct Phase2View: View {
     private func controlPanel(for tab: ControlTab) -> some View {
         VStack(spacing: 0) {
             Button {
-                if isAntiTouchMode { return }
+                antiTouchTimer?.invalidate()
+                antiTouchTimer = nil
+                isAntiTouchMode = false
                 withAnimation(.easeInOut(duration: 0.2)) {
                     panelExpanded.toggle()
                     previewOverride = false

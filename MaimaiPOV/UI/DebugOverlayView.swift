@@ -19,6 +19,7 @@ struct DebugOverlayView: View {
 
     @ObservedObject var debug: DebugInfoManager
     @Binding var isAntiTouchMode: Bool
+    @Binding var antiTouchTimer: Timer?
     @Binding var selectedTab: DebugTab
 
     private var isCollapsed: Bool { !debug.isDetailVisible }
@@ -339,7 +340,9 @@ struct DebugOverlayView: View {
     }
 
     private func toggleDetailVisibility() {
-        guard !isAntiTouchMode || !isCollapsed else { return }
+        antiTouchTimer?.invalidate()
+        antiTouchTimer = nil
+        isAntiTouchMode = false
         withAnimation(.easeInOut(duration: 0.15)) {
             debug.isDetailVisible.toggle()
         }
