@@ -1146,8 +1146,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 let yoloActualFPS = self.yoloDetector?.actualFPS ?? 0
                 self.frameCount = 0
                 self.streamFrameCount = 0
-                DispatchQueue.main.async {
-                    guard let self = manager.value else { return }
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
                     self.currentFPS = Double(count)
                     self.debug.fps = Double(count)
                     self.debug.frameCount = count
