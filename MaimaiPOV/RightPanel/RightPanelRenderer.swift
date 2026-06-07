@@ -2,7 +2,8 @@ import UIKit
 import WebKit
 import Metal
 
-class RightPanelRenderer {
+@MainActor
+final class RightPanelRenderer {
     private let device: MTLDevice
 
     private let rowWebView: WKWebView

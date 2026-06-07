@@ -2,7 +2,8 @@ import UIKit
 import WebKit
 import Metal
 
-class SongCardRenderer {
+@MainActor
+final class SongCardRenderer {
     private let webView: WKWebView
     private let device: MTLDevice
     let cardWidth: Int

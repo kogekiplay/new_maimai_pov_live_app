@@ -1,8 +1,8 @@
-import Metal
+@preconcurrency import Metal
 import CoreGraphics
 import UIKit
 
-final class TextureHelper {
+final class TextureHelper: @unchecked Sendable {
     static let shared = TextureHelper()
 
     private let colorSpace: CGColorSpace

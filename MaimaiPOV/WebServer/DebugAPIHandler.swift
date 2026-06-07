@@ -1,7 +1,28 @@
 import Foundation
 import Swifter
 
-class DebugAPIHandler {
+private final class LockedDebugResult<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    func set(_ newValue: Value) {
+        lock.withLock {
+            value = newValue
+        }
+    }
+
+    func get() -> Value {
+        lock.withLock {
+            value
+        }
+    }
+}
+
+final class DebugAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
     func simulateGift(request: HttpRequest) -> HttpResponse {
@@ -13,11 +34,11 @@ class DebugAPIHandler {
         let totalCoin = body["totalCoin"] as? Int ?? 1000
 
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = ["success": true]
+        let result = LockedDebugResult<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
-                result = ["success": false, "error": "Pipeline not available"]
+                result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
                 return
             }
@@ -56,20 +77,20 @@ class DebugAPIHandler {
                     pipeline.debug.log("[礼物] \(authorName) 送出 \(gift.giftName) ×\(gift.num) (\(coinValue)币)")
                 }
 
-                result = [
+                result.set([
                     "success": true,
                     "isPaidGift": gift.isPaidGift,
                     "authorName": authorName
-                ]
+                ])
             } else {
-                result = ["success": false, "error": "Failed to create GiftMessage"]
+                result.set(["success": false, "error": "Failed to create GiftMessage"])
             }
 
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 
     func simulateSC(request: HttpRequest) -> HttpResponse {
@@ -82,11 +103,11 @@ class DebugAPIHandler {
         let content = body["content"] as? String ?? ""
 
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = ["success": true]
+        let result = LockedDebugResult<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
-                result = ["success": false, "error": "Pipeline not available"]
+                result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
                 return
             }
@@ -108,22 +129,22 @@ class DebugAPIHandler {
             if let sc = sc {
                 pipeline.handleSuperChatForSongRequest(sc)
 
-                result = [
+                result.set([
                     "success": true,
                     "isPrioritySC": price >= 30,
                     "authorName": authorName,
                     "price": price,
                     "content": content
-                ]
+                ])
             } else {
-                result = ["success": false, "error": "Failed to create SuperChatMessage"]
+                result.set(["success": false, "error": "Failed to create SuperChatMessage"])
             }
 
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 
     func simulateMember(request: HttpRequest) -> HttpResponse {
@@ -133,11 +154,11 @@ class DebugAPIHandler {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = ["success": true]
+        let result = LockedDebugResult<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
-                result = ["success": false, "error": "Pipeline not available"]
+                result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
                 return
             }
@@ -172,19 +193,19 @@ class DebugAPIHandler {
                 pipeline.postMarquee("⭐ \(authorName) 上舰了!", type: .member)
                 pipeline.debug.log("[上舰] \(authorName) 上舰了!")
 
-                result = [
+                result.set([
                     "success": true,
                     "authorName": authorName
-                ]
+                ])
             } else {
-                result = ["success": false, "error": "Failed to create MemberMessage"]
+                result.set(["success": false, "error": "Failed to create MemberMessage"])
             }
 
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 
     func simulateDanmaku(request: HttpRequest) -> HttpResponse {
@@ -195,11 +216,11 @@ class DebugAPIHandler {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = ["success": true]
+        let result = LockedDebugResult<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
-                result = ["success": false, "error": "Pipeline not available"]
+                result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
                 return
             }
@@ -229,25 +250,25 @@ class DebugAPIHandler {
 
             if let danmaku = danmaku {
                 pipeline.handleDanmakuForSongRequest(danmaku)
-                result = [
+                result.set([
                     "success": true,
                     "authorName": authorName,
                     "content": content
-                ]
+                ])
             } else {
-                result = ["success": false, "error": "Failed to create DanmakuMessage"]
+                result.set(["success": false, "error": "Failed to create DanmakuMessage"])
             }
 
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 
     func getGiftPool() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
-        var result: [[String: Any]] = []
+        let result = LockedDebugResult<[[String: Any]]>([])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -255,17 +276,18 @@ class DebugAPIHandler {
                 return
             }
             let pool = pipeline.songCardManager.userGiftPool
-            for (name, value) in pool.sorted(by: { $0.value > $1.value }) {
-                result.append([
+            let rows = pool.sorted(by: { $0.value > $1.value }).map { name, value in
+                [
                     "name": name,
                     "giftValue": value
-                ])
+                ]
             }
+            result.set(rows)
             sem.signal()
         }
 
         sem.wait()
-        let response: [String: Any] = ["giftPool": result]
+        let response: [String: Any] = ["giftPool": result.get()]
         return .ok(.json(response))
     }
 
@@ -282,28 +304,28 @@ class DebugAPIHandler {
         let textPrefix = body["textPrefix"] as? String
 
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = ["success": true]
+        let result = LockedDebugResult<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
-                result = ["success": false, "error": "Pipeline not available"]
+                result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
                 return
             }
 
             pipeline.postMarquee(text, type: type, mergeKey: mergeKey, mergeCount: mergeCount, textPrefix: textPrefix)
-            result = [
+            result.set([
                 "success": true,
                 "text": text,
                 "type": typeRaw,
                 "mergeKey": mergeKey ?? NSNull(),
                 "mergeCount": mergeCount
-            ]
+            ])
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 
     func simulateBattery(request: HttpRequest) -> HttpResponse {
@@ -314,26 +336,26 @@ class DebugAPIHandler {
         let level = body["level"] as? Int
 
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = ["success": true]
+        let result = LockedDebugResult<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
-                result = ["success": false, "error": "Pipeline not available"]
+                result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
                 return
             }
 
             pipeline.deviceStatusManager?.setSimulatedBatteryLevel(level)
-            result = [
+            result.set([
                 "success": true,
                 "simulatedLevel": level ?? NSNull(),
                 "actualLevel": pipeline.deviceStatusManager?.batteryLevel ?? -1
-            ]
+            ])
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 
     func setExpirationTimeout(request: HttpRequest) -> HttpResponse {
@@ -343,34 +365,34 @@ class DebugAPIHandler {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = ["success": true]
+        let result = LockedDebugResult<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
-                result = ["success": false, "error": "Pipeline not available"]
+                result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
                 return
             }
 
             pipeline.songCardManager.expirationTimeout = TimeInterval(timeout)
-            result = [
+            result.set([
                 "success": true,
                 "expirationTimeout": timeout
-            ]
+            ])
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 
     func triggerExpirationCheck(request: HttpRequest) -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = ["success": true]
+        let result = LockedDebugResult<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
-                result = ["success": false, "error": "Pipeline not available"]
+                result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
                 return
             }
@@ -379,7 +401,7 @@ class DebugAPIHandler {
             if !expired.isEmpty {
                 pipeline.onSongsExpired(expired)
             }
-            result = [
+            result.set([
                 "success": true,
                 "expiredCount": expired.count,
                 "expiredSongs": expired.map { [
@@ -387,11 +409,11 @@ class DebugAPIHandler {
                     "requesterName": $0.requesterName ?? "未知",
                     "giftValue": $0.giftValue
                 ] }
-            ]
+            ])
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 }

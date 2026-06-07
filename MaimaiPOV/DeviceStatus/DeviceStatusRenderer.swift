@@ -1,7 +1,24 @@
 import UIKit
-import Metal
+@preconcurrency import Metal
 
-class DeviceStatusRenderer {
+private final class LockedDeviceStatusRenderResult: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: (MTLTexture?, Int) = (nil, 0)
+
+    func set(_ newValue: (MTLTexture?, Int)) {
+        lock.withLock {
+            value = newValue
+        }
+    }
+
+    func get() -> (MTLTexture?, Int) {
+        lock.withLock {
+            value
+        }
+    }
+}
+
+final class DeviceStatusRenderer: @unchecked Sendable {
     private let device: MTLDevice
 
     private let fontSize: CGFloat = 24
@@ -15,25 +32,24 @@ class DeviceStatusRenderer {
 
     func render(text: String) -> (MTLTexture?, Int) {
         if Thread.isMainThread {
-            return renderOnMainThread(text: text)
+            return MainActor.assumeIsolated {
+                renderOnMainThread(text: text)
+            }
         }
 
         let sem = DispatchSemaphore(value: 0)
-        var result: (MTLTexture?, Int) = (nil, 0)
+        let result = LockedDeviceStatusRenderResult()
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else {
-                sem.signal()
-                return
-            }
-            result = self.renderOnMainThread(text: text)
+        DispatchQueue.main.async { [self] in
+            result.set(renderOnMainThread(text: text))
             sem.signal()
         }
 
         sem.wait()
-        return result
+        return result.get()
     }
 
+    @MainActor
     private func renderOnMainThread(text: String) -> (MTLTexture?, Int) {
         let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [

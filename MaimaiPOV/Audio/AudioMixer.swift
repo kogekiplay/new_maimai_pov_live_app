@@ -2,7 +2,7 @@ import AVFoundation
 import Accelerate
 import QuartzCore
 
-class AudioMixer: ObservableObject {
+final class AudioMixer: ObservableObject, @unchecked Sendable {
     @Published var leftGain: Float = 1.0
     @Published var rightGain: Float = 1.0
     @Published var leftLevel: Float = 0.0

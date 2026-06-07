@@ -1,7 +1,7 @@
 import AVFoundation
 import SwiftUI
 
-class CameraCaptureManager: NSObject, ObservableObject {
+final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendable {
 
     let session = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()

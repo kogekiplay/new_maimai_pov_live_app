@@ -2,7 +2,8 @@ import UIKit
 import WebKit
 import Metal
 
-class LeftPanelRenderer {
+@MainActor
+final class LeftPanelRenderer {
     private let device: MTLDevice
 
     private let currentSongWebView: WKWebView

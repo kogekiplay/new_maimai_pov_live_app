@@ -1,4 +1,4 @@
-import Metal
+@preconcurrency import Metal
 import QuartzCore
 
 struct RightPanelRowState {
@@ -59,7 +59,7 @@ struct RightPanelAnimationStep {
     let delay: Float
 }
 
-class RightPanelCompositor {
+final class RightPanelCompositor: @unchecked Sendable {
     let device: MTLDevice
     private let pipelineState: MTLComputePipelineState
     private var uniformsBuffers: [MTLBuffer]

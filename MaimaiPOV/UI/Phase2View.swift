@@ -248,28 +248,7 @@ struct Phase2View: View {
                 }
                 .frame(maxHeight: 240)
 
-                HStack {
-                    ForEach(ControlTab.allCases, id: \.self) { tab in
-                        Button {
-                            selectedTab = tab
-                        } label: {
-                            VStack(spacing: 2) {
-                                Image(systemName: tab.icon)
-                                Text(tab.rawValue)
-                                    .font(.system(size: 10))
-                            }
-                            .foregroundColor(selectedTab == tab ? .white : .gray)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                            .adaptiveGlassPanel(
-                                cornerRadius: 8,
-                                tint: selectedTab == tab ? Color.cyan.opacity(0.16) : Color.clear,
-                                interactive: true
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+                ControlTabRail(selection: $selectedTab)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
                 .padding(.bottom, bottomSafeArea)
@@ -737,6 +716,7 @@ struct Phase2View: View {
 
     private var overlayToggleRow: some View {
         HStack {
+            let overlayEnabled = pipeline.overlayEnabled
             Text("Overlay").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.overlayEnabled).labelsHidden()
             Spacer()
@@ -745,15 +725,18 @@ struct Phase2View: View {
                          photoLibrary: .shared()) {
                 Image(systemName: "photo")
                     .font(.caption)
-                    .foregroundColor(pipeline.overlayEnabled ? .cyan : .gray)
+                    .foregroundColor(overlayEnabled ? .cyan : .gray)
             }
-            .disabled(!pipeline.overlayEnabled)
+            .disabled(!overlayEnabled)
             .onChange(of: selectedPhotoItem) { _, newItem in
                 guard let newItem = newItem else { return }
+                let pipeline = pipeline
                 Task {
                     if let data = try? await newItem.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
-                        pipeline.loadOverlayImage(image)
+                        await MainActor.run {
+                            pipeline.loadOverlayImage(image)
+                        }
                     }
                 }
             }
@@ -1111,6 +1094,226 @@ struct Phase2View: View {
             content()
             valueLabel()
         }
+    }
+}
+
+private struct ControlTabRail: View {
+    @Binding var selection: ControlTab
+    @State private var pressedIndex: Int?
+    @State private var dragCenterX: CGFloat?
+
+    private let tabs = Array(ControlTab.allCases)
+    private let horizontalInset: CGFloat = 8
+    private let railHeight: CGFloat = 78
+    private let railBodyHeight: CGFloat = 66
+    private let restingBubbleHeight: CGFloat = 62
+    private let activeBubbleHeight: CGFloat = 76
+    private let accent = Color(red: 1.0, green: 0.25, blue: 0.42)
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let segmentWidth = segmentWidth(for: width)
+            let visualIndex = pressedIndex ?? selectedIndex
+            let isPressing = pressedIndex != nil
+            let bubbleWidth = bubbleWidth(for: segmentWidth, isPressing: isPressing)
+            let bubbleHeight = bubbleHeight(isPressing: isPressing)
+            let bubbleCenterX = dragCenterX ?? tabCenterX(for: visualIndex, width: width)
+            let bubbleOffset = bubbleOffset(forCenter: bubbleCenterX, width: width, bubbleWidth: bubbleWidth)
+
+            ZStack(alignment: .leading) {
+                glassContainer {
+                    ZStack(alignment: .leading) {
+                        railBackground
+                            .frame(height: railBodyHeight)
+                            .padding(.vertical, (railHeight - railBodyHeight) / 2)
+
+                        selectionBubble(isPressing: isPressing, height: bubbleHeight)
+                            .frame(width: bubbleWidth, height: bubbleHeight)
+                            .offset(x: bubbleOffset)
+                            .scaleEffect(isPressing ? 1.06 : 1.0)
+                            .animation(dragCenterX == nil ? .interactiveSpring(response: 0.28, dampingFraction: 0.78) : nil, value: visualIndex)
+                            .animation(.interactiveSpring(response: 0.22, dampingFraction: 0.74), value: isPressing)
+                    }
+                }
+
+                HStack(spacing: 0) {
+                    ForEach(Array(tabs.enumerated()), id: \.element) { index, tab in
+                        tabLabel(tab, isSelected: selectedIndex == index, isPressed: pressedIndex == index)
+                            .frame(width: segmentWidth, height: railHeight)
+                            .contentShape(Rectangle())
+                    }
+                }
+                .padding(.horizontal, horizontalInset)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: railBodyHeight / 2, style: .continuous))
+            .gesture(tabDragGesture(width: width))
+        }
+        .frame(height: railHeight)
+    }
+
+    @ViewBuilder
+    private func glassContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 18) {
+                content()
+            }
+        } else {
+            content()
+        }
+    }
+
+    private var railBackground: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: railBodyHeight / 2, style: .continuous)
+                .fill(Color.black.opacity(0.28))
+            RoundedRectangle(cornerRadius: railBodyHeight / 2, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.10),
+                            Color.white.opacity(0.02),
+                            Color.black.opacity(0.20)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .adaptiveGlassPanel(cornerRadius: railBodyHeight / 2, tint: Color.black.opacity(0.26), interactive: true)
+        .overlay {
+            RoundedRectangle(cornerRadius: railBodyHeight / 2, style: .continuous)
+                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.42), radius: 14, x: 0, y: 8)
+    }
+
+    private func selectionBubble(isPressing: Bool, height: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.white.opacity(isPressing ? 0.30 : 0.18),
+                            Color.white.opacity(isPressing ? 0.10 : 0.04),
+                            Color.black.opacity(0.18)
+                        ],
+                        center: .topLeading,
+                        startRadius: 6,
+                        endRadius: 112
+                    )
+                )
+
+            RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(isPressing ? 0.18 : 0.10),
+                            Color.clear,
+                            Color.white.opacity(isPressing ? 0.08 : 0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .adaptiveGlassPanel(cornerRadius: height / 2, tint: Color.white.opacity(isPressing ? 0.08 : 0.03), interactive: true)
+        .overlay {
+            RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.34),
+                            Color.white.opacity(isPressing ? 0.22 : 0.10),
+                            Color.white.opacity(isPressing ? 0.18 : 0.08)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: isPressing ? 1.4 : 1
+                )
+        }
+        .shadow(color: Color.black.opacity(0.46), radius: 16, x: 0, y: 8)
+    }
+
+    private var selectedIndex: Int {
+        tabs.firstIndex(of: selection) ?? 0
+    }
+
+    private func tabLabel(_ tab: ControlTab, isSelected: Bool, isPressed: Bool) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: tab.icon)
+                .font(.system(size: isSelected ? 25 : 23, weight: isSelected ? .bold : .semibold))
+                .symbolRenderingMode(.hierarchical)
+            Text(tab.rawValue)
+                .font(.system(size: 12, weight: isSelected ? .bold : .medium))
+                .lineLimit(1)
+        }
+        .foregroundColor(isSelected ? accent : .white.opacity(0.88))
+        .scaleEffect(isPressed ? 1.10 : (isSelected ? 1.03 : 1))
+        .animation(.easeOut(duration: 0.12), value: isPressed)
+        .animation(.easeOut(duration: 0.16), value: isSelected)
+    }
+
+    private func segmentWidth(for width: CGFloat) -> CGFloat {
+        let innerWidth = max(width - horizontalInset * 2, 1)
+        return innerWidth / CGFloat(max(tabs.count, 1))
+    }
+
+    private func bubbleWidth(for segmentWidth: CGFloat, isPressing: Bool) -> CGFloat {
+        if isPressing {
+            return max(segmentWidth + 56, 120)
+        }
+        return max(segmentWidth - 12, 64)
+    }
+
+    private func bubbleHeight(isPressing: Bool) -> CGFloat {
+        isPressing ? activeBubbleHeight : restingBubbleHeight
+    }
+
+    private func tabCenterX(for index: Int, width: CGFloat) -> CGFloat {
+        let segmentWidth = segmentWidth(for: width)
+        return horizontalInset + segmentWidth * (CGFloat(index) + 0.5)
+    }
+
+    private func bubbleOffset(forCenter centerX: CGFloat, width: CGFloat, bubbleWidth: CGFloat) -> CGFloat {
+        let minX: CGFloat = 0
+        let maxX = max(width - bubbleWidth, 0)
+        return min(max(centerX - bubbleWidth / 2, minX), maxX)
+    }
+
+    private func clampedBubbleCenter(_ centerX: CGFloat, width: CGFloat, bubbleWidth: CGFloat) -> CGFloat {
+        let minCenter = bubbleWidth / 2
+        let maxCenter = max(width - bubbleWidth / 2, minCenter)
+        return min(max(centerX, minCenter), maxCenter)
+    }
+
+    private func tabIndex(at locationX: CGFloat, width: CGFloat) -> Int {
+        let segmentWidth = segmentWidth(for: width)
+        let clampedX = min(max(locationX - horizontalInset, 0), segmentWidth * CGFloat(tabs.count) - 0.01)
+        return min(max(Int(clampedX / segmentWidth), 0), tabs.count - 1)
+    }
+
+    private func tabDragGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .onChanged { value in
+                let activeBubbleWidth = bubbleWidth(for: segmentWidth(for: width), isPressing: true)
+                dragCenterX = clampedBubbleCenter(value.location.x, width: width, bubbleWidth: activeBubbleWidth)
+
+                let nextIndex = tabIndex(at: value.location.x, width: width)
+                pressedIndex = nextIndex
+                guard tabs[nextIndex] != selection else { return }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.interactiveSpring(response: 0.24, dampingFraction: 0.82)) {
+                    selection = tabs[nextIndex]
+                }
+            }
+            .onEnded { _ in
+                withAnimation(.easeOut(duration: 0.12)) {
+                    pressedIndex = nil
+                    dragCenterX = nil
+                }
+            }
     }
 }
 

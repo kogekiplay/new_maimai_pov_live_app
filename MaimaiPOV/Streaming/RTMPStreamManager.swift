@@ -16,7 +16,7 @@ enum StreamResolution: String, CaseIterable {
     }
 }
 
-class RTMPStreamManager: ObservableObject {
+final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
     @Published var isStreaming: Bool = false
     @Published var streamStatus: String = "Idle"
     @Published var streamResolution: StreamResolution = .r1080p

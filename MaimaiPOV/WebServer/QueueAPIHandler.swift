@@ -1,7 +1,28 @@
 import Foundation
 import Swifter
 
-class QueueAPIHandler {
+private final class LockedQueueValue<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    func set(_ newValue: Value) {
+        lock.withLock {
+            value = newValue
+        }
+    }
+
+    func get() -> Value {
+        lock.withLock {
+            value
+        }
+    }
+}
+
+final class QueueAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
     private func coverURL(from musicId: Int?) -> String? {
@@ -54,15 +75,15 @@ class QueueAPIHandler {
 
     func getQueue() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
-        var response: [String: Any] = [:]
+        let response = LockedQueueValue<[String: Any]>([:])
 
         DispatchQueue.main.async { [weak self] in
-            response = self?.buildQueueResponse() ?? [:]
+            response.set(self?.buildQueueResponse() ?? [:])
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(response))
+        return .ok(.json(response.get()))
     }
 
     func skip() -> HttpResponse {
@@ -98,7 +119,7 @@ class QueueAPIHandler {
         let preserveGift = body["preserveGift"] as? Bool ?? false
 
         let sem = DispatchSemaphore(value: 0)
-        var success = false
+        let success = LockedQueueValue(false)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -124,12 +145,12 @@ class QueueAPIHandler {
                 pipeline.refreshRightPanel()
             }
 
-            success = true
+            success.set(true)
             sem.signal()
         }
 
         sem.wait()
-        return success ? getQueue() : .badRequest(.text("Invalid index"))
+        return success.get() ? getQueue() : .badRequest(.text("Invalid index"))
     }
 
     func addForUser(request: HttpRequest) -> HttpResponse {
@@ -143,12 +164,12 @@ class QueueAPIHandler {
         let username = body["username"] as? String ?? "LAN"
 
         let sem = DispatchSemaphore(value: 0)
-        var success = false
-        var errorMsg: String?
+        let success = LockedQueueValue(false)
+        let errorMsg = LockedQueueValue<String?>(nil)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
-                errorMsg = "Pipeline not available"
+                errorMsg.set("Pipeline not available")
                 sem.signal()
                 return
             }
@@ -156,7 +177,7 @@ class QueueAPIHandler {
             let db = pipeline.songDatabase
             let candidates = db.findCandidates(query: String(musicId))
             if candidates.candidates.isEmpty {
-                errorMsg = "Song not found: \(musicId)"
+                errorMsg.set("Song not found: \(musicId)")
                 sem.signal()
                 return
             }
@@ -169,14 +190,14 @@ class QueueAPIHandler {
                 chartTypePreference: chartTypePreference,
                 diffInput: difficulty
             ) else {
-                errorMsg = "Cannot pick song from candidates"
+                errorMsg.set("Cannot pick song from candidates")
                 sem.signal()
                 return
             }
 
             let targetDiffNum = db.resolveDiffInput(difficulty)
             guard let noteResult = db.findNote(song: song, targetDiffNum: targetDiffNum) else {
-                errorMsg = "No available difficulty for \(song.title)"
+                errorMsg.set("No available difficulty for \(song.title)")
                 sem.signal()
                 return
             }
@@ -203,15 +224,15 @@ class QueueAPIHandler {
             )
 
             pipeline.addSongToQueue(cardData)
-            success = true
+            success.set(true)
             sem.signal()
         }
 
         sem.wait()
-        if success {
+        if success.get() {
             return getQueue()
         } else {
-            return .badRequest(.text(errorMsg ?? "Failed to add song"))
+            return .badRequest(.text(errorMsg.get() ?? "Failed to add song"))
         }
     }
 
@@ -225,12 +246,12 @@ class QueueAPIHandler {
         let chartType = body["chartType"] as? String
 
         let sem = DispatchSemaphore(value: 0)
-        var success = false
-        var errorMsg: String?
+        let success = LockedQueueValue(false)
+        let errorMsg = LockedQueueValue<String?>(nil)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
-                errorMsg = "Pipeline not available"
+                errorMsg.set("Pipeline not available")
                 sem.signal()
                 return
             }
@@ -238,7 +259,7 @@ class QueueAPIHandler {
             let db = pipeline.songDatabase
             let candidates = db.findCandidates(query: String(musicId))
             if candidates.candidates.isEmpty {
-                errorMsg = "Song not found: \(musicId)"
+                errorMsg.set("Song not found: \(musicId)")
                 sem.signal()
                 return
             }
@@ -251,14 +272,14 @@ class QueueAPIHandler {
                 chartTypePreference: chartTypePreference,
                 diffInput: difficulty
             ) else {
-                errorMsg = "Cannot pick song from candidates"
+                errorMsg.set("Cannot pick song from candidates")
                 sem.signal()
                 return
             }
 
             let targetDiffNum = db.resolveDiffInput(difficulty)
             guard let noteResult = db.findNote(song: song, targetDiffNum: targetDiffNum) else {
-                errorMsg = "No available difficulty for \(song.title)"
+                errorMsg.set("No available difficulty for \(song.title)")
                 sem.signal()
                 return
             }
@@ -282,15 +303,15 @@ class QueueAPIHandler {
             )
 
             pipeline.addSongToQueue(cardData)
-            success = true
+            success.set(true)
             sem.signal()
         }
 
         sem.wait()
-        if success {
+        if success.get() {
             return getQueue()
         } else {
-            return .badRequest(.text(errorMsg ?? "Failed to add song"))
+            return .badRequest(.text(errorMsg.get() ?? "Failed to add song"))
         }
     }
 
@@ -301,7 +322,7 @@ class QueueAPIHandler {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        var success = false
+        let success = LockedQueueValue(false)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -320,14 +341,14 @@ class QueueAPIHandler {
                 } else if wasInLockedArea {
                     pipeline.refreshRightPanel()
                 }
-                success = true
+                success.set(true)
             }
 
             sem.signal()
         }
 
         sem.wait()
-        return success ? getQueue() : .badRequest(.text("User has no song in queue"))
+        return success.get() ? getQueue() : .badRequest(.text("User has no song in queue"))
     }
 
     func getUserInfo(request: HttpRequest) -> HttpResponse {
@@ -339,7 +360,7 @@ class QueueAPIHandler {
         let username = rawUsername.removingPercentEncoding ?? rawUsername
 
         let sem = DispatchSemaphore(value: 0)
-        var result: [String: Any] = [:]
+        let result = LockedQueueValue<[String: Any]>([:])
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -390,11 +411,11 @@ class QueueAPIHandler {
             }
             info["recentDanmaku"] = danmakuList
 
-            result = info
+            result.set(info)
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(result))
+        return .ok(.json(result.get()))
     }
 }

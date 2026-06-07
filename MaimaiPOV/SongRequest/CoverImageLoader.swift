@@ -1,6 +1,6 @@
 import UIKit
 
-class CoverImageLoader {
+final class CoverImageLoader: @unchecked Sendable {
     static let shared = CoverImageLoader()
 
     private let memoryCache = NSCache<NSString, UIImage>()

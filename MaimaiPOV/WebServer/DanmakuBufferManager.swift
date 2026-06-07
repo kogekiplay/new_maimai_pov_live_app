@@ -23,7 +23,7 @@ struct DanmakuEntry: Codable {
     let userGiftValue: Int
 }
 
-class SSEClient {
+final class SSEClient: @unchecked Sendable {
     typealias SendCallback = (String) -> Bool
 
     private let sendCallback: SendCallback
@@ -53,7 +53,7 @@ class SSEClient {
     }
 }
 
-class DanmakuBufferManager {
+final class DanmakuBufferManager: @unchecked Sendable {
     static let shared = DanmakuBufferManager()
 
     private var buffer: [DanmakuEntry] = []

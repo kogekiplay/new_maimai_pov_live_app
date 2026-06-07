@@ -1,7 +1,7 @@
 import AVFoundation
 import Combine
 
-class AudioDeviceManager: ObservableObject {
+final class AudioDeviceManager: ObservableObject, @unchecked Sendable {
     enum AudioSource: String, CaseIterable {
         case builtInMic = "内置麦"
         case externalMono = "DJI 单声道"

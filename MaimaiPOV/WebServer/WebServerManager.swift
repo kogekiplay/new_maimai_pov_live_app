@@ -3,7 +3,50 @@ import Swifter
 import CoreImage
 import UIKit
 
-class WebServerManager {
+private struct CoverFetchResult: Sendable {
+    let data: Data
+    let contentType: String
+}
+
+private final class LockedCoverFetchResult: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: CoverFetchResult?
+
+    func set(_ newValue: CoverFetchResult) {
+        lock.withLock {
+            value = newValue
+        }
+    }
+
+    func get() -> CoverFetchResult? {
+        lock.withLock {
+            value
+        }
+    }
+}
+
+private final class LockedWebJSONResult<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    func set(_ newValue: Value) {
+        lock.withLock {
+            value = newValue
+        }
+    }
+
+    func get() -> Value {
+        lock.withLock {
+            value
+        }
+    }
+}
+
+final class WebServerManager: @unchecked Sendable {
     private let server = HttpServer()
     private(set) var isRunning: Bool = false
     private(set) var serverURL: String = ""
@@ -347,10 +390,10 @@ class WebServerManager {
             switch request.method {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
-                var result: [String: Any] = [:]
+                let result = LockedWebJSONResult<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
-                    result = [
+                    result.set([
                         "iso": pipeline.isoValue,
                         "minISO": pipeline.minISO,
                         "maxISO": pipeline.maxISO,
@@ -359,11 +402,11 @@ class WebServerManager {
                         "autoFocusEnabled": pipeline.autoFocusEnabled,
                         "selectedLens": pipeline.selectedLens.rawValue,
                         "awbLocked": pipeline.camera.awbLocked
-                    ]
+                    ])
                     sem.signal()
                 }
                 sem.wait()
-                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result.get()) else {
                     return .internalServerError
                 }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -374,7 +417,7 @@ class WebServerManager {
                     return .badRequest(.text("Invalid JSON"))
                 }
                 let sem = DispatchSemaphore(value: 0)
-                var result: [String: Any] = [:]
+                let result = LockedWebJSONResult<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let iso = bodyData["iso"] as? Double {
@@ -406,7 +449,7 @@ class WebServerManager {
                             pipeline.camera.unlockWhiteBalance()
                         }
                     }
-                    result = [
+                    result.set([
                         "success": true,
                         "iso": pipeline.isoValue,
                         "minISO": pipeline.minISO,
@@ -416,11 +459,11 @@ class WebServerManager {
                         "autoFocusEnabled": pipeline.autoFocusEnabled,
                         "selectedLens": pipeline.selectedLens.rawValue,
                         "awbLocked": pipeline.camera.awbLocked
-                    ]
+                    ])
                     sem.signal()
                 }
                 sem.wait()
-                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result.get()) else {
                     return .internalServerError
                 }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -436,10 +479,10 @@ class WebServerManager {
             switch request.method {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
-                var result: [String: Any] = [:]
+                let result = LockedWebJSONResult<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
-                    result = [
+                    result.set([
                         "stabEnabled": pipeline.stabEnabled,
                         "yaw": Double(pipeline.yaw),
                         "pitch": Double(pipeline.pitch),
@@ -448,11 +491,11 @@ class WebServerManager {
                         "distRatio": Double(pipeline.distRatio),
                         "activityMode": pipeline.activityMode,
                         "activitySmoothFactor": Double(pipeline.activitySmoothFactor)
-                    ]
+                    ])
                     sem.signal()
                 }
                 sem.wait()
-                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result.get()) else {
                     return .internalServerError
                 }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -463,7 +506,7 @@ class WebServerManager {
                     return .badRequest(.text("Invalid JSON"))
                 }
                 let sem = DispatchSemaphore(value: 0)
-                var result: [String: Any] = [:]
+                let result = LockedWebJSONResult<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let enabled = bodyData["stabEnabled"] as? Bool {
@@ -498,7 +541,7 @@ class WebServerManager {
                         pipeline.activitySmoothFactor = Float(sf)
                         pipeline.updateActivitySmoothFactor()
                     }
-                    result = [
+                    result.set([
                         "success": true,
                         "stabEnabled": pipeline.stabEnabled,
                         "yaw": Double(pipeline.yaw),
@@ -508,11 +551,11 @@ class WebServerManager {
                         "distRatio": Double(pipeline.distRatio),
                         "activityMode": pipeline.activityMode,
                         "activitySmoothFactor": Double(pipeline.activitySmoothFactor)
-                    ]
+                    ])
                     sem.signal()
                 }
                 sem.wait()
-                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result.get()) else {
                     return .internalServerError
                 }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -528,21 +571,21 @@ class WebServerManager {
             switch request.method {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
-                var result: [String: Any] = [:]
+                let result = LockedWebJSONResult<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
-                    result = [
+                    result.set([
                         "leftGain": Double(pipeline.audioMixer.leftGain),
                         "rightGain": Double(pipeline.audioMixer.rightGain),
                         "isStereoMixEnabled": pipeline.audioMixer.isStereoMixEnabled,
                         "leftLevel": Double(pipeline.audioMixer.leftLevel),
                         "rightLevel": Double(pipeline.audioMixer.rightLevel),
                         "mixedLevel": Double(pipeline.audioMixer.mixedLevel)
-                    ]
+                    ])
                     sem.signal()
                 }
                 sem.wait()
-                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result.get()) else {
                     return .internalServerError
                 }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -553,7 +596,7 @@ class WebServerManager {
                     return .badRequest(.text("Invalid JSON"))
                 }
                 let sem = DispatchSemaphore(value: 0)
-                var result: [String: Any] = [:]
+                let result = LockedWebJSONResult<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let leftGain = bodyData["leftGain"] as? Double {
@@ -562,16 +605,16 @@ class WebServerManager {
                     if let rightGain = bodyData["rightGain"] as? Double {
                         pipeline.audioMixer.rightGain = Float(rightGain)
                     }
-                    result = [
+                    result.set([
                         "success": true,
                         "leftGain": Double(pipeline.audioMixer.leftGain),
                         "rightGain": Double(pipeline.audioMixer.rightGain),
                         "isStereoMixEnabled": pipeline.audioMixer.isStereoMixEnabled
-                    ]
+                    ])
                     sem.signal()
                 }
                 sem.wait()
-                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result.get()) else {
                     return .internalServerError
                 }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -644,7 +687,7 @@ class WebServerManager {
             guard let self = self else { return .internalServerError }
 
             let sem = DispatchSemaphore(value: 0)
-            var result: [String: Any] = [:]
+            let result = LockedWebJSONResult<[String: Any]>([:])
 
             DispatchQueue.main.async {
                 let streamManager = self.pipeline?.streamManager
@@ -675,7 +718,7 @@ class WebServerManager {
                 case .r1080p: resolution = "1920x1080"
                 }
 
-                result = [
+                result.set([
                     "streaming": [
                         "isStreaming": streamManager?.isStreaming ?? false,
                         "status": streamManager?.streamStatus ?? "Idle",
@@ -692,13 +735,13 @@ class WebServerManager {
                     "pipeline": [
                         "lagMs": debug.pipelineLagMs
                     ]
-                ]
+                ])
                 sem.signal()
             }
 
             sem.wait()
 
-            guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: result.get()) else {
                 return .internalServerError
             }
             return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -734,22 +777,23 @@ class WebServerManager {
             guard let url = URL(string: urlString) else { continue }
 
             let requestSem = DispatchSemaphore(value: 0)
-            var foundData: Data?
-            var foundContentType: String?
+            let foundResult = LockedCoverFetchResult()
 
             let task = URLSession.shared.dataTask(with: url) { data, response, _ in
                 if let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    foundData = data
-                    foundContentType = httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "image/\(format)"
+                    foundResult.set(CoverFetchResult(
+                        data: data,
+                        contentType: httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "image/\(format)"
+                    ))
                 }
                 requestSem.signal()
             }
             task.resume()
             requestSem.wait()
 
-            if let data = foundData {
-                imageData = data
-                contentType = foundContentType
+            if let result = foundResult.get() {
+                imageData = result.data
+                contentType = result.contentType
                 break
             }
         }
@@ -795,7 +839,8 @@ class WebServerManager {
                     getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
                                 &hostname, socklen_t(hostname.count),
                                 nil, 0, NI_NUMERICHOST)
-                    address = String(cString: hostname)
+                    let addressBytes = hostname.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
+                    address = String(decoding: addressBytes, as: UTF8.self)
                     break
                 }
             }

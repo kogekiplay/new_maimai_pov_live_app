@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import UIKit
 
-class BlivechatClient: ObservableObject {
+final class BlivechatClient: ObservableObject, @unchecked Sendable {
     @Published var connectionState: ConnectionState = .disconnected
 
     var onDanmaku: ((DanmakuMessage) -> Void)?
@@ -142,7 +142,9 @@ class BlivechatClient: ObservableObject {
         webSocketTask?.receive { [weak self] result in
             switch result {
             case .success(let message):
-                self?.confirmConnected()
+                DispatchQueue.main.async {
+                    self?.confirmConnected()
+                }
                 self?.handleMessage(message)
                 self?.receiveMessage()
 
@@ -225,9 +227,9 @@ class BlivechatClient: ObservableObject {
                 DispatchQueue.main.async {
                     self.connectionState = .error(error.message)
                     self.onError?(error)
+                    self.isIntentionalDisconnect = true
                 }
             }
-            isIntentionalDisconnect = true
 
         case .joinRoom:
             break

@@ -10,11 +10,12 @@ struct QueueSnapshot: Codable {
     static let currentVersion = 2
 }
 
-class QueuePersistenceManager {
+final class QueuePersistenceManager: @unchecked Sendable {
     private let snapshotDirectory: URL
     private let snapshotURL: URL
     private let backupURL: URL
     private let tempURL: URL
+    private let lock = NSLock()
 
     static let shared = QueuePersistenceManager()
 
@@ -28,6 +29,9 @@ class QueuePersistenceManager {
 
     func save(snapshot: QueueSnapshot) {
         guard !snapshot.queue.isEmpty || !snapshot.userGiftPool.isEmpty else { return }
+
+        lock.lock()
+        defer { lock.unlock() }
 
         do {
             try FileManager.default.createDirectory(at: snapshotDirectory, withIntermediateDirectories: true)
@@ -51,6 +55,9 @@ class QueuePersistenceManager {
     }
 
     func load() -> QueueSnapshot? {
+        lock.lock()
+        defer { lock.unlock() }
+
         if let snapshot = loadFromURL(snapshotURL) {
             return snapshot
         }
@@ -61,17 +68,26 @@ class QueuePersistenceManager {
     }
 
     func hasSnapshot() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
         let fileManager = FileManager.default
         return fileManager.fileExists(atPath: snapshotURL.path) || fileManager.fileExists(atPath: backupURL.path)
     }
 
     func clearSnapshot() {
+        lock.lock()
+        defer { lock.unlock() }
+
         let fileManager = FileManager.default
         try? fileManager.removeItem(at: snapshotURL)
         try? fileManager.removeItem(at: backupURL)
     }
 
     func snapshotAge() -> TimeInterval? {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: snapshotURL.path),
               let modDate = attrs[.modificationDate] as? Date else {
             if let attrs = try? FileManager.default.attributesOfItem(atPath: backupURL.path),

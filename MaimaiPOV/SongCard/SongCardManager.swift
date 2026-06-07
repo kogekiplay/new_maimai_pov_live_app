@@ -15,7 +15,7 @@ protocol SongCardDataProvider: AnyObject {
     func onSongsExpired(_ songs: [SongCardData])
 }
 
-class SongCardManager: ObservableObject {
+final class SongCardManager: ObservableObject, @unchecked Sendable {
     @Published var queue: [SongCardData] = []
     @Published var currentIndex: Int = -1
 

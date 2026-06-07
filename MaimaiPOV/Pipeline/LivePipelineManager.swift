@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 import AVFoundation
 import CoreMedia
-import Metal
+@preconcurrency import Metal
 import simd
 import QuartzCore
 import UIKit
@@ -20,7 +20,24 @@ private struct SendablePixelBuffer: @unchecked Sendable {
     let value: CVPixelBuffer
 }
 
-class LivePipelineManager: ObservableObject, SongCardDataProvider {
+private final class LockedTextureMap: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [Int: MTLTexture] = [:]
+
+    func set(_ texture: MTLTexture, for queueIndex: Int) {
+        lock.withLock {
+            values[queueIndex] = texture
+        }
+    }
+
+    func snapshot() -> [Int: MTLTexture] {
+        lock.withLock {
+            values
+        }
+    }
+}
+
+final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchecked Sendable {
     @Published var focusValue: Double = Config.focusValue
     @Published var autoFocusEnabled: Bool = Config.autoFocusEnabled
     @Published var shutterTimescale: Double = Config.shutterTimescale
@@ -1077,19 +1094,21 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
                     encoder.endEncoding()
 
-                    cmdBuf.addCompletedHandler { [weak self] _ in
-                        if let pool = self?.ioSurfacePool, let idx = pool.indexOfBuffer(writeBuffer) {
+                    let completionManager = WeakLivePipelineManager(self)
+                    cmdBuf.addCompletedHandler { _ in
+                        if let pool = completionManager.value?.ioSurfacePool, let idx = pool.indexOfBuffer(writeBuffer) {
                             pool.notifyBufferCompleted(idx)
                         }
-                        self?.pipelineQueue.async {
-                            guard let self = self else { return }
+                        completionManager.value?.pipelineQueue.async {
+                            guard let self = completionManager.value else { return }
                             self.streamFrameCount += 1
                             let pipelineLatencyMs = (CACurrentMediaTime() - pipelineEnterTime) * 1000.0
                             self.onStreamBufferAvailable?(writeBuffer.pixelBuffer, timestamp)
                             self.streamManager.appendVideo(pixelBuffer: writeBuffer.pixelBuffer, timestamp: timestamp)
+                            let audioDepth = self.streamManager.audioSyncQueueDepth
                             DispatchQueue.main.async {
                                 self.lagMs = pipelineLatencyMs
-                                self.debug.stageLagData(ms: pipelineLatencyMs, audioDepth: self.streamManager.audioSyncQueueDepth)
+                                self.debug.stageLagData(ms: pipelineLatencyMs, audioDepth: audioDepth)
                             }
                         }
                     }
@@ -1113,28 +1132,32 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         camera.onVideoFrame = nil
         camera.stopRunning()
         MotionManager.shared.stopUpdates()
-        deviceStatusManager?.stopMonitoring()
         stopFPSTimer()
         songCardManager.stopExpirationTimer()
+        let manager = WeakLivePipelineManager(self)
         DispatchQueue.main.async {
-            self.debug.stopFlushTimer()
+            manager.value?.deviceStatusManager?.stopMonitoring()
+            manager.value?.debug.stopFlushTimer()
         }
     }
 
     private func startFPSTimer() {
-        fpsTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.pipelineQueue.async {
-                guard let self = self else { return }
+        let manager = WeakLivePipelineManager(self)
+        fpsTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            manager.value?.pipelineQueue.async {
+                guard let self = manager.value else { return }
                 let count = self.frameCount
                 let streamCount = self.streamFrameCount
+                let yoloActualFPS = self.yoloDetector?.actualFPS ?? 0
                 self.frameCount = 0
                 self.streamFrameCount = 0
                 DispatchQueue.main.async {
+                    guard let self = manager.value else { return }
                     self.currentFPS = Double(count)
                     self.debug.fps = Double(count)
                     self.debug.frameCount = count
                     self.debug.streamInfo = "\(streamCount) bufs/s \(Config.outputWidth)x\(Config.outputHeight)"
-                    self.debug.yoloActualFPS = self.yoloDetector?.actualFPS ?? 0
+                    self.debug.yoloActualFPS = yoloActualFPS
                 }
             }
         }
@@ -1355,7 +1378,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     func onSongRemoved(queueIndex: Int) {
         rightPanelCompositor?.removeRow(queueIndex: queueIndex)
-        rightPanelRenderer?.invalidateRow(queueIndex: queueIndex)
+        let manager = WeakLivePipelineManager(self)
+        DispatchQueue.main.async {
+            manager.value?.rightPanelRenderer?.invalidateRow(queueIndex: queueIndex)
+        }
     }
 
     func onGiftValueChanged(_ song: SongCardData, queueIndex: Int) {
@@ -1441,8 +1467,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     func clearSongQueue() {
         leftPanelCompositor?.clearAll()
         rightPanelCompositor?.clearAll()
-        rightPanelRenderer?.invalidateCache()
-        leftPanelRenderer?.invalidateCache()
+        let manager = WeakLivePipelineManager(self)
+        DispatchQueue.main.async {
+            manager.value?.rightPanelRenderer?.invalidateCache()
+            manager.value?.leftPanelRenderer?.invalidateCache()
+        }
         songCardManager.clearQueue()
         if leftPanelCompositor != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
@@ -1540,8 +1569,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         guard queueIndex >= startQueueIndex else { return }
 
         if !compositor.hasTitleTexture {
-            renderer.renderTitle { [weak self] texture in
-                self?.rightPanelCompositor?.updateTitleTexture(texture)
+            let manager = WeakLivePipelineManager(self)
+            DispatchQueue.main.async {
+                renderer.renderTitle { texture in
+                    manager.value?.rightPanelCompositor?.updateTitleTexture(texture)
+                }
             }
         }
 
@@ -1594,8 +1626,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     private func ensureTitleTexture() {
         guard let compositor = rightPanelCompositor, !compositor.hasTitleTexture, let renderer = rightPanelRenderer else { return }
-        renderer.renderTitle { [weak self] texture in
-            self?.rightPanelCompositor?.updateTitleTexture(texture)
+        let manager = WeakLivePipelineManager(self)
+        DispatchQueue.main.async {
+            renderer.renderTitle { texture in
+                manager.value?.rightPanelCompositor?.updateTitleTexture(texture)
+            }
         }
     }
 
@@ -1649,6 +1684,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
            let oldListIndex = compositor.listIndexForSong(id: scrollId) {
             if !compositor.isRowVisible(listIndex: oldListIndex) {
                 let oldNeededOffset = compositor.scrollOffsetNeededForRow(listIndex: oldListIndex)
+                let finalNeededOffset = neededOffset
 
                 let gen = rightPanelGeneration
                 compositor.animateScrollTo(targetOffset: oldNeededOffset, duration: 0.3, isPreScroll: true) { [weak self] in
@@ -1660,7 +1696,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         guard self.rightPanelGeneration == gen else { return }
 
                         let currentAfterPreScroll = self.rightPanelCompositor?.currentScrollOffset ?? currentOffset
-                        let targetScrollOffset = abs(neededOffset - currentAfterPreScroll) > 0.01 ? neededOffset : nil
+                        let targetScrollOffset = abs(finalNeededOffset - currentAfterPreScroll) > 0.01 ? finalNeededOffset : nil
                         self.doReorderRightPanel(
                             compositor: compositor,
                             renderer: renderer,
@@ -1728,7 +1764,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             return
         }
 
-        var renderedTextures: [Int: MTLTexture] = [:]
+        let renderedTextures = LockedTextureMap()
         let group = DispatchGroup()
         let currentGeneration = rightPanelGeneration
 
@@ -1741,7 +1777,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     DispatchQueue.main.async {
                         renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: base64) { _, texture in
                             if let texture = texture {
-                                renderedTextures[queueIndex] = texture
+                                renderedTextures.set(texture, for: queueIndex)
                             }
                             group.leave()
                         }
@@ -1751,7 +1787,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DispatchQueue.main.async {
                     renderer.renderRow(data: song, queueIndex: queueIndex, coverBase64: nil) { _, texture in
                         if let texture = texture {
-                            renderedTextures[queueIndex] = texture
+                            renderedTextures.set(texture, for: queueIndex)
                         }
                         group.leave()
                     }
@@ -1761,7 +1797,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         group.notify(queue: .main) { [weak self] in
             guard let self = self, self.rightPanelGeneration == currentGeneration else { return }
-            compositor.reorderRows(newOrder: newOrder, textures: renderedTextures, targetScrollOffset: targetScrollOffset)
+            compositor.reorderRows(newOrder: newOrder, textures: renderedTextures.snapshot(), targetScrollOffset: targetScrollOffset)
 
             for item in existingGiftChanged {
                 let song = item.data
@@ -1803,39 +1839,44 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         let allRightPanelSongs = Array(queue[startQueueIndex...])
 
-        renderer.renderTitle { [weak self] texture in
-            guard let self = self else { return }
-            self.rightPanelCompositor?.updateTitleTexture(texture)
+        let manager = WeakLivePipelineManager(self)
+        DispatchQueue.main.async {
+            renderer.renderTitle { texture in
+                guard let self = manager.value else { return }
+                self.rightPanelCompositor?.updateTitleTexture(texture)
 
-            var covers: [Int: String] = [:]
-            let group = DispatchGroup()
-            let lock = NSLock()
+                var covers: [Int: String] = [:]
+                let group = DispatchGroup()
+                let lock = NSLock()
 
-            for (i, song) in allRightPanelSongs.enumerated() {
-                guard let musicId = song.musicId else { continue }
-                let qIdx = startQueueIndex + i
-                group.enter()
-                CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
-                    lock.lock()
-                    covers[qIdx] = base64
-                    lock.unlock()
-                    group.leave()
+                for (i, song) in allRightPanelSongs.enumerated() {
+                    guard let musicId = song.musicId else { continue }
+                    let qIdx = startQueueIndex + i
+                    group.enter()
+                    CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { base64 in
+                        lock.lock()
+                        covers[qIdx] = base64
+                        lock.unlock()
+                        group.leave()
+                    }
                 }
-            }
 
-            group.notify(queue: .main) { [weak self] in
-                guard let self = self else { return }
-                renderer.renderVisibleRows(
-                    songs: allRightPanelSongs,
-                    startQueueIndex: startQueueIndex,
-                    covers: covers
-                ) { [weak self] textures in
+                group.notify(queue: .main) { [weak self] in
                     guard let self = self else { return }
-                    self.rightPanelCompositor?.setRows(
-                        textures: textures,
-                        data: allRightPanelSongs,
-                        startQueueIndex: startQueueIndex
-                    )
+                    MainActor.assumeIsolated {
+                        renderer.renderVisibleRows(
+                            songs: allRightPanelSongs,
+                            startQueueIndex: startQueueIndex,
+                            covers: covers
+                        ) { [weak self] textures in
+                            guard let self = self else { return }
+                            self.rightPanelCompositor?.setRows(
+                                textures: textures,
+                                data: allRightPanelSongs,
+                                startQueueIndex: startQueueIndex
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1866,8 +1907,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     private func performSwitchToNext() {
         guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
 
-        renderer.invalidateCache()
-        leftPanelRenderer?.invalidateCache()
+        let manager = WeakLivePipelineManager(self)
+        DispatchQueue.main.async {
+            renderer.invalidateCache()
+            manager.value?.leftPanelRenderer?.invalidateCache()
+        }
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue

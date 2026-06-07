@@ -1,9 +1,9 @@
-import Metal
+@preconcurrency import Metal
 import CoreVideo
 import IOSurface
 
-class IOSurfaceOutputPool {
-    struct PooledBuffer {
+final class IOSurfaceOutputPool: @unchecked Sendable {
+    struct PooledBuffer: @unchecked Sendable {
         let pixelBuffer: CVPixelBuffer
         let texture: MTLTexture
     }

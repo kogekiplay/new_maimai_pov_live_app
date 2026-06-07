@@ -1,7 +1,24 @@
 import Foundation
 import Swifter
 
-class SearchAPIHandler {
+private final class LockedSearchResponse: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: [String: Any] = [:]
+
+    func set(_ newValue: [String: Any]) {
+        lock.withLock {
+            value = newValue
+        }
+    }
+
+    func get() -> [String: Any] {
+        lock.withLock {
+            value
+        }
+    }
+}
+
+final class SearchAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
     private func coverURL(from musicId: Int) -> String {
@@ -17,7 +34,7 @@ class SearchAPIHandler {
         let query = queryParam.removingPercentEncoding ?? queryParam
 
         let sem = DispatchSemaphore(value: 0)
-        var response: [String: Any] = [:]
+        let response = LockedSearchResponse()
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -63,14 +80,14 @@ class SearchAPIHandler {
                 results.append(item)
             }
 
-            response = [
+            response.set([
                 "query": query,
                 "results": results
-            ]
+            ])
             sem.signal()
         }
 
         sem.wait()
-        return .ok(.json(response))
+        return .ok(.json(response.get()))
     }
 }

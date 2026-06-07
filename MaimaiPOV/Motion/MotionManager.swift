@@ -8,7 +8,7 @@ struct MotionSample {
     var magneticAccuracy: Int32  // CMMagneticFieldCalibrationAccuracy rawValue
 }
 
-class MotionManager {
+final class MotionManager: @unchecked Sendable {
 
     static let shared = MotionManager()
 

@@ -1,7 +1,24 @@
 import UIKit
-import Metal
+@preconcurrency import Metal
 
-class MarqueeRenderer {
+private final class LockedMarqueeRenderResult: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: (MTLTexture?, Int) = (nil, 0)
+
+    func set(_ newValue: (MTLTexture?, Int)) {
+        lock.withLock {
+            value = newValue
+        }
+    }
+
+    func get() -> (MTLTexture?, Int) {
+        lock.withLock {
+            value
+        }
+    }
+}
+
+final class MarqueeRenderer: @unchecked Sendable {
     private let device: MTLDevice
 
     private let fontSize: CGFloat = 28
@@ -16,25 +33,24 @@ class MarqueeRenderer {
 
     func render(text: String, type: MarqueeItem.MarqueeItemType) -> (MTLTexture?, Int) {
         if Thread.isMainThread {
-            return renderOnMainThread(text: text, type: type)
+            return MainActor.assumeIsolated {
+                renderOnMainThread(text: text, type: type)
+            }
         }
 
         let sem = DispatchSemaphore(value: 0)
-        var result: (MTLTexture?, Int) = (nil, 0)
+        let result = LockedMarqueeRenderResult()
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else {
-                sem.signal()
-                return
-            }
-            result = self.renderOnMainThread(text: text, type: type)
+        DispatchQueue.main.async { [self] in
+            result.set(renderOnMainThread(text: text, type: type))
             sem.signal()
         }
 
         sem.wait()
-        return result
+        return result.get()
     }
 
+    @MainActor
     private func renderOnMainThread(text: String, type: MarqueeItem.MarqueeItemType) -> (MTLTexture?, Int) {
         let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [

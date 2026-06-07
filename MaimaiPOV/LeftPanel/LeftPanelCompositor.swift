@@ -1,4 +1,4 @@
-import Metal
+@preconcurrency import Metal
 import QuartzCore
 
 struct PanelSlot {
@@ -66,7 +66,7 @@ struct PanelCardState {
     }
 }
 
-class LeftPanelCompositor {
+final class LeftPanelCompositor: @unchecked Sendable {
     let device: MTLDevice
     private let pipelineState: MTLComputePipelineState
     private var uniformsBuffers: [MTLBuffer]
