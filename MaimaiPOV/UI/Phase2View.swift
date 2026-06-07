@@ -32,6 +32,7 @@ private enum ControlTab: CaseIterable, Hashable {
 struct Phase2View: View {
     @StateObject private var pipeline = LivePipelineManager()
     @State private var selectedTab: ControlTab = .camera
+    @State private var selectedDebugTab: DebugOverlayView.DebugTab = .stream
     @State private var panelExpanded: Bool = true
     @State private var isAntiTouchMode: Bool = false
     @State private var antiTouchTimer: Timer?
@@ -253,7 +254,11 @@ struct Phase2View: View {
                     }
                 }
 
-                DebugOverlayView(debug: pipeline.debug, isAntiTouchMode: $isAntiTouchMode)
+                DebugOverlayView(
+                    debug: pipeline.debug,
+                    isAntiTouchMode: $isAntiTouchMode,
+                    selectedTab: $selectedDebugTab
+                )
                     .padding(.leading, 4)
                     .padding(.top, 4)
 
@@ -312,9 +317,13 @@ struct Phase2View: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .adaptiveGlassPanel(cornerRadius: 8, tint: Color.white.opacity(0.04), interactive: true)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(tab.title)
+            .accessibilityHint(L10n.string(panelExpanded ? "Collapse control panel" : "Expand control panel"))
 
             if panelExpanded {
                 ScrollView(.vertical, showsIndicators: false) {

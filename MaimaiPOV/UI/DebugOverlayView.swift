@@ -1,13 +1,6 @@
 import SwiftUI
 
 struct DebugOverlayView: View {
-    @ObservedObject var debug: DebugInfoManager
-    @Binding var isAntiTouchMode: Bool
-    @State private var dragOffset: CGSize = .zero
-    @State private var selectedTab: DebugTab = .stream
-
-    private var isCollapsed: Bool { !debug.isDetailVisible }
-
     enum DebugTab: CaseIterable {
         case stream
         case yolo
@@ -24,6 +17,12 @@ struct DebugOverlayView: View {
         }
     }
 
+    @ObservedObject var debug: DebugInfoManager
+    @Binding var isAntiTouchMode: Bool
+    @Binding var selectedTab: DebugTab
+
+    private var isCollapsed: Bool { !debug.isDetailVisible }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerBar
@@ -36,7 +35,6 @@ struct DebugOverlayView: View {
         .font(.system(size: 10, design: .monospaced))
         .foregroundColor(.white)
         .adaptiveGlassPanel(cornerRadius: 10, tint: Color.black.opacity(isCollapsed ? 0.28 : 0.42))
-        .offset(dragOffset)
     }
 
     // MARK: - Header Bar
@@ -80,7 +78,6 @@ struct DebugOverlayView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(panelDragGesture)
         .accessibilityLabel("Debug")
         .accessibilityHint(L10n.string(isCollapsed ? "Expand debug details" : "Collapse debug details"))
     }
@@ -341,18 +338,8 @@ struct DebugOverlayView: View {
         }
     }
 
-    private var panelDragGesture: some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { value in
-                dragOffset = value.translation
-            }
-            .onEnded { _ in
-                dragOffset = .zero
-            }
-    }
-
     private func toggleDetailVisibility() {
-        guard !isAntiTouchMode else { return }
+        guard !isAntiTouchMode || !isCollapsed else { return }
         withAnimation(.easeInOut(duration: 0.15)) {
             debug.isDetailVisible.toggle()
         }
@@ -373,11 +360,11 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
 
     @State private var pressedIndex: Int?
     @State private var dragCenterX: CGFloat?
+    @Namespace private var glassNamespace
 
     private let height: CGFloat = 28
-    private let trackHeight: CGFloat = 24
-    private let horizontalInset: CGFloat = 3
-    private let thumbInset: CGFloat = 2
+    private let horizontalInset: CGFloat = 4
+    private let thumbInset: CGFloat = 3
 
     var body: some View {
         GeometryReader { proxy in
@@ -394,7 +381,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
                 thumbInset: thumbInset,
                 isDragging: isDragging
             )
-            let thumbHeight = isDragging ? trackHeight + 2 : trackHeight - 2
+            let thumbHeight = isDragging ? height : height - 2
             let thumbCenterX = dragCenterX ?? SegmentedDragMetrics.centerX(
                 for: currentIndex,
                 totalWidth: width,
@@ -407,64 +394,38 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
                 thumbWidth: thumbWidth
             )
 
-            ZStack(alignment: .leading) {
-                glassLayers(
-                    thumbWidth: thumbWidth,
-                    thumbHeight: thumbHeight,
-                    thumbOffset: thumbOffset,
-                    isDragging: isDragging
-                )
-
-                HStack(spacing: 0) {
-                    ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
-                        segmentLabel(
-                            segment.title,
-                            isSelected: selectedIndex == index,
-                            isPressed: pressedIndex == index
-                        )
-                        .frame(width: segmentWidth, height: height)
-                        .contentShape(Rectangle())
-                    }
-                }
-                .padding(.horizontal, horizontalInset)
-            }
+            controlBody(
+                segmentWidth: segmentWidth,
+                thumbWidth: thumbWidth,
+                thumbHeight: thumbHeight,
+                thumbOffset: thumbOffset,
+                isDragging: isDragging
+            )
             .contentShape(Capsule())
-            .gesture(dragGesture(width: width))
+            .simultaneousGesture(dragGesture(width: width))
         }
         .frame(height: height)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L10n.string("Debug sections"))
-        .accessibilityValue(selectedTitle)
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment:
-                moveSelection(by: 1)
-            case .decrement:
-                moveSelection(by: -1)
-            @unknown default:
-                break
-            }
-        }
     }
 
     @ViewBuilder
-    private func glassLayers(
+    private func controlBody(
+        segmentWidth: CGFloat,
         thumbWidth: CGFloat,
         thumbHeight: CGFloat,
         thumbOffset: CGFloat,
         isDragging: Bool
     ) -> some View {
         if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: 8) {
-                stackedGlass(
-                    thumbWidth: thumbWidth,
-                    thumbHeight: thumbHeight,
-                    thumbOffset: thumbOffset,
-                    isDragging: isDragging
-                )
-            }
+            nativeGlassBody(
+                segmentWidth: segmentWidth,
+                thumbWidth: thumbWidth,
+                thumbHeight: thumbHeight,
+                thumbOffset: thumbOffset,
+                isDragging: isDragging
+            )
         } else {
-            stackedGlass(
+            fallbackBody(
+                segmentWidth: segmentWidth,
                 thumbWidth: thumbWidth,
                 thumbHeight: thumbHeight,
                 thumbOffset: thumbOffset,
@@ -473,53 +434,120 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
         }
     }
 
-    private func stackedGlass(
+    @available(iOS 26.0, *)
+    private func nativeGlassBody(
+        segmentWidth: CGFloat,
+        thumbWidth: CGFloat,
+        thumbHeight: CGFloat,
+        thumbOffset: CGFloat,
+        isDragging: Bool
+    ) -> some View {
+        GlassEffectContainer(spacing: 6) {
+            ZStack(alignment: .leading) {
+                HStack(spacing: 0) {
+                    ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
+                        Button {
+                            selectSegment(at: index)
+                        } label: {
+                            nativeGlassSegment(
+                                title: segment.title,
+                                isSelected: selectedIndex == index
+                            )
+                            .frame(width: segmentWidth, height: height - 2)
+                            .glassEffect(.regular.interactive(), in: .capsule)
+                            .glassEffectUnion(id: "debug-segment-track", namespace: glassNamespace)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(segment.title)
+                        .accessibilityValue(selectedIndex == index ? L10n.string("Selected") : "")
+                    }
+                }
+                .padding(.horizontal, horizontalInset)
+
+                selectedGlassSegment(isDragging: isDragging)
+                    .frame(width: thumbWidth, height: thumbHeight)
+                    .offset(x: thumbOffset, y: (height - thumbHeight) / 2)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .glassEffectID("debug-segment-selection", in: glassNamespace)
+                    .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
+                    .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private func fallbackBody(
+        segmentWidth: CGFloat,
         thumbWidth: CGFloat,
         thumbHeight: CGFloat,
         thumbOffset: CGFloat,
         isDragging: Bool
     ) -> some View {
         ZStack(alignment: .leading) {
-            trackGlass
-            thumbGlass(height: thumbHeight, isDragging: isDragging)
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    Capsule()
+                        .stroke(Color.white.opacity(0.16), lineWidth: 0.5)
+                }
+
+            selectedGlassSegment(isDragging: isDragging)
                 .frame(width: thumbWidth, height: thumbHeight)
+                .background(accent.opacity(isDragging ? 0.24 : 0.16), in: Capsule())
                 .offset(x: thumbOffset, y: (height - thumbHeight) / 2)
                 .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
                 .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
+                .allowsHitTesting(false)
+
+            segmentButtonsRow(segmentWidth: segmentWidth, selectedTextIsHidden: true)
         }
     }
 
-    private var trackGlass: some View {
-        Capsule()
-            .fill(Color.clear)
-            .frame(height: trackHeight)
-            .padding(.vertical, (height - trackHeight) / 2)
-            .adaptiveGlassPanel(
-                cornerRadius: trackHeight / 2,
-                tint: Color.black.opacity(0.22),
-                interactive: true
-            )
-    }
-
-    private func thumbGlass(height: CGFloat, isDragging: Bool) -> some View {
-        Capsule()
-            .fill(Color.clear)
-            .adaptiveGlassPanel(
-                cornerRadius: height / 2,
-                tint: accent.opacity(isDragging ? 0.20 : 0.12),
-                interactive: true
-            )
-    }
-
-    private func segmentLabel(_ title: String, isSelected: Bool, isPressed: Bool) -> some View {
+    @available(iOS 26.0, *)
+    private func nativeGlassSegment(title: String, isSelected: Bool) -> some View {
         Text(title)
             .font(.system(size: 9, weight: isSelected ? .bold : .semibold, design: .monospaced))
-            .foregroundColor(isSelected ? accent : .white.opacity(0.58))
+            .foregroundColor(isSelected ? .clear : .white.opacity(0.58))
             .lineLimit(1)
             .minimumScaleFactor(0.72)
-            .scaleEffect(isPressed ? 1.04 : 1)
-            .animation(.easeOut(duration: 0.12), value: isPressed)
-            .animation(.easeOut(duration: 0.12), value: isSelected)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Capsule())
+    }
+
+    private func segmentButtonsRow(segmentWidth: CGFloat, selectedTextIsHidden: Bool) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
+                Button {
+                    selectSegment(at: index)
+                } label: {
+                    segmentText(segment.title, isSelected: selectedIndex == index, selectedTextIsHidden: selectedTextIsHidden)
+                        .frame(width: segmentWidth, height: height)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(segment.title)
+                .accessibilityValue(selectedIndex == index ? L10n.string("Selected") : "")
+            }
+        }
+        .padding(.horizontal, horizontalInset)
+    }
+
+    private func segmentText(_ title: String, isSelected: Bool, selectedTextIsHidden: Bool) -> some View {
+        Text(title)
+            .font(.system(size: 9, weight: isSelected ? .bold : .semibold, design: .monospaced))
+            .foregroundColor(isSelected && selectedTextIsHidden ? .clear : .white.opacity(0.58))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+    }
+
+    private func selectedGlassSegment(isDragging: Bool) -> some View {
+        Text(selectedTitle)
+            .font(.system(size: 9, weight: .bold, design: .monospaced))
+            .foregroundColor(accent)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .scaleEffect(isDragging ? 1.03 : 1)
+            .animation(.easeOut(duration: 0.12), value: isDragging)
     }
 
     private var selectedIndex: Int {
@@ -531,11 +559,14 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
         return segments[selectedIndex].title
     }
 
-    private func moveSelection(by offset: Int) {
-        guard !segments.isEmpty else { return }
+    private func selectSegment(at index: Int) {
+        guard segments.indices.contains(index) else { return }
+        guard segments[index].value != selection else { return }
 
-        let nextIndex = min(max(selectedIndex + offset, 0), segments.count - 1)
-        selection = segments[nextIndex].value
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.82)) {
+            selection = segments[index].value
+        }
     }
 
     private func dragGesture(width: CGFloat) -> some Gesture {

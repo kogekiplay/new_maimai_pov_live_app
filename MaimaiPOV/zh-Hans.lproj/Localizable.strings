@@ -20,9 +20,11 @@
 "Log" = "日志";
 
 "Debug" = "调试";
-"Debug sections" = "调试分区";
+"Selected" = "已选中";
 "Expand debug details" = "展开调试详情";
 "Collapse debug details" = "折叠调试详情";
+"Expand control panel" = "展开控制面板";
+"Collapse control panel" = "折叠控制面板";
 
 "Camera not authorized" = "未授权相机";
 "Advanced" = "高级设置";
