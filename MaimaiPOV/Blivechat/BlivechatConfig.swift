@@ -10,8 +10,8 @@ enum BlivechatServer: String, CaseIterable, Identifiable, Sendable {
 
     var displayName: String {
         switch self {
-        case .cn: return "CN (国内推荐)"
-        case .auto: return "Auto (自动)"
+        case .cn: return L10n.string("CN (recommended)")
+        case .auto: return L10n.string("Auto")
         case .cloudflare: return "Cloudflare"
         case .vercel: return "Vercel"
         }

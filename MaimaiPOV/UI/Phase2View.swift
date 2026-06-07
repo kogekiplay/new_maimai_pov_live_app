@@ -4,11 +4,11 @@ import Metal
 import UIKit
 import PhotosUI
 
-private enum ControlTab: String, CaseIterable, Hashable {
-    case camera = "拍摄"
-    case effects = "效果"
-    case stream = "推流"
-    case blivechat = "弹幕"
+private enum ControlTab: CaseIterable, Hashable {
+    case camera
+    case effects
+    case stream
+    case blivechat
 
     var icon: String {
         switch self {
@@ -16,6 +16,15 @@ private enum ControlTab: String, CaseIterable, Hashable {
         case .effects: return "wand.and.stars"
         case .stream: return "arrow.up.circle"
         case .blivechat: return "message.fill"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .camera: return L10n.string("Camera")
+        case .effects: return L10n.string("Effects")
+        case .stream: return L10n.string("Stream")
+        case .blivechat: return L10n.string("Danmaku")
         }
     }
 }
@@ -69,26 +78,26 @@ struct Phase2View: View {
                 }
             }
         }
-        .alert("恢复点歌队列", isPresented: $showRestoreAlert) {
-            Button("恢复队列") {
+        .alert("Restore Song Queue", isPresented: $showRestoreAlert) {
+            Button("Restore Queue") {
                 pipeline.restoreQueueFromSnapshot()
             }
-            Button("保留未演奏礼物值") {
+            Button("Keep Unplayed Gift Values") {
                 pipeline.restoreGiftValuesOnlyFromSnapshot()
             }
-            Button("保留所有礼物值") {
+            Button("Keep All Gift Values") {
                 pipeline.restoreAllGiftValuesFromSnapshot()
             }
-            Button("不恢复", role: .destructive) {
+            Button("Do Not Restore", role: .destructive) {
                 pipeline.discardSnapshot()
             }
         } message: {
             let songGiftCount = pipeline.preservableGiftValueUserCount
             let allGiftCount = pipeline.allPreservableGiftValueUserCount
             if allGiftCount > 0 {
-                Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？\n（未演奏\(songGiftCount)位 / 全部\(allGiftCount)位用户可继承礼物值）")
+                Text(L10n.string("restore.queue.message.withGifts", pipeline.snapshotAgeString, songGiftCount, allGiftCount))
             } else {
-                Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？")
+                Text(L10n.string("restore.queue.message", pipeline.snapshotAgeString))
             }
         }
         .phase2ChangeHandlers(
@@ -118,19 +127,19 @@ struct Phase2View: View {
     @available(iOS 26.0, *)
     private var modernRootTabs: some View {
         TabView(selection: $selectedTab) {
-            Tab(ControlTab.camera.rawValue, systemImage: ControlTab.camera.icon, value: ControlTab.camera) {
+            Tab(ControlTab.camera.title, systemImage: ControlTab.camera.icon, value: ControlTab.camera) {
                 phaseContent(for: .camera)
             }
 
-            Tab(ControlTab.effects.rawValue, systemImage: ControlTab.effects.icon, value: ControlTab.effects) {
+            Tab(ControlTab.effects.title, systemImage: ControlTab.effects.icon, value: ControlTab.effects) {
                 phaseContent(for: .effects)
             }
 
-            Tab(ControlTab.stream.rawValue, systemImage: ControlTab.stream.icon, value: ControlTab.stream) {
+            Tab(ControlTab.stream.title, systemImage: ControlTab.stream.icon, value: ControlTab.stream) {
                 phaseContent(for: .stream)
             }
 
-            Tab(ControlTab.blivechat.rawValue, systemImage: ControlTab.blivechat.icon, value: ControlTab.blivechat) {
+            Tab(ControlTab.blivechat.title, systemImage: ControlTab.blivechat.icon, value: ControlTab.blivechat) {
                 phaseContent(for: .blivechat)
             }
         }
@@ -142,25 +151,25 @@ struct Phase2View: View {
         TabView(selection: $selectedTab) {
             phaseContent(for: .camera)
                 .tabItem {
-                    Label(ControlTab.camera.rawValue, systemImage: ControlTab.camera.icon)
+                    Label(ControlTab.camera.title, systemImage: ControlTab.camera.icon)
                 }
                 .tag(ControlTab.camera)
 
             phaseContent(for: .effects)
                 .tabItem {
-                    Label(ControlTab.effects.rawValue, systemImage: ControlTab.effects.icon)
+                    Label(ControlTab.effects.title, systemImage: ControlTab.effects.icon)
                 }
                 .tag(ControlTab.effects)
 
             phaseContent(for: .stream)
                 .tabItem {
-                    Label(ControlTab.stream.rawValue, systemImage: ControlTab.stream.icon)
+                    Label(ControlTab.stream.title, systemImage: ControlTab.stream.icon)
                 }
                 .tag(ControlTab.stream)
 
             phaseContent(for: .blivechat)
                 .tabItem {
-                    Label(ControlTab.blivechat.rawValue, systemImage: ControlTab.blivechat.icon)
+                    Label(ControlTab.blivechat.title, systemImage: ControlTab.blivechat.icon)
                 }
                 .tag(ControlTab.blivechat)
         }
@@ -280,7 +289,7 @@ struct Phase2View: View {
             } label: {
                 HStack {
                     if panelExpanded {
-                        Text(tab.rawValue)
+                        Text(tab.title)
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundColor(.white)
@@ -288,7 +297,7 @@ struct Phase2View: View {
                         Circle()
                             .fill(statusColor(pipeline.streamManager.streamStatus))
                             .frame(width: 8, height: 8)
-                        Text(pipeline.streamManager.streamStatus)
+                        Text(L10n.streamStatus(pipeline.streamManager.streamStatus))
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(statusColor(pipeline.streamManager.streamStatus))
                     }
@@ -360,7 +369,7 @@ struct Phase2View: View {
                 }
             } label: {
                 HStack {
-                    Text("高级设置").font(.caption).foregroundColor(.gray)
+                    Text("Advanced").font(.caption).foregroundColor(.gray)
                     Spacer()
                     Image(systemName: advancedExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption2).foregroundColor(.gray)
@@ -429,14 +438,14 @@ struct Phase2View: View {
             } label: {
                 HStack {
                     Image(systemName: "plus.circle")
-                    Text("添加预设")
+                    Text("Add Preset")
                 }
                 .font(.caption)
             }
             .sheet(isPresented: $showAddPresetSheet) {
                 NavigationView {
                     Form {
-                        TextField("名称", text: $newPresetName)
+                        TextField("Name", text: $newPresetName)
                         TextField("RTMP URL", text: $newPresetUrl)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
@@ -444,14 +453,14 @@ struct Phase2View: View {
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                     }
-                    .navigationTitle("添加预设")
+                    .navigationTitle("Add Preset")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("取消") { showAddPresetSheet = false }
+                            Button("Cancel") { showAddPresetSheet = false }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("保存") {
+                            Button("Save") {
                                 let preset = StreamPreset(name: newPresetName, url: newPresetUrl, streamKey: newPresetKey)
                                 presets.append(preset)
                                 Config.streamPresets = presets
@@ -484,7 +493,7 @@ struct Phase2View: View {
     private var blivechatTabContent: some View {
         VStack(spacing: 8) {
             HStack {
-                Text("服务器").font(.caption).frame(width: 55, alignment: .leading)
+                Text("Server").font(.caption).frame(width: 55, alignment: .leading)
                 Picker("", selection: $pipeline.blivechatServer) {
                     ForEach(BlivechatServer.allCases) { server in
                         Text(server.displayName).tag(server)
@@ -495,8 +504,8 @@ struct Phase2View: View {
             }
 
             HStack {
-                Text("身份码").font(.caption).frame(width: 55, alignment: .leading)
-                TextField("输入身份码", text: $pipeline.blivechatIdentityCode)
+                Text("Identity").font(.caption).frame(width: 55, alignment: .leading)
+                TextField("Enter identity code", text: $pipeline.blivechatIdentityCode)
                     .font(.system(size: 11, design: .monospaced))
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
@@ -511,7 +520,7 @@ struct Phase2View: View {
                     } label: {
                         HStack {
                             Circle().fill(Color.red).frame(width: 8, height: 8)
-                            Text("断开").font(.caption).fontWeight(.medium)
+                            Text("Disconnect").font(.caption).fontWeight(.medium)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -524,7 +533,7 @@ struct Phase2View: View {
                     } label: {
                         HStack {
                             ProgressView().scaleEffect(0.6)
-                            Text("强制断开").font(.caption).fontWeight(.medium)
+                            Text("Force Disconnect").font(.caption).fontWeight(.medium)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -537,7 +546,7 @@ struct Phase2View: View {
                     } label: {
                         HStack {
                             Image(systemName: "link").font(.caption)
-                            Text("连接").font(.caption).fontWeight(.medium)
+                            Text("Connect").font(.caption).fontWeight(.medium)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -580,7 +589,7 @@ struct Phase2View: View {
                 Divider().background(Color.gray.opacity(0.3))
 
                 HStack {
-                    Text("弹幕").font(.caption).frame(width: 55, alignment: .leading)
+                    Text("Danmaku").font(.caption).frame(width: 55, alignment: .leading)
                     Text(pipeline.latestDanmaku)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.cyan)
@@ -610,13 +619,13 @@ struct Phase2View: View {
 
     private var blivechatStateText: String {
         switch pipeline.blivechatConnectionState {
-        case .disconnected: return "未连接"
-        case .connecting: return "连接中..."
-        case .connected: return "已连接"
-        case .reconnecting(let msg): return "重连中: \(msg)"
+        case .disconnected: return L10n.string("Disconnected")
+        case .connecting: return L10n.string("Connecting...")
+        case .connected: return L10n.string("Connected")
+        case .reconnecting(let msg): return L10n.string("Reconnecting: %@", msg)
         case .error(let msg):
             let display = msg.count > 15 ? String(msg.prefix(15)) + "..." : msg
-            return "错误: \(display)"
+            return L10n.string("Error: %@", display)
         }
     }
 
@@ -635,7 +644,7 @@ struct Phase2View: View {
     private var lensPicker: some View {
         Picker("Lens", selection: $pipeline.selectedLens) {
             ForEach(LensType.allCases, id: \.self) { lens in
-                Text(lens.rawValue).tag(lens)
+                Text(lens.displayName).tag(lens)
             }
         }
         .pickerStyle(.segmented)
@@ -657,7 +666,7 @@ struct Phase2View: View {
             Text("Focus").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.autoFocusEnabled).labelsHidden()
             Spacer()
-            Text(pipeline.autoFocusEnabled ? "AUTO" : "LOCK")
+            Text(L10n.string(pipeline.autoFocusEnabled ? "AUTO" : "LOCK"))
                 .font(.caption2)
                 .foregroundColor(pipeline.autoFocusEnabled ? .green : .orange)
         }
@@ -746,7 +755,7 @@ struct Phase2View: View {
             Text("YOLO").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.yoloEnabled).labelsHidden()
             Spacer()
-            Text(pipeline.yoloEnabled ? "ON" : "OFF")
+            Text(L10n.string(pipeline.yoloEnabled ? "On" : "Off"))
                 .font(.caption2)
                 .foregroundColor(pipeline.yoloEnabled ? .green : .red)
         }
@@ -769,7 +778,7 @@ struct Phase2View: View {
                     pipeline.updateYoloOverlayEnabled()
                 }
             Spacer()
-            Text(pipeline.yoloOverlayEnabled ? "ON" : "OFF")
+            Text(L10n.string(pipeline.yoloOverlayEnabled ? "On" : "Off"))
                 .font(.caption2)
                 .foregroundColor(pipeline.yoloOverlayEnabled ? .green : .red)
         }
@@ -802,7 +811,7 @@ struct Phase2View: View {
                 }
             }
             Spacer()
-            Text(pipeline.overlayEnabled ? "ON" : "OFF")
+            Text(L10n.string(pipeline.overlayEnabled ? "On" : "Off"))
                 .font(.caption2)
                 .foregroundColor(pipeline.overlayEnabled ? .green : .red)
         }
@@ -909,7 +918,7 @@ struct Phase2View: View {
             Text("Smooth").font(.caption).frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.smoothingEnabled).labelsHidden()
             Spacer()
-            Text(pipeline.smoothingEnabled ? "ON" : "OFF")
+            Text(L10n.string(pipeline.smoothingEnabled ? "On" : "Off"))
                 .font(.caption2)
                 .foregroundColor(pipeline.smoothingEnabled ? .green : .red)
         }
@@ -988,7 +997,7 @@ struct Phase2View: View {
             .disabled(pipeline.streamManager.isStreaming)
             Spacer()
             if pipeline.streamManager.isStreaming {
-                Text("断开后可切换")
+                Text("Available after disconnect")
                     .font(.system(size: 9))
                     .foregroundColor(.gray)
             }
@@ -1011,13 +1020,13 @@ struct Phase2View: View {
 
     private var audioSourceRow: some View {
         HStack(spacing: 4) {
-            Text("音频源").font(.caption).frame(width: 55, alignment: .leading)
+            Text("Audio").font(.caption).frame(width: 55, alignment: .leading)
             Picker("", selection: Binding(
                 get: { pipeline.audioDeviceManager.selectedSource },
                 set: { pipeline.audioDeviceManager.switchToSource($0) }
             )) {
                 ForEach(pipeline.audioDeviceManager.availableSources, id: \.self) { source in
-                    Text(source.rawValue).tag(source)
+                    Text(source.displayName).tag(source)
                 }
             }
             .pickerStyle(.segmented)
@@ -1032,7 +1041,7 @@ struct Phase2View: View {
     @ViewBuilder
     private var audioMixerSection: some View {
         if pipeline.audioDeviceManager.selectedSource == .externalStereo {
-            labeledRow("机台") {
+            labeledRow("Cab") {
                 Slider(value: Binding(
                     get: { pipeline.audioMixer.leftGain },
                     set: { pipeline.audioMixer.leftGain = $0 }
@@ -1042,7 +1051,7 @@ struct Phase2View: View {
                     .font(.caption2).monospacedDigit().frame(width: 38)
             }
 
-            labeledRow("领夹") {
+            labeledRow("Lavalier") {
                 Slider(value: Binding(
                     get: { pipeline.audioMixer.rightGain },
                     set: { pipeline.audioMixer.rightGain = $0 }
@@ -1056,7 +1065,7 @@ struct Phase2View: View {
 
     private var audioMeterRow: some View {
         HStack(spacing: 4) {
-            Text("电平").font(.caption).frame(width: 55, alignment: .leading)
+            Text("Level").font(.caption).frame(width: 55, alignment: .leading)
 
             if pipeline.audioDeviceManager.selectedSource == .externalStereo {
                 VStack(alignment: .leading, spacing: 2) {
@@ -1090,7 +1099,7 @@ struct Phase2View: View {
                         Circle()
                             .fill(Color.red)
                             .frame(width: 8, height: 8)
-                        Text("停止推流")
+                        Text("Stop Streaming")
                             .font(.caption)
                             .fontWeight(.medium)
                     }
@@ -1106,7 +1115,7 @@ struct Phase2View: View {
                     HStack {
                         Image(systemName: "arrow.up.circle")
                             .font(.caption)
-                        Text("开始推流")
+                        Text("Start Streaming")
                             .font(.caption)
                             .fontWeight(.medium)
                     }
@@ -1118,7 +1127,7 @@ struct Phase2View: View {
                 .disabled(rtmpUrl.isEmpty || streamKey.isEmpty)
             }
 
-            Text(pipeline.streamManager.streamStatus)
+            Text(L10n.streamStatus(pipeline.streamManager.streamStatus))
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(statusColor(pipeline.streamManager.streamStatus))
                 .lineLimit(1)
@@ -1126,6 +1135,10 @@ struct Phase2View: View {
     }
 
     private func statusColor(_ status: String) -> Color {
+        if status.hasPrefix("Reconnecting(") {
+            return .yellow
+        }
+
         switch status {
         case "Publishing": return .green
         case "Connecting", "Connected": return .yellow
@@ -1141,7 +1154,7 @@ struct Phase2View: View {
     }
 
     private func labeledRow<C: View, V: View>(
-        _ label: String,
+        _ label: LocalizedStringKey,
         @ViewBuilder content: () -> C,
         @ViewBuilder valueLabel: () -> V
     ) -> some View {

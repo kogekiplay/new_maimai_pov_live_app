@@ -3,9 +3,17 @@ import Combine
 
 final class AudioDeviceManager: ObservableObject, @unchecked Sendable {
     enum AudioSource: String, CaseIterable {
-        case builtInMic = "内置麦"
-        case externalMono = "DJI 单声道"
-        case externalStereo = "DJI 立体声"
+        case builtInMic
+        case externalMono
+        case externalStereo
+
+        var displayName: String {
+            switch self {
+            case .builtInMic: return L10n.string("Built-in Mic")
+            case .externalMono: return L10n.string("DJI Mono")
+            case .externalStereo: return L10n.string("DJI Stereo")
+            }
+        }
     }
 
     @Published var availableSources: [AudioSource] = [.builtInMic]

@@ -19,7 +19,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MaimaiPOV requires microphone access for ambient audio capture</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>MaimaiPOV需要访问相册以选择叠加到直播画面的图片</string>
+	<string>MaimaiPOV needs photo library access to choose images for the live video overlay</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>
@@ -33,7 +33,7 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>App需要访问本地网络以连接测试推流服务器</string>
+	<string>MaimaiPOV needs local network access to connect to test streaming servers</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

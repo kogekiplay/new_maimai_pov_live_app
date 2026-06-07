@@ -117,7 +117,7 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
         let attempt = reconnectAttempt
         Task { @MainActor in
             if attempt > 0 {
-                self.streamStatus = "重连中(\(attempt)/\(Config.maxReconnectAttempts))..."
+                self.streamStatus = "Reconnecting(\(attempt)/\(Config.maxReconnectAttempts))..."
             } else {
                 self.streamStatus = "Connecting"
             }
@@ -507,8 +507,8 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
     private func attemptReconnect(reason: String? = nil) {
         reconnectAttempt += 1
         if reconnectAttempt > Config.maxReconnectAttempts {
-            streamStatus = "重连失败，请手动重试"
-            DebugInfoManager.shared.rtmpStatus = "重连失败"
+            streamStatus = "Reconnect failed, retry manually"
+            DebugInfoManager.shared.rtmpStatus = "Reconnect failed"
             DebugInfoManager.shared.log("RTMP: 重连失败 - \(reason ?? "unknown")")
             isStreaming = false
             cleanup()
@@ -516,7 +516,7 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
         }
 
         let delay = min(pow(2.0, Double(reconnectAttempt - 1)), Config.maxReconnectDelaySeconds)
-        streamStatus = "重连中(\(reconnectAttempt)/\(Config.maxReconnectAttempts))..."
+        streamStatus = "Reconnecting(\(reconnectAttempt)/\(Config.maxReconnectAttempts))..."
         DebugInfoManager.shared.rtmpStatus = streamStatus
         DebugInfoManager.shared.log("RTMP: \(streamStatus) \(String(format: "%.0fs后重试", delay))")
 

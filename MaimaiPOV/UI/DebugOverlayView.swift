@@ -8,11 +8,20 @@ struct DebugOverlayView: View {
 
     private var isCollapsed: Bool { !debug.isDetailVisible }
 
-    enum DebugTab: String, CaseIterable {
-        case stream = "STREAM"
-        case yolo = "YOLO"
-        case track = "TRACK"
-        case log = "LOG"
+    enum DebugTab: CaseIterable {
+        case stream
+        case yolo
+        case track
+        case log
+
+        var title: String {
+            switch self {
+            case .stream: return L10n.string("Stream")
+            case .yolo: return "YOLO"
+            case .track: return L10n.string("Track")
+            case .log: return L10n.string("Log")
+            }
+        }
     }
 
     var body: some View {
@@ -28,58 +37,52 @@ struct DebugOverlayView: View {
         .foregroundColor(.white)
         .adaptiveGlassPanel(cornerRadius: 10, tint: Color.black.opacity(isCollapsed ? 0.28 : 0.42))
         .offset(dragOffset)
-        .gesture(dragGesture)
+        .simultaneousGesture(dragGesture)
     }
 
     // MARK: - Header Bar
 
     private var headerBar: some View {
-        HStack(spacing: 6) {
-            Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.cyan)
+        Button(action: toggleDetailVisibility) {
+            HStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
 
-            Text("DEBUG")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.cyan)
-
-            Spacer()
-
-            Text("\(Int(debug.fps))fps")
-                .foregroundColor(debug.fps >= 55 ? .green : .orange)
-
-            Text(String(format: "%.1fms", debug.pipelineLagMs))
-                .foregroundColor(debug.pipelineLagMs < 10 ? .green :
-                                   debug.pipelineLagMs < 20 ? .yellow : .red)
-
-            if isCollapsed && debug.isStreaming {
-                Text(debug.rtmpBitrate > 0 ? "\(debug.rtmpBitrate)kbps" : "")
-                    .foregroundColor(.gray)
-            }
-
-            if isCollapsed && debug.isStreaming {
-                Text(debug.rtmpStatus == "Publishing" ? "PUB" : debug.rtmpStatus)
-                    .foregroundColor(rtmpStatusColor(debug.rtmpStatus))
-                    .font(.system(size: 8, weight: .bold))
-            }
-
-            Button {
-                if isAntiTouchMode { return }
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    debug.isDetailVisible.toggle()
+                    Text("Debug")
+                        .font(.system(size: 10, weight: .bold))
                 }
-            } label: {
-                Image(systemName: isCollapsed ? "arrow.up.right.and.arrow.down.left" : "minus")
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
-                    .adaptiveGlassPanel(cornerRadius: 8, tint: Color.white.opacity(0.04), interactive: true)
+                .foregroundColor(.cyan)
+                .padding(.trailing, 8)
+
+                Spacer()
+
+                Text("\(Int(debug.fps))fps")
+                    .foregroundColor(debug.fps >= 55 ? .green : .orange)
+
+                Text(String(format: "%.1fms", debug.pipelineLagMs))
+                    .foregroundColor(debug.pipelineLagMs < 10 ? .green :
+                                       debug.pipelineLagMs < 20 ? .yellow : .red)
+
+                if isCollapsed && debug.isStreaming {
+                    Text(debug.rtmpBitrate > 0 ? "\(debug.rtmpBitrate)kbps" : "")
+                        .foregroundColor(.gray)
+                }
+
+                if isCollapsed && debug.isStreaming {
+                    Text(debug.rtmpStatus == "Publishing" ? "PUB" : L10n.streamStatus(debug.rtmpStatus))
+                        .foregroundColor(rtmpStatusColor(debug.rtmpStatus))
+                        .font(.system(size: 8, weight: .bold))
+                }
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Debug")
+        .accessibilityHint(L10n.string(isCollapsed ? "Expand debug details" : "Collapse debug details"))
     }
 
     // MARK: - Tab Bar
@@ -92,7 +95,7 @@ struct DebugOverlayView: View {
                         selectedTab = tab
                     }
                 } label: {
-                    Text(tab.rawValue)
+                    Text(tab.title)
                         .font(.system(size: 9, weight: selectedTab == tab ? .bold : .regular))
                         .foregroundColor(selectedTab == tab ? .cyan : .gray)
                         .padding(.horizontal, 8)
@@ -140,7 +143,7 @@ struct DebugOverlayView: View {
     private var streamContent: some View {
         VStack(alignment: .leading, spacing: 2) {
             sectionHeader("RTMP")
-            infoRow("Status", debug.rtmpStatus,
+            infoRow("Status", L10n.streamStatus(debug.rtmpStatus),
                     color: rtmpStatusColor(debug.rtmpStatus))
             infoRow("Duration", debug.streamingDuration)
             infoRow("Bitrate", "\(debug.rtmpBitrate)kbps")
@@ -199,7 +202,7 @@ struct DebugOverlayView: View {
     private var yoloContent: some View {
         VStack(alignment: .leading, spacing: 2) {
             sectionHeader("DETECTION")
-            infoRow("Detect", debug.yoloDetected ? "YES" : "NO",
+            infoRow("Detect", L10n.string(debug.yoloDetected ? "Yes" : "No"),
                     color: debug.yoloDetected ? .green : .red)
             infoRow("Conf", String(format: "%.2f", debug.yoloConfidence))
             infoRow("Infer", String(format: "%.1fms", debug.yoloInferenceMs))
@@ -258,7 +261,7 @@ struct DebugOverlayView: View {
             infoRow("FOV", String(format: "%.0f°", debug.fov))
             infoRow("Dist", String(format: "%.2f", debug.distRatio))
             infoRow("Lens", debug.lensType)
-            infoRow("Stab", debug.stabEnabled ? "ON" : "OFF",
+            infoRow("Stab", L10n.string(debug.stabEnabled ? "On" : "Off"),
                     color: debug.stabEnabled ? .green : .red)
             infoRow("Frame", "\(debug.frameCount)")
 
@@ -307,14 +310,14 @@ struct DebugOverlayView: View {
     // MARK: - Helpers
 
     private func sectionHeader(_ title: String) -> some View {
-        Text(title)
+        Text(L10n.string(title))
             .font(.system(size: 9, weight: .bold))
             .foregroundColor(.cyan)
     }
 
     private func infoRow(_ label: String, _ value: String, color: Color = .white) -> some View {
         HStack(spacing: 4) {
-            Text(label + ":")
+            Text("\(L10n.string(label)):")
                 .foregroundColor(.gray)
             Text(value)
                 .foregroundColor(color)
@@ -323,6 +326,10 @@ struct DebugOverlayView: View {
     }
 
     private func rtmpStatusColor(_ status: String) -> Color {
+        if status.hasPrefix("Reconnecting(") {
+            return .yellow
+        }
+
         switch status {
         case "Publishing": return .green
         case "Connecting", "Connected": return .yellow
@@ -333,10 +340,10 @@ struct DebugOverlayView: View {
 
     private func magneticAccuracyString(_ accuracy: Int32) -> String {
         switch accuracy {
-        case 2: return "HIGH"
-        case 1: return "MEDIUM"
-        case 0: return "LOW"
-        default: return "UNCALIBRATED"
+        case 2: return L10n.string("High")
+        case 1: return L10n.string("Medium")
+        case 0: return L10n.string("Low")
+        default: return L10n.string("Uncalibrated")
         }
     }
 
@@ -357,5 +364,12 @@ struct DebugOverlayView: View {
             .onEnded { _ in
                 dragOffset = .zero
             }
+    }
+
+    private func toggleDetailVisibility() {
+        guard !isAntiTouchMode else { return }
+        withAnimation(.easeInOut(duration: 0.15)) {
+            debug.isDetailVisible.toggle()
+        }
     }
 }
