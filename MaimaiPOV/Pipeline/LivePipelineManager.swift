@@ -8,6 +8,18 @@ import QuartzCore
 import UIKit
 import CoreImage
 
+private final class WeakLivePipelineManager: @unchecked Sendable {
+    weak var value: LivePipelineManager?
+
+    init(_ value: LivePipelineManager?) {
+        self.value = value
+    }
+}
+
+private struct SendablePixelBuffer: @unchecked Sendable {
+    let value: CVPixelBuffer
+}
+
 class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var focusValue: Double = Config.focusValue
     @Published var autoFocusEnabled: Bool = Config.autoFocusEnabled
@@ -79,7 +91,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     @Published var webServerURL: String = ""
 
     let camera = CameraCaptureManager()
-    let debug = DebugInfoManager.shared
+    let debug = MainActor.assumeIsolated { DebugInfoManager.shared }
     let device: MTLDevice = MTLCreateSystemDefaultDevice()!
     let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     let sharedCommandQueue: MTLCommandQueue
@@ -216,7 +228,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 isCancelRequest = false
             }
 
-            danmakuBuffer.addEntry(
+            _ = danmakuBuffer.addEntry(
                 type: .danmaku,
                 username: msg.authorName,
                 content: msg.content,
@@ -241,7 +253,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let coinValue = max(msg.totalCoin, msg.totalFreeCoin)
             DispatchQueue.main.async { self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))") }
 
-            danmakuBuffer.addEntry(
+            _ = danmakuBuffer.addEntry(
                 type: .gift,
                 username: msg.authorName,
                 content: "送出 \(msg.giftName) ×\(msg.num)",
@@ -260,7 +272,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 let name = msg.authorName
                 self.songCardManager.userGiftPool[name, default: 0] += coinValue
                 if let index = self.songCardManager.findSongIndex(byName: name) {
-                    self.songCardManager.updateGiftValue(name: name, delta: coinValue)
+                    _ = self.songCardManager.updateGiftValue(name: name, delta: coinValue)
                     let lockedEnd = self.songCardManager.lockedEndIndex
                     if index >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
@@ -277,7 +289,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             guard let self = self else { return }
             DispatchQueue.main.async { self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)") }
 
-            danmakuBuffer.addEntry(
+            _ = danmakuBuffer.addEntry(
                 type: .sc,
                 username: msg.authorName,
                 content: msg.content,
@@ -298,7 +310,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let coinValue = 198 * 1000
             self.songCardManager.userGiftPool[name, default: 0] += coinValue
             if let index = self.songCardManager.findSongIndex(byName: name) {
-                self.songCardManager.updateGiftValue(name: name, delta: coinValue)
+                _ = self.songCardManager.updateGiftValue(name: name, delta: coinValue)
                 let lockedEnd = self.songCardManager.lockedEndIndex
                 if index >= lockedEnd {
                     self.songCardManager.reorderQueueByGiftValue()
@@ -309,7 +321,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             }
             DispatchQueue.main.async { self.debug.log("[上舰] \(msg.authorName)") }
 
-            danmakuBuffer.addEntry(
+            _ = danmakuBuffer.addEntry(
                 type: .member,
                 username: msg.authorName,
                 content: "上舰了",
@@ -380,10 +392,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             var candidates = songDatabase.findCandidates(query: originalQuery)
             var resolvedDiffInput: String? = nil
             var resolvedChartTypePreference: String? = nil
-            var usedOriginalQuery = false
-
             if !candidates.candidates.isEmpty && originalQuery != query {
-                usedOriginalQuery = true
+                // Whole-query match succeeded; keep chart/difficulty filters disabled.
             } else {
                 candidates = songDatabase.findCandidates(query: query)
                 resolvedDiffInput = diffInput
@@ -503,7 +513,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             if songCardManager.hasSongInQueue(name: name) {
                 let coinValue = sc.price * 1000
                 songCardManager.userGiftPool[name, default: 0] += coinValue
-                songCardManager.updateGiftValue(name: name, delta: coinValue)
+                _ = songCardManager.updateGiftValue(name: name, delta: coinValue)
                 let lockedEnd = songCardManager.lockedEndIndex
                 if let idx = songCardManager.findSongIndex(byName: name), idx >= lockedEnd {
                     songCardManager.reorderQueueByGiftValue()
@@ -612,7 +622,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "success")
 
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
-                self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [🎁\(giftVal)]")
+                self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr))\(giftTag)")
                 self.postMarquee("💰 \(name) SC点歌 \(song.title) (\(ctDisplay) \(diffName) \(levelStr))", type: .superChat)
             }
 
@@ -621,7 +631,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
             let coinValue = sc.price * 1000
             songCardManager.userGiftPool[name, default: 0] += coinValue
             if let index = songCardManager.findSongIndex(byName: name) {
-                songCardManager.updateGiftValue(name: name, delta: coinValue)
+                _ = songCardManager.updateGiftValue(name: name, delta: coinValue)
                 let lockedEnd = songCardManager.lockedEndIndex
                 if index >= lockedEnd {
                     songCardManager.reorderQueueByGiftValue()
@@ -863,9 +873,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
         camera.onVideoFrame = { [weak self] pixelBuffer, alignedTime in
             let pipelineEnterTime = CACurrentMediaTime()
+            let manager = WeakLivePipelineManager(self)
+            let frame = SendablePixelBuffer(value: pixelBuffer)
             self?.pipelineQueue.async {
                 autoreleasepool {
-                guard let self = self else { return }
+                guard let self = manager.value else { return }
+                let pixelBuffer = frame.value
                 self.frameCount += 1
                 guard let stab = self.stabilizer, stab.stabilizerEnabled else { return }
 
@@ -1547,7 +1560,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
 
     private func performAddRightPanelRow(song: SongCardData, queueIndex: Int) {
-        guard let renderer = rightPanelRenderer else { return }
+        guard rightPanelRenderer != nil else { return }
 
         if rightPanelCompositor?.getRowDataForId(song.id) != nil {
             return
@@ -1853,7 +1866,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     private func performSwitchToNext() {
         guard let renderer = rightPanelRenderer, let compositor = rightPanelCompositor else { return }
 
-        rightPanelRenderer?.invalidateCache()
+        renderer.invalidateCache()
         leftPanelRenderer?.invalidateCache()
 
         let ci = songCardManager.currentIndex

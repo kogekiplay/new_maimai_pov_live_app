@@ -42,7 +42,7 @@ class DebugAPIHandler {
                 if coinValue > 0 {
                     pipeline.songCardManager.userGiftPool[authorName, default: 0] += coinValue
                     if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {
-                        pipeline.songCardManager.updateGiftValue(name: authorName, delta: coinValue)
+                        _ = pipeline.songCardManager.updateGiftValue(name: authorName, delta: coinValue)
                         let lockedEnd = pipeline.songCardManager.lockedEndIndex
                         if index >= lockedEnd {
                             pipeline.songCardManager.reorderQueueByGiftValue()
@@ -156,11 +156,11 @@ class DebugAPIHandler {
                 ]
             )
 
-            if let member = member {
+            if member != nil {
                 let coinValue = 198 * 1000
                 pipeline.songCardManager.userGiftPool[authorName, default: 0] += coinValue
                 if let index = pipeline.songCardManager.findSongIndex(byName: authorName) {
-                    pipeline.songCardManager.updateGiftValue(name: authorName, delta: coinValue)
+                    _ = pipeline.songCardManager.updateGiftValue(name: authorName, delta: coinValue)
                     let lockedEnd = pipeline.songCardManager.lockedEndIndex
                     if index >= lockedEnd {
                         pipeline.songCardManager.reorderQueueByGiftValue()

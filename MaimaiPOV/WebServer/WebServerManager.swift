@@ -241,7 +241,7 @@ class WebServerManager {
             }
         }
 
-        server["/api/song-request-config"] = { [weak self] request in
+        server["/api/song-request-config"] = { request in
             switch request.method {
             case "GET":
                 let data = try? JSONSerialization.data(withJSONObject: [
