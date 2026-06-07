@@ -8,12 +8,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         configureAudioSession()
-        DispatchQueue.main.async {
-            self.replaceRootViewController()
+        Task { @MainActor in
+            replaceRootViewController()
         }
         return true
     }
 
+    @MainActor
     private func replaceRootViewController() {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else { return }

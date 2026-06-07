@@ -117,7 +117,7 @@ class YOLODetector {
     private func infer(_ pixelBuffer: CVPixelBuffer, preprocessMs: Double) -> DetectionResult? {
         let start = CACurrentMediaTime()
 
-        guard let input = try? bestInput(image: pixelBuffer) else { return nil }
+        let input = bestInput(image: pixelBuffer)
         guard let output = try? model.prediction(input: input) else { return nil }
 
         let elapsed = CACurrentMediaTime() - start
@@ -129,7 +129,9 @@ class YOLODetector {
 
         let shape = multiArray.shape
         guard shape.count == 3 else { return nil }
+        let innerClassIdx = 4
         let numFeatures = shape[1].intValue
+        guard numFeatures > innerClassIdx else { return nil }
         let numAnchors = shape[2].intValue
 
         let strides = multiArray.strides.map { $0.intValue }
@@ -137,7 +139,6 @@ class YOLODetector {
 
         let isFloat16 = multiArray.dataType == MLMultiArrayDataType.float16
 
-        let innerClassIdx = 4
         let confThresh = Config.defaultConfidenceThreshold
 
         var bestConf: Float = 0
@@ -146,7 +147,6 @@ class YOLODetector {
 
         if isFloat16 {
             let ptr = dataPointer.assumingMemoryBound(to: UInt16.self)
-            let fStride = strides[0]
             let featStride = strides[1]
             let anchorStride = strides[2]
 
@@ -163,7 +163,6 @@ class YOLODetector {
             }
         } else {
             let ptr = dataPointer.assumingMemoryBound(to: Float.self)
-            let fStride = strides[0]
             let featStride = strides[1]
             let anchorStride = strides[2]
 

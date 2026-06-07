@@ -42,7 +42,7 @@ class YOLOPreprocessor {
         let bytesPerRow = size * 4
 
         for _ in 0..<3 {
-            let surfaceProps: [IOSurfacePropertyKey: Any] = [
+            let surfaceProps: [IOSurfacePropertyKey: any Sendable] = [
                 .width: size,
                 .height: size,
                 .pixelFormat: kCVPixelFormatType_32BGRA as UInt32,
@@ -83,7 +83,6 @@ class YOLOPreprocessor {
 
     func process(stabOutputTexture: MTLTexture) -> CVPixelBuffer? {
         bufferIndex = (bufferIndex + 1) % pixelBuffers.count
-        let outputTexture = outputTextures[bufferIndex]
         let pixelBuffer = pixelBuffers[bufferIndex]
 
         guard let cmdBuf = commandQueue.makeCommandBuffer(),

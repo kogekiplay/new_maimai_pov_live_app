@@ -9,6 +9,8 @@
 "time.minutes.ago" = "%d分钟前";
 "time.hours.ago" = "%d小时前";
 "time.days.ago" = "%d天前";
+"Default Announcement Text" = "弹幕点歌需送礼物\nSC点歌立即生效";
+"No announcement" = "暂无公告";
 
 "Camera" = "拍摄";
 "Effects" = "效果";
@@ -102,6 +104,16 @@
 "Reconnect failed" = "重连失败";
 "Error: URL/Key empty" = "错误：URL/密钥为空";
 "Reconnect failed, retry manually" = "重连失败，请手动重试";
+"Connection timed out" = "连接超时";
+"Cannot connect to server" = "无法连接服务器";
+"Connection lost" = "连接断开";
+"Network unavailable" = "网络不可用";
+"DNS lookup failed" = "DNS 解析失败";
+"Server not found" = "找不到服务器";
+"Resource unavailable" = "资源不可用";
+"Returning to foreground, reconnecting..." = "回到前台，正在重连...";
+"blivechat.reconnect.success" = "[重连] 第%d次重连成功";
+"blivechat.reconnect.attempt" = "[重连] 第%d次尝试，%d秒后重连";
 
 "Status" = "状态";
 "Duration" = "时长";

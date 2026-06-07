@@ -397,7 +397,9 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: leftPanelEnabledKey) }
     }
 
-    static let defaultAnnouncementText: String = "弹幕点歌需送礼物\nSC点歌立即生效"
+    static var defaultAnnouncementText: String {
+        L10n.string("Default Announcement Text")
+    }
     static var announcementText: String {
         get { UserDefaults.standard.string(forKey: announcementTextKey) ?? defaultAnnouncementText }
         set { UserDefaults.standard.set(newValue, forKey: announcementTextKey) }

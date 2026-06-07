@@ -69,7 +69,7 @@ struct Phase2View: View {
             let session = AVAudioSession.sharedInstance()
             volumeObservation = session.observe(\.outputVolume) { [weak session] _, _ in
                 guard session != nil else { return }
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     if isAntiTouchMode {
                         antiTouchTimer?.invalidate()
                         antiTouchTimer = nil
@@ -1352,7 +1352,7 @@ private struct SessionChangeHandlers: ViewModifier {
                 } else {
                     antiTouchTimer?.invalidate()
                     antiTouchTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
-                        DispatchQueue.main.async {
+                        Task { @MainActor in
                             isAntiTouchMode = true
                         }
                     }

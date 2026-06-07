@@ -95,7 +95,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         connectionState = .connected
         reconnectDelay = 5.0
         if reconnectAttemptCount > 0 {
-            onReconnectLog?("[重连] 第\(reconnectAttemptCount)次重连成功")
+            onReconnectLog?(L10n.string("blivechat.reconnect.success", reconnectAttemptCount))
         }
         reconnectAttemptCount = 0
     }
@@ -240,19 +240,19 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         if domain == NSURLErrorDomain {
             switch code {
             case NSURLErrorTimedOut:
-                return "连接超时"
+                return L10n.string("Connection timed out")
             case NSURLErrorCannotConnectToHost:
-                return "无法连接服务器"
+                return L10n.string("Cannot connect to server")
             case NSURLErrorNetworkConnectionLost:
-                return "连接断开"
+                return L10n.string("Connection lost")
             case NSURLErrorNotConnectedToInternet:
-                return "网络不可用"
+                return L10n.string("Network unavailable")
             case NSURLErrorDNSLookupFailed:
-                return "DNS解析失败"
+                return L10n.string("DNS lookup failed")
             case NSURLErrorCannotFindHost:
-                return "找不到服务器"
+                return L10n.string("Server not found")
             case NSURLErrorResourceUnavailable:
-                return "资源不可用"
+                return L10n.string("Resource unavailable")
             default:
                 break
             }
@@ -287,7 +287,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         reconnectAttemptCount += 1
         let delay = reconnectDelay
 
-        onReconnectLog?("[重连] 第\(reconnectAttemptCount)次尝试，\(Int(delay))秒后重连")
+        onReconnectLog?(L10n.string("blivechat.reconnect.attempt", reconnectAttemptCount, Int(delay)))
 
         reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             self?.performConnect()
@@ -303,7 +303,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .connected:
             if !hasReceivedMessage {
                 reconnectDelay = 2.0
-                connectionState = .reconnecting("回到前台，正在重连...")
+                connectionState = .reconnecting(L10n.string("Returning to foreground, reconnecting..."))
                 scheduleReconnect()
             }
         case .reconnecting, .error, .connecting:

@@ -313,7 +313,7 @@ struct LeftPanelTemplate {
     }
 
     static func renderAnnouncement(text: String) -> String {
-        let displayText = text.isEmpty ? "暂无公告" : text
+        let displayText = text.isEmpty ? L10n.string("No announcement") : text
         let escaped = displayText
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
