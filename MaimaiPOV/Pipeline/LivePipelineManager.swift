@@ -960,7 +960,12 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                         }
                     }
                 } else if self.latestTrackOutput != nil {
-                    track = self.bboxTracker.freeze()
+                    if self.yoloEnabled {
+                        track = self.bboxTracker.freeze()
+                    } else {
+                        track = self.bboxTracker.update(detected: false, stabCx: 0, stabCy: 0, stabW: 0, stabH: 0)
+                        self.latestTrackOutput = track
+                    }
                 } else if let cc = self.canvasComposer {
                     let fb = cc.makeFallbackTrack()
                     track = BBoxTracker.TrackOutput(

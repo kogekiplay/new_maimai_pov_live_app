@@ -30,7 +30,10 @@ class MetalStabilizer {
                 savedAnchor = anchorQuaternion
             } else if !activityMode && oldValue {
                 if let saved = savedAnchor {
-                    setAnchor(saved)
+                    anchorTransitionFrom = anchorQuaternion
+                    anchorTransitionTo = saved
+                    anchorTransitionProgress = 0
+                    anchorTransitionActive = true
                     savedAnchor = nil
                 }
             }
@@ -38,6 +41,12 @@ class MetalStabilizer {
     }
     var activitySmoothFactor: Float = 0.03
     private var savedAnchor: simd_quatf?
+
+    private var anchorTransitionActive: Bool = false
+    private var anchorTransitionFrom: simd_quatf?
+    private var anchorTransitionTo: simd_quatf?
+    private var anchorTransitionProgress: Float = 0
+    private let anchorTransitionSpeed: Float = 0.05
 
     var fov: Float {
         get { uniforms.fovRadHalf * 360.0 / .pi }
@@ -232,6 +241,20 @@ class MetalStabilizer {
             if let current = anchorQuaternion {
                 let newAnchor = simd_slerp(current, target, activitySmoothFactor)
                 setAnchor(newAnchor)
+            }
+        }
+
+        if anchorTransitionActive {
+            anchorTransitionProgress = min(1.0, anchorTransitionProgress + anchorTransitionSpeed)
+            let t = anchorTransitionProgress * anchorTransitionProgress * (3.0 - 2.0 * anchorTransitionProgress)
+            let from = anchorTransitionFrom ?? anchorQuaternion ?? simd_quatf()
+            let to = anchorTransitionTo ?? anchorQuaternion ?? simd_quatf()
+            let interpolated = simd_slerp(from, to, t)
+            setAnchor(interpolated)
+            if anchorTransitionProgress >= 1.0 {
+                anchorTransitionActive = false
+                anchorTransitionFrom = nil
+                anchorTransitionTo = nil
             }
         }
 
