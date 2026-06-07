@@ -1,5 +1,6 @@
 import CoreMotion
 import Foundation
+import OSLog
 import simd
 
 struct MotionSample {
@@ -12,6 +13,7 @@ final class MotionManager: @unchecked Sendable {
 
     static let shared = MotionManager()
 
+    private let logger = Logger(subsystem: "com.maimai.MaimaiPOV", category: "MotionManager")
     private let motionManager = CMMotionManager()
     private var unfairLock = os_unfair_lock_s()
     private var headIndex = 0
@@ -36,14 +38,14 @@ final class MotionManager: @unchecked Sendable {
 
     func startUpdates() {
         guard motionManager.isDeviceMotionAvailable else {
-            print("MotionManager: DeviceMotion not available")
+            logger.warning("DeviceMotion not available")
             return
         }
         motionManager.deviceMotionUpdateInterval = 1.0 / 100.0
         motionManager.startDeviceMotionUpdates(using: .xMagneticNorthZVertical, to: OperationQueue()) { [weak self] motion, error in
             guard let self, let motion else { return }
             if let error {
-                print("MotionManager: Error: \(error.localizedDescription)")
+                logger.error("DeviceMotion error: \(error.localizedDescription, privacy: .public)")
                 return
             }
 
@@ -60,12 +62,12 @@ final class MotionManager: @unchecked Sendable {
             self.headIndex = (self.headIndex + 1) % self.bufferSize
             os_unfair_lock_unlock(&self.unfairLock)
         }
-        print("MotionManager: Started at 100Hz")
+        logger.info("Started at 100Hz")
     }
 
     func stopUpdates() {
         motionManager.stopDeviceMotionUpdates()
-        print("MotionManager: Stopped")
+        logger.info("Stopped")
     }
 
     func getQuaternion(at targetTime: Double) -> simd_quatf? {
