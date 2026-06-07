@@ -62,18 +62,31 @@ targets:
         ARCHS: arm64
         VALID_ARCHS: arm64
         ONLY_ACTIVE_ARCH: YES
-        SWIFT_OPTIMIZATION_LEVEL: "-O"
-        SWIFT_COMPILATION_MODE: wholemodule
-        MTLENGINE_DEFAULT_OPTIMIZATION_LEVEL: "-O"
-        GCC_OPTIMIZATION_LEVEL: s
-        STRIP_INSTALLED_PRODUCT: YES
-        COPY_PHASE_STRIP: YES
-        ENABLE_NS_ASSERTIONS: NO
         CLANG_ENABLE_MODULES: YES
         OTHER_SWIFT_FLAGS: ["-Xfrontend", "-warn-long-expression-type-checking=200"]
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+          SWIFT_COMPILATION_MODE: singlefile
+          MTLENGINE_DEFAULT_OPTIMIZATION_LEVEL: "-O0"
+          GCC_OPTIMIZATION_LEVEL: "0"
+          STRIP_INSTALLED_PRODUCT: NO
+          COPY_PHASE_STRIP: NO
+          ENABLE_NS_ASSERTIONS: YES
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+          SWIFT_COMPILATION_MODE: wholemodule
+          MTLENGINE_DEFAULT_OPTIMIZATION_LEVEL: "-O"
+          GCC_OPTIMIZATION_LEVEL: s
+          STRIP_INSTALLED_PRODUCT: YES
+          COPY_PHASE_STRIP: YES
+          ENABLE_NS_ASSERTIONS: NO
     dependencies:
       - package: HaishinKit
         product: HaishinKit
       - package: Swifter
     entitlements:
       path: MaimaiPOV/App/MaimaiPOV.entitlements
+      properties:
+        com.apple.developer.networking.multipath: true
+        com.apple.developer.networking.wifi-info: true

@@ -46,6 +46,7 @@ venv/
 # IDE
 .idea/
 .vscode/
+.codegraph/
 *.swp
 *.swo
 *~
