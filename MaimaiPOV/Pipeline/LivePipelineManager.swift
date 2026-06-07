@@ -579,9 +579,12 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 songCardManager.scheduleSave()
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_not_found")
-                DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] 未找到歌曲: \"\(query)\"，SC金额累积到送礼池")
-                    self.postMarquee("❌ \(name) 未找到\"\(query)\"", type: .songFailure)
+                let logText = "[SC点歌] 未找到歌曲: \"\(query)\"，SC金额累积到送礼池"
+                let marqueeText = "❌ \(name) 未找到\"\(query)\""
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.debug.log(logText)
+                    self.postMarquee(marqueeText, type: .songFailure)
                 }
                 return
             }
@@ -594,8 +597,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 songCardManager.scheduleSave()
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_no_match")
-                DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] 候选\(candidates.candidates.count)首但无法选择，SC金额累积到送礼池")
+                let candidateCount = candidates.candidates.count
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.debug.log("[SC点歌] 候选\(candidateCount)首但无法选择，SC金额累积到送礼池")
                     self.postMarquee("❌ \(name) 无法匹配歌曲", type: .songFailure)
                 }
                 return
@@ -606,9 +611,11 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                 songCardManager.scheduleSave()
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_no_diff")
-                DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] \(song.title) 没有可用难度，SC金额累积到送礼池")
-                    self.postMarquee("❌ \(name): \(song.title) 没有可用难度", type: .songFailure)
+                let songTitle = song.title
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.debug.log("[SC点歌] \(songTitle) 没有可用难度，SC金额累积到送礼池")
+                    self.postMarquee("❌ \(name): \(songTitle) 没有可用难度", type: .songFailure)
                 }
                 return
             }
