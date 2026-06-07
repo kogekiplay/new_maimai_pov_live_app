@@ -259,6 +259,17 @@ struct DebugOverlayView: View {
             infoRow("Stab", debug.stabEnabled ? "ON" : "OFF",
                     color: debug.stabEnabled ? .green : .red)
             infoRow("Frame", "\(debug.frameCount)")
+
+            Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
+
+            sectionHeader("MAGNETOMETER")
+            infoRow("Accuracy", magneticAccuracyString(debug.magneticAccuracy),
+                    color: magneticAccuracyColor(debug.magneticAccuracy))
+            infoRow("RawYaw", String(format: "%.1f°", debug.rawYawDeg))
+            infoRow("FltYaw", String(format: "%.1f°", debug.filteredYawDeg))
+            infoRow("YawDelta", String(format: "%.2f°", debug.yawDeltaDeg),
+                    color: abs(debug.yawDeltaDeg) > 2.0 ? .red :
+                           abs(debug.yawDeltaDeg) > 0.5 ? .yellow : .green)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -314,6 +325,24 @@ struct DebugOverlayView: View {
         case "Publishing": return .green
         case "Connecting", "Connected": return .yellow
         case "Idle": return .gray
+        default: return .red
+        }
+    }
+
+    private func magneticAccuracyString(_ accuracy: Int32) -> String {
+        switch accuracy {
+        case 2: return "HIGH"
+        case 1: return "MEDIUM"
+        case 0: return "LOW"
+        default: return "UNCALIBRATED"
+        }
+    }
+
+    private func magneticAccuracyColor(_ accuracy: Int32) -> Color {
+        switch accuracy {
+        case 2: return .green
+        case 1: return .yellow
+        case 0: return .orange
         default: return .red
         }
     }

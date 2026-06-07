@@ -71,6 +71,12 @@ class DebugInfoManager: ObservableObject {
 
     @Published var cropHorizontalOffset: Float = 0
 
+    // 磁力计 & Yaw 诊断
+    @Published var magneticAccuracy: Int32 = -1   // -1=uncalibrated, 0=low, 1=medium, 2=high
+    @Published var rawYawDeg: Float = 0            // 原始 IMU yaw (度)
+    @Published var filteredYawDeg: Float = 0        // 滤波后 yaw (度)
+    @Published var yawDeltaDeg: Float = 0           // 原始-滤波 差值 (度)
+
     @Published var logMessages: [String] = []
     @Published var streamInfo: String = "--"
     private let maxLogMessages = 50
@@ -119,6 +125,8 @@ class DebugInfoManager: ObservableObject {
         var trackAspectRatio: Float = 1.0
         var pipelineLagMs: Double = 0
         var audioQueueDepth: Int = 0
+        var magneticAccuracy: Int32 = -1
+        var rawYawDeg: Float = 0
     }
 
     private var stagingData: FrameDebugData?
@@ -224,5 +232,11 @@ class DebugInfoManager: ObservableObject {
         trackAspectRatio = data.trackAspectRatio
         pipelineLagMs = data.pipelineLagMs
         audioQueueDepth = data.audioQueueDepth
+
+        // 磁力计 & Yaw 诊断
+        magneticAccuracy = data.magneticAccuracy
+        rawYawDeg = data.rawYawDeg
+        filteredYawDeg = data.rawYawDeg  // 阶段1暂无滤波，直接显示原始值
+        yawDeltaDeg = 0
     }
 }

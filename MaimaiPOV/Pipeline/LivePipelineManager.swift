@@ -877,6 +877,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                       let qTop    = MotionManager.shared.getQuaternion(at: topTime),
                       let qBottom = MotionManager.shared.getQuaternion(at: bottomTime) else { return }
 
+                // 磁力计 & Yaw 诊断数据
+                let magAccuracy = MotionManager.shared.latestMagneticAccuracy
+                let alignedQC = MetalStabilizer.alignIMU(qCenter)
+                let rawYaw = MotionManager.extractYaw(from: alignedQC) * 180.0 / .pi
+
                 var detectionResult: YOLODetector.DetectionResult?
 
                 if self.yoloEnabled, let detector = self.yoloDetector {
@@ -1005,6 +1010,8 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     snapshot.trackSmoothSize = track.smoothSize
                     snapshot.trackTrust = track.trust
                     snapshot.trackAspectRatio = track.aspectRatio
+                    snapshot.magneticAccuracy = magAccuracy
+                    snapshot.rawYawDeg = rawYaw
                     self.debug.stageFrameData(snapshot)
                 }
 

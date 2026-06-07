@@ -5,6 +5,7 @@ import simd
 struct MotionSample {
     var timestamp: Double
     var quaternion: simd_quatf
+    var magneticAccuracy: Int32  // CMMagneticFieldCalibrationAccuracy rawValue
 }
 
 class MotionManager {
@@ -17,7 +18,16 @@ class MotionManager {
     private let bufferSize = 512
 
     private var buffer: [MotionSample] = (0..<512).map { _ in
-        MotionSample(timestamp: 0, quaternion: simd_quatf(ix: 0, iy: 0, iz: 0, r: 1))
+        MotionSample(timestamp: 0, quaternion: simd_quatf(ix: 0, iy: 0, iz: 0, r: 1), magneticAccuracy: -1)
+    }
+
+    /// 最新磁力计校准精度（线程安全读取）
+    var latestMagneticAccuracy: Int32 {
+        os_unfair_lock_lock(&unfairLock)
+        defer { os_unfair_lock_unlock(&unfairLock) }
+        let idx = (headIndex - 1 + bufferSize) % bufferSize
+        let s = buffer[idx]
+        return s.timestamp > 0 ? s.magneticAccuracy : -1
     }
 
     private init() {}
@@ -38,9 +48,11 @@ class MotionManager {
             }
 
             let q = motion.attitude.quaternion
+            let accuracy = motion.magneticField.accuracy.rawValue
             let sample = MotionSample(
                 timestamp: motion.timestamp,
-                quaternion: simd_quatf(ix: Float(q.x), iy: Float(q.y), iz: Float(q.z), r: Float(q.w))
+                quaternion: simd_quatf(ix: Float(q.x), iy: Float(q.y), iz: Float(q.z), r: Float(q.w)),
+                magneticAccuracy: accuracy
             )
 
             os_unfair_lock_lock(&self.unfairLock)
@@ -107,5 +119,16 @@ class MotionManager {
         let idx = (headIndex - 1 + bufferSize) % bufferSize
         let s = buffer[idx]
         return s.timestamp > 0 ? s.quaternion : nil
+    }
+
+    /// 从四元数提取 yaw 角（弧度），使用 ZYX 欧拉角分解
+    /// 适用于 alignIMU 后的相机坐标系四元数
+    static func extractYaw(from q: simd_quatf) -> Float {
+        // ZYX Euler: yaw = atan2(2*(qw*qz + qx*qy), 1 - 2*(qy*qy + qz*qz))
+        let qw = q.vector.w
+        let qx = q.vector.x
+        let qy = q.vector.y
+        let qz = q.vector.z
+        return atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz))
     }
 }
