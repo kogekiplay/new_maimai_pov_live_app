@@ -20,6 +20,7 @@
 "Log" = "日志";
 
 "Debug" = "调试";
+"Debug sections" = "调试分区";
 "Expand debug details" = "展开调试详情";
 "Collapse debug details" = "折叠调试详情";
 
@@ -46,6 +47,8 @@
 "Main (1x)" = "主摄 (1x)";
 "Ultra-Wide (0.5x)" = "超广角 (0.5x)";
 "Focus" = "对焦";
+"Focus Mode" = "对焦模式";
+"Manual Focus" = "手动焦距";
 "AUTO" = "自动";
 "LOCK" = "锁定";
 "Stabilizer" = "稳定器";

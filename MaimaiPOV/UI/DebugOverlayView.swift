@@ -37,7 +37,6 @@ struct DebugOverlayView: View {
         .foregroundColor(.white)
         .adaptiveGlassPanel(cornerRadius: 10, tint: Color.black.opacity(isCollapsed ? 0.28 : 0.42))
         .offset(dragOffset)
-        .simultaneousGesture(dragGesture)
     }
 
     // MARK: - Header Bar
@@ -81,6 +80,7 @@ struct DebugOverlayView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(panelDragGesture)
         .accessibilityLabel("Debug")
         .accessibilityHint(L10n.string(isCollapsed ? "Expand debug details" : "Collapse debug details"))
     }
@@ -88,28 +88,12 @@ struct DebugOverlayView: View {
     // MARK: - Tab Bar
 
     private var tabBar: some View {
-        HStack(spacing: 0) {
-            ForEach(DebugTab.allCases, id: \.self) { tab in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.1)) {
-                        selectedTab = tab
-                    }
-                } label: {
-                    Text(tab.title)
-                        .font(.system(size: 9, weight: selectedTab == tab ? .bold : .regular))
-                        .foregroundColor(selectedTab == tab ? .cyan : .gray)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .adaptiveGlassPanel(
-                            cornerRadius: 6,
-                            tint: selectedTab == tab ? Color.cyan.opacity(0.16) : Color.clear,
-                            interactive: true
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .adaptiveGlassGroup(spacing: 6)
+        DraggableGlassSegmentedControl(
+            selection: $selectedTab,
+            segments: DebugTab.allCases.map { .init(value: $0, title: $0.title) },
+            accent: .cyan
+        )
+        .frame(width: 188, height: 28)
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
     }
@@ -357,8 +341,8 @@ struct DebugOverlayView: View {
         }
     }
 
-    private var dragGesture: some Gesture {
-        DragGesture()
+    private var panelDragGesture: some Gesture {
+        DragGesture(minimumDistance: 8)
             .onChanged { value in
                 dragOffset = value.translation
             }
@@ -372,5 +356,276 @@ struct DebugOverlayView: View {
         withAnimation(.easeInOut(duration: 0.15)) {
             debug.isDetailVisible.toggle()
         }
+    }
+}
+
+private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
+    struct Segment: Identifiable {
+        let value: Selection
+        let title: String
+
+        var id: Selection { value }
+    }
+
+    @Binding var selection: Selection
+    let segments: [Segment]
+    let accent: Color
+
+    @State private var pressedIndex: Int?
+    @State private var dragCenterX: CGFloat?
+
+    private let height: CGFloat = 28
+    private let trackHeight: CGFloat = 24
+    private let horizontalInset: CGFloat = 3
+    private let thumbInset: CGFloat = 2
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let segmentWidth = SegmentedDragMetrics.segmentWidth(
+                totalWidth: width,
+                horizontalInset: horizontalInset,
+                count: segments.count
+            )
+            let isDragging = dragCenterX != nil
+            let currentIndex = pressedIndex ?? selectedIndex
+            let thumbWidth = SegmentedDragMetrics.thumbWidth(
+                segmentWidth: segmentWidth,
+                thumbInset: thumbInset,
+                isDragging: isDragging
+            )
+            let thumbHeight = isDragging ? trackHeight + 2 : trackHeight - 2
+            let thumbCenterX = dragCenterX ?? SegmentedDragMetrics.centerX(
+                for: currentIndex,
+                totalWidth: width,
+                horizontalInset: horizontalInset,
+                count: segments.count
+            )
+            let thumbOffset = SegmentedDragMetrics.offset(
+                forCenterX: thumbCenterX,
+                totalWidth: width,
+                thumbWidth: thumbWidth
+            )
+
+            ZStack(alignment: .leading) {
+                glassLayers(
+                    thumbWidth: thumbWidth,
+                    thumbHeight: thumbHeight,
+                    thumbOffset: thumbOffset,
+                    isDragging: isDragging
+                )
+
+                HStack(spacing: 0) {
+                    ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
+                        segmentLabel(
+                            segment.title,
+                            isSelected: selectedIndex == index,
+                            isPressed: pressedIndex == index
+                        )
+                        .frame(width: segmentWidth, height: height)
+                        .contentShape(Rectangle())
+                    }
+                }
+                .padding(.horizontal, horizontalInset)
+            }
+            .contentShape(Capsule())
+            .gesture(dragGesture(width: width))
+        }
+        .frame(height: height)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(L10n.string("Debug sections"))
+        .accessibilityValue(selectedTitle)
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                moveSelection(by: 1)
+            case .decrement:
+                moveSelection(by: -1)
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func glassLayers(
+        thumbWidth: CGFloat,
+        thumbHeight: CGFloat,
+        thumbOffset: CGFloat,
+        isDragging: Bool
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 8) {
+                stackedGlass(
+                    thumbWidth: thumbWidth,
+                    thumbHeight: thumbHeight,
+                    thumbOffset: thumbOffset,
+                    isDragging: isDragging
+                )
+            }
+        } else {
+            stackedGlass(
+                thumbWidth: thumbWidth,
+                thumbHeight: thumbHeight,
+                thumbOffset: thumbOffset,
+                isDragging: isDragging
+            )
+        }
+    }
+
+    private func stackedGlass(
+        thumbWidth: CGFloat,
+        thumbHeight: CGFloat,
+        thumbOffset: CGFloat,
+        isDragging: Bool
+    ) -> some View {
+        ZStack(alignment: .leading) {
+            trackGlass
+            thumbGlass(height: thumbHeight, isDragging: isDragging)
+                .frame(width: thumbWidth, height: thumbHeight)
+                .offset(x: thumbOffset, y: (height - thumbHeight) / 2)
+                .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
+                .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
+        }
+    }
+
+    private var trackGlass: some View {
+        Capsule()
+            .fill(Color.clear)
+            .frame(height: trackHeight)
+            .padding(.vertical, (height - trackHeight) / 2)
+            .adaptiveGlassPanel(
+                cornerRadius: trackHeight / 2,
+                tint: Color.black.opacity(0.22),
+                interactive: true
+            )
+    }
+
+    private func thumbGlass(height: CGFloat, isDragging: Bool) -> some View {
+        Capsule()
+            .fill(Color.clear)
+            .adaptiveGlassPanel(
+                cornerRadius: height / 2,
+                tint: accent.opacity(isDragging ? 0.20 : 0.12),
+                interactive: true
+            )
+    }
+
+    private func segmentLabel(_ title: String, isSelected: Bool, isPressed: Bool) -> some View {
+        Text(title)
+            .font(.system(size: 9, weight: isSelected ? .bold : .semibold, design: .monospaced))
+            .foregroundColor(isSelected ? accent : .white.opacity(0.58))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .scaleEffect(isPressed ? 1.04 : 1)
+            .animation(.easeOut(duration: 0.12), value: isPressed)
+            .animation(.easeOut(duration: 0.12), value: isSelected)
+    }
+
+    private var selectedIndex: Int {
+        segments.firstIndex { $0.value == selection } ?? 0
+    }
+
+    private var selectedTitle: String {
+        guard segments.indices.contains(selectedIndex) else { return "" }
+        return segments[selectedIndex].title
+    }
+
+    private func moveSelection(by offset: Int) {
+        guard !segments.isEmpty else { return }
+
+        let nextIndex = min(max(selectedIndex + offset, 0), segments.count - 1)
+        selection = segments[nextIndex].value
+    }
+
+    private func dragGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .onChanged { value in
+                guard !segments.isEmpty else { return }
+
+                let segmentWidth = SegmentedDragMetrics.segmentWidth(
+                    totalWidth: width,
+                    horizontalInset: horizontalInset,
+                    count: segments.count
+                )
+                let thumbWidth = SegmentedDragMetrics.thumbWidth(
+                    segmentWidth: segmentWidth,
+                    thumbInset: thumbInset,
+                    isDragging: true
+                )
+                dragCenterX = SegmentedDragMetrics.clampedCenterX(
+                    value.location.x,
+                    totalWidth: width,
+                    thumbWidth: thumbWidth
+                )
+
+                let nextIndex = SegmentedDragMetrics.index(
+                    at: value.location.x,
+                    totalWidth: width,
+                    horizontalInset: horizontalInset,
+                    count: segments.count
+                )
+                pressedIndex = nextIndex
+
+                guard segments[nextIndex].value != selection else { return }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                selection = segments[nextIndex].value
+            }
+            .onEnded { _ in
+                withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.82)) {
+                    pressedIndex = nil
+                    dragCenterX = nil
+                }
+            }
+    }
+}
+
+private enum SegmentedDragMetrics {
+    static func segmentWidth(totalWidth: CGFloat, horizontalInset: CGFloat, count: Int) -> CGFloat {
+        let availableWidth = max(totalWidth - horizontalInset * 2, 1)
+        return availableWidth / CGFloat(max(count, 1))
+    }
+
+    static func thumbWidth(segmentWidth: CGFloat, thumbInset: CGFloat, isDragging: Bool) -> CGFloat {
+        max(segmentWidth - thumbInset * (isDragging ? 0.5 : 2), 1)
+    }
+
+    static func centerX(
+        for index: Int,
+        totalWidth: CGFloat,
+        horizontalInset: CGFloat,
+        count: Int
+    ) -> CGFloat {
+        let segmentWidth = segmentWidth(
+            totalWidth: totalWidth,
+            horizontalInset: horizontalInset,
+            count: count
+        )
+        let clampedIndex = min(max(index, 0), max(count - 1, 0))
+        return horizontalInset + segmentWidth * (CGFloat(clampedIndex) + 0.5)
+    }
+
+    static func offset(forCenterX centerX: CGFloat, totalWidth: CGFloat, thumbWidth: CGFloat) -> CGFloat {
+        let maxOffset = max(totalWidth - thumbWidth, 0)
+        return min(max(centerX - thumbWidth / 2, 0), maxOffset)
+    }
+
+    static func clampedCenterX(_ centerX: CGFloat, totalWidth: CGFloat, thumbWidth: CGFloat) -> CGFloat {
+        let minCenter = thumbWidth / 2
+        let maxCenter = max(totalWidth - thumbWidth / 2, minCenter)
+        return min(max(centerX, minCenter), maxCenter)
+    }
+
+    static func index(at locationX: CGFloat, totalWidth: CGFloat, horizontalInset: CGFloat, count: Int) -> Int {
+        guard count > 0 else { return 0 }
+
+        let segmentWidth = segmentWidth(
+            totalWidth: totalWidth,
+            horizontalInset: horizontalInset,
+            count: count
+        )
+        let maxInnerX = segmentWidth * CGFloat(count) - 0.01
+        let clampedX = min(max(locationX - horizontalInset, 0), maxInnerX)
+        return min(max(Int(clampedX / segmentWidth), 0), count - 1)
     }
 }

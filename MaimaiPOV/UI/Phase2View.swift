@@ -668,7 +668,11 @@ struct Phase2View: View {
 
     private var autoFocusRow: some View {
         HStack {
-            Text("Focus").font(.caption).frame(width: 55, alignment: .leading)
+            Text("Focus Mode")
+                .font(.caption)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(width: 55, alignment: .leading)
             Toggle("", isOn: $pipeline.autoFocusEnabled).labelsHidden()
             Spacer()
             Text(L10n.string(pipeline.autoFocusEnabled ? "AUTO" : "LOCK"))
@@ -678,7 +682,7 @@ struct Phase2View: View {
     }
 
     private var focusRow: some View {
-        labeledRow("Focus") {
+        labeledRow("Manual Focus") {
             Slider(value: $pipeline.focusValue, in: 0...1)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.focusValue)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
@@ -1164,7 +1168,11 @@ struct Phase2View: View {
         @ViewBuilder valueLabel: () -> V
     ) -> some View {
         HStack(spacing: 4) {
-            Text(label).font(.caption).frame(width: 55, alignment: .leading)
+            Text(label)
+                .font(.caption)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(width: 55, alignment: .leading)
             content()
             valueLabel()
         }
