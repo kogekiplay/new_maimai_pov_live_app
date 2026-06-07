@@ -273,8 +273,6 @@ final class RightPanelCompositor: @unchecked Sendable {
             pendingScrollOffset = targetScrollOffset
         }
 
-        print("[RightPanel] reorderRows called, newOrder.count=\(newOrder.count), existing rows=\(rows.count), targetScrollOffset=\(effectiveTargetScrollOffset)")
-
         var moveDistances: [UUID: Float] = [:]
         for (listIndex, item) in newOrder.enumerated() {
             let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: effectiveTargetScrollOffset)
@@ -290,7 +288,6 @@ final class RightPanelCompositor: @unchecked Sendable {
             let targetPosY = rowPosY(rowListIndex: listIndex, scrollOffset: effectiveTargetScrollOffset)
             if let existingIndex = rows.firstIndex(where: { $0.data?.id == item.data.id }) {
                 var row = rows[existingIndex]
-                let fromPosY = row.currentPosY
                 row.data = item.data
                 row.queueIndex = item.queueIndex
                 if let tex = textures[item.queueIndex] {
@@ -334,8 +331,6 @@ final class RightPanelCompositor: @unchecked Sendable {
                 }
 
                 newRows.append(row)
-                let dy = abs(targetPosY - fromPosY)
-                print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) fromY=\(String(format:"%.4f",fromPosY)) toY=\(String(format:"%.4f",targetPosY)) dy=\(String(format:"%.4f",dy)) zOrder=\(row.zOrder) animating=true")
             } else {
                 let texture = textures[item.queueIndex]
                 let row = RightPanelRowState(
@@ -361,7 +356,6 @@ final class RightPanelCompositor: @unchecked Sendable {
                     pendingAnimations: []
                 )
                 newRows.append(row)
-                print("[RightPanel]   row[\(listIndex)] '\(item.data.songName)' qi=\(item.queueIndex) NEW slideIn atY=\(String(format:"%.4f",targetPosY)) hasTexture=\(texture != nil)")
             }
         }
         rows = newRows
