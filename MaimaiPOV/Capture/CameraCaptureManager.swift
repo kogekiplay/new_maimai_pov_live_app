@@ -37,7 +37,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
         } else {
             AVCaptureDevice.requestAccess(for: .video) { [weak self] videoGranted in
                 AVCaptureDevice.requestAccess(for: .audio) { [weak self] audioGranted in
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         self?.cameraAuthorized = videoGranted && audioGranted
                     }
                     if videoGranted && audioGranted {
@@ -55,7 +55,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             guard let self, !self.session.isRunning else { return }
             self.session.startRunning()
             self.captureClock = self.session.synchronizationClock
-            DispatchQueue.main.async { self.isRunning = true }
+            Task { @MainActor in self.isRunning = true }
         }
     }
 
@@ -63,7 +63,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
         sessionQueue.async { [weak self] in
             guard let self, self.session.isRunning else { return }
             self.session.stopRunning()
-            DispatchQueue.main.async { self.isRunning = false }
+            Task { @MainActor in self.isRunning = false }
         }
     }
 
@@ -73,21 +73,21 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             guard let self else { return }
             self.configureSession(for: lens)
             self.captureClock = self.session.synchronizationClock
-            DispatchQueue.main.async { self.activeLens = lens }
+            Task { @MainActor in self.activeLens = lens }
         }
     }
 
     // MARK: - Private setup
 
     private func setupAndStart() {
-        DispatchQueue.main.async { self.cameraAuthorized = true }
+        Task { @MainActor in self.cameraAuthorized = true }
         sessionQueue.async { [weak self] in
             guard let self else { return }
             self.configureSession(for: self.activeLens)
             self.configureAudioSession()
             self.session.startRunning()
             self.captureClock = self.session.synchronizationClock
-            DispatchQueue.main.async { self.isRunning = true }
+            Task { @MainActor in self.isRunning = true }
         }
     }
 
@@ -158,7 +158,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             audioOutput.setSampleBufferDelegate(self, queue: sessionQueue)
         }
 
-        DispatchQueue.main.async { self.onDeviceReady?() }
+        Task { @MainActor in self.onDeviceReady?() }
     }
 
     private func configureAudioSession() {
@@ -294,7 +294,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
                 device.setFocusModeLocked(lensPosition: Float(Config.focusValue), completionHandler: nil)
             }
             device.unlockForConfiguration()
-            DispatchQueue.main.async { self.exposureMode = .custom }
+            Task { @MainActor in self.exposureMode = .custom }
         } catch {
             print("CameraCaptureManager: Exposure config failed: \(error)")
         }
@@ -322,7 +322,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             try device.lockForConfiguration()
             device.exposureMode = .continuousAutoExposure
             device.unlockForConfiguration()
-            DispatchQueue.main.async { self.exposureMode = .continuousAutoExposure }
+            Task { @MainActor in self.exposureMode = .continuousAutoExposure }
         } catch {}
     }
 
@@ -333,7 +333,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             try device.lockForConfiguration()
             device.setExposureModeCustom(duration: currentDuration, iso: currentISO, completionHandler: nil)
             device.unlockForConfiguration()
-            DispatchQueue.main.async { self.exposureMode = .custom }
+            Task { @MainActor in self.exposureMode = .custom }
         } catch {}
     }
 
@@ -379,7 +379,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             try device.lockForConfiguration()
             device.setWhiteBalanceModeLocked(with: device.deviceWhiteBalanceGains, completionHandler: nil)
             device.unlockForConfiguration()
-            DispatchQueue.main.async { self.awbLocked = true }
+            Task { @MainActor in self.awbLocked = true }
         } catch {
             print("CameraCaptureManager: WB lock failed: \(error)")
         }
@@ -391,7 +391,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             try device.lockForConfiguration()
             device.whiteBalanceMode = .continuousAutoWhiteBalance
             device.unlockForConfiguration()
-            DispatchQueue.main.async { self.awbLocked = false }
+            Task { @MainActor in self.awbLocked = false }
         } catch {
             print("CameraCaptureManager: WB unlock failed: \(error)")
         }
@@ -439,7 +439,7 @@ extension CameraCaptureManager: AVCaptureVideoDataOutputSampleBufferDelegate,
             let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)
             let channels = Int(asbd?.pointee.mChannelsPerFrame ?? 1)
             if channels != currentAudioChannelCount {
-                DispatchQueue.main.async { self.currentAudioChannelCount = channels }
+                Task { @MainActor in self.currentAudioChannelCount = channels }
             }
         }
 
