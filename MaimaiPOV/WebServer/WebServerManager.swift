@@ -77,13 +77,17 @@ final class WebServerManager: @unchecked Sendable {
                 serverURL = "http://localhost:8080"
             }
 
-            DispatchQueue.main.async {
-                self.pipeline?.webServerURL = self.serverURL
-                self.pipeline?.debug.log("[LAN] HTTP服务器已启动: \(self.serverURL)")
+            let currentServerURL = serverURL
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.pipeline?.webServerURL = currentServerURL
+                self.pipeline?.debug.log("[LAN] HTTP服务器已启动: \(currentServerURL)")
             }
         } catch {
-            DispatchQueue.main.async {
-                self.pipeline?.debug.log("[LAN] HTTP服务器启动失败: \(error.localizedDescription)")
+            let errorMessage = error.localizedDescription
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.pipeline?.debug.log("[LAN] HTTP服务器启动失败: \(errorMessage)")
             }
         }
     }
@@ -94,7 +98,8 @@ final class WebServerManager: @unchecked Sendable {
         isRunning = false
         serverURL = ""
 
-        DispatchQueue.main.async {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
             self.pipeline?.webServerURL = ""
             self.pipeline?.debug.log("[LAN] HTTP服务器已停止")
         }
