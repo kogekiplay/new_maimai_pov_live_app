@@ -1,6 +1,6 @@
 import Foundation
 
-enum BlivechatCommand: Int, Codable {
+enum BlivechatCommand: Int, Codable, Sendable {
     case heartbeat = 0
     case joinRoom = 1
     case addText = 2
@@ -17,21 +17,21 @@ struct BlivechatEnvelope: Codable {
     let data: AnyCodable?
 }
 
-enum AuthorType: Int {
+enum AuthorType: Int, Sendable {
     case normal = 0
     case member = 1
     case moderator = 2
     case streamer = 3
 }
 
-enum PrivilegeType: Int {
+enum PrivilegeType: Int, Sendable {
     case none = 0
     case governor = 1
     case admiral = 2
     case captain = 3
 }
 
-struct DanmakuMessage {
+struct DanmakuMessage: Sendable {
     let avatarUrl: String
     let timestamp: Int
     let authorName: String
@@ -73,7 +73,7 @@ struct DanmakuMessage {
     }
 }
 
-struct GiftMessage {
+struct GiftMessage: Sendable {
     let id: String
     let avatarUrl: String
     let timestamp: Int
@@ -105,7 +105,7 @@ struct GiftMessage {
     }
 }
 
-struct MemberMessage {
+struct MemberMessage: Sendable {
     let id: String
     let avatarUrl: String
     let timestamp: Int
@@ -133,7 +133,7 @@ struct MemberMessage {
     }
 }
 
-struct SuperChatMessage {
+struct SuperChatMessage: Sendable {
     let id: String
     let avatarUrl: String
     let timestamp: Int
@@ -161,7 +161,7 @@ struct SuperChatMessage {
     }
 }
 
-struct BlivechatErrorMessage {
+struct BlivechatErrorMessage: Sendable {
     let code: Int
     let message: String
 

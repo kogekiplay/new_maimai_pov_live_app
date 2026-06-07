@@ -131,9 +131,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         let message = URLSessionWebSocketTask.Message.string(string)
         webSocketTask?.send(message) { [weak self] error in
             if let error = error {
-                DispatchQueue.main.async {
-                    self?.handleConnectionError(error)
-                }
+                self?.handleConnectionErrorFromCallback(error)
             }
         }
     }
@@ -142,16 +140,14 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         webSocketTask?.receive { [weak self] result in
             switch result {
             case .success(let message):
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self?.confirmConnected()
                 }
                 self?.handleMessage(message)
                 self?.receiveMessage()
 
             case .failure(let error):
-                DispatchQueue.main.async {
-                    self?.handleConnectionError(error)
-                }
+                self?.handleConnectionErrorFromCallback(error)
             }
         }
     }
@@ -186,7 +182,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .addText:
             if let array = payload as? [Any],
                let danmaku = DanmakuMessage(fromArray: array) {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.onDanmaku?(danmaku)
                 }
             }
@@ -194,7 +190,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .addGift:
             if let dict = payload as? [String: Any],
                let gift = GiftMessage(fromDict: dict) {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.onGift?(gift)
                 }
             }
@@ -202,7 +198,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .addMember:
             if let dict = payload as? [String: Any],
                let member = MemberMessage(fromDict: dict) {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.onMember?(member)
                 }
             }
@@ -210,7 +206,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .addSuperChat:
             if let dict = payload as? [String: Any],
                let sc = SuperChatMessage(fromDict: dict) {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.onSuperChat?(sc)
                 }
             }
@@ -224,7 +220,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .fatalError:
             if let dict = payload as? [String: Any],
                let error = BlivechatErrorMessage(fromDict: dict) {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.connectionState = .error(error.message)
                     self.onError?(error)
                     self.isIntentionalDisconnect = true
@@ -270,11 +266,17 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         return desc
     }
 
-    private func handleConnectionError(_ error: Error) {
+    private func handleConnectionErrorFromCallback(_ error: Error) {
+        let friendlyMessage = friendlyErrorMessage(error)
+        Task { @MainActor in
+            self.handleConnectionError(friendlyMessage: friendlyMessage)
+        }
+    }
+
+    private func handleConnectionError(friendlyMessage: String) {
         guard !isIntentionalDisconnect else { return }
 
-        let friendlyMsg = friendlyErrorMessage(error)
-        connectionState = .reconnecting(friendlyMsg)
+        connectionState = .reconnecting(friendlyMessage)
         scheduleReconnect()
     }
 

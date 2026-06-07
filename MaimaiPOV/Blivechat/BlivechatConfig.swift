@@ -1,6 +1,6 @@
 import Foundation
 
-enum BlivechatServer: String, CaseIterable, Identifiable {
+enum BlivechatServer: String, CaseIterable, Identifiable, Sendable {
     case cn = "api2.blive.chat"
     case auto = "api.blive.chat"
     case cloudflare = "cloudflare.blive.chat"
@@ -26,12 +26,12 @@ enum BlivechatServer: String, CaseIterable, Identifiable {
     }
 }
 
-enum RoomKeyType: Int, Codable {
+enum RoomKeyType: Int, Codable, Sendable {
     case roomId = 1
     case authCode = 2
 }
 
-enum ConnectionState: Equatable {
+enum ConnectionState: Equatable, Sendable {
     case disconnected
     case connecting
     case connected
