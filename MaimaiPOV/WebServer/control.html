@@ -244,12 +244,37 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 .perm-item{display:flex;justify-content:space-between;padding:4px 0;font-size:11px}
 .perm-name{color:var(--text)}
 .perm-chances{color:var(--success)}
+.camera-page{padding:8px 12px 80px}
+.preview-container{position:relative;width:100%;background:#000;border-radius:10px;overflow:hidden;margin-bottom:10px;aspect-ratio:16/9}
+.preview-container img{width:100%;height:100%;object-fit:contain}
+.preview-overlay{position:absolute;top:6px;right:6px;display:flex;gap:4px}
+.preview-btn{width:28px;height:28px;border:none;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.preview-btn:active{opacity:0.7}
+.preview-btn.active{background:rgba(255,107,157,0.6)}
+.cam-section{margin-bottom:12px}
+.cam-section-title{font-size:12px;color:var(--accent2);font-weight:600;margin-bottom:6px;padding-left:2px}
+.cam-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cam-label{font-size:12px;color:var(--text-dim);min-width:48px;flex-shrink:0}
+.cam-slider{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:rgba(192,132,252,0.2);outline:none}
+.cam-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,var(--accent1),var(--accent2));cursor:pointer}
+.cam-value{font-size:11px;color:var(--text);min-width:44px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0}
+.cam-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;margin-bottom:4px}
+.cam-toggle-label{font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px}
+.cam-segmented{display:flex;border:1px solid rgba(192,132,252,0.3);border-radius:8px;overflow:hidden;flex:1}
+.cam-seg-btn{flex:1;padding:6px 0;border:none;background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s}
+.cam-seg-btn.active{background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff}
+.cam-reset-btn{padding:6px 14px;border:1px solid rgba(192,132,252,0.3);border-radius:8px;background:transparent;color:var(--accent2);font-size:11px;font-weight:600;cursor:pointer}
+.cam-reset-btn:active{opacity:0.7}
+.audio-meter{display:flex;gap:4px;align-items:flex-end;height:20px;margin-left:8px}
+.audio-meter-bar{width:6px;border-radius:2px;background:rgba(192,132,252,0.2);position:relative;overflow:hidden}
+.audio-meter-fill{position:absolute;bottom:0;left:0;right:0;border-radius:2px;transition:height 0.1s}
 </style>
 </head>
 <body>
 <div id="app">
 <div class="tab-nav">
 <button class="tab-btn" :class="{active:tab==='live'}" @click="tab='live'">📡 直播</button>
+<button class="tab-btn" :class="{active:tab==='camera'}" @click="tab='camera'">📷 画面</button>
 <button class="tab-btn" :class="{active:tab==='queue'}" @click="tab='queue'">🎵 队列</button>
 <button class="tab-btn" :class="{active:tab==='debug'}" @click="tab='debug'">🔧 调试</button>
 </div>
@@ -373,6 +398,133 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 </label>
 </div>
 <button class="btn-skip" @click="skipSong">⏭ 切歌</button>
+</div>
+</div>
+
+<div v-if="tab==='camera'" class="camera-page">
+<div class="preview-container">
+<img v-if="previewActive" :src="'/api/preview/mjpeg?' + previewKey" alt="Preview">
+<div v-else style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:13px">点击右上角 ▶ 开启预览</div>
+<div class="preview-overlay">
+<button class="preview-btn" :class="{active:previewActive}" @click="togglePreview">{{previewActive?'⏸':'▶'}}</button>
+</div>
+</div>
+
+<div class="cam-section">
+<div class="cam-section-title">📷 曝光</div>
+<div class="cam-row">
+<span class="cam-label">ISO</span>
+<input type="range" class="cam-slider" v-model.number="camSettings.iso" :min="camSettings.minISO" :max="camSettings.maxISO" step="1" @input="debounceCamUpdate">
+<span class="cam-value">{{Math.round(camSettings.iso)}}</span>
+</div>
+<div class="cam-row">
+<span class="cam-label">快门</span>
+<input type="range" class="cam-slider" v-model.number="camSettings.shutterTimescale" min="30" max="1000" step="1" @input="debounceCamUpdate">
+<span class="cam-value">1/{{Math.round(camSettings.shutterTimescale)}}</span>
+</div>
+</div>
+
+<div class="cam-section">
+<div class="cam-section-title">🎯 对焦</div>
+<div class="cam-toggle-row">
+<span class="cam-toggle-label">自动对焦</span>
+<label class="toggle-switch">
+<input type="checkbox" v-model="camSettings.autoFocusEnabled" @change="updateCameraSettings">
+<span class="toggle-slider"></span>
+</label>
+</div>
+<div class="cam-row" v-if="!camSettings.autoFocusEnabled">
+<span class="cam-label">位置</span>
+<input type="range" class="cam-slider" v-model.number="camSettings.focusValue" min="0" max="1" step="0.01" @input="debounceCamUpdate">
+<span class="cam-value">{{camSettings.focusValue.toFixed(2)}}</span>
+</div>
+</div>
+
+<div class="cam-section">
+<div class="cam-section-title">🔭 镜头 & 白平衡</div>
+<div class="cam-row">
+<span class="cam-label">镜头</span>
+<div class="cam-segmented">
+<button class="cam-seg-btn" :class="{active:camSettings.selectedLens==='Main'}" @click="camSettings.selectedLens='Main';updateCameraSettings()">Main</button>
+<button class="cam-seg-btn" :class="{active:camSettings.selectedLens==='Ultra-Wide'}" @click="camSettings.selectedLens='Ultra-Wide';updateCameraSettings()">UW</button>
+</div>
+</div>
+<div class="cam-toggle-row">
+<span class="cam-toggle-label">白平衡锁定</span>
+<label class="toggle-switch">
+<input type="checkbox" v-model="camSettings.awbLocked" @change="updateCameraSettings">
+<span class="toggle-slider"></span>
+</label>
+</div>
+</div>
+
+<div class="cam-section">
+<div class="cam-section-title">🧭 视角</div>
+<div class="cam-toggle-row">
+<span class="cam-toggle-label">防抖</span>
+<label class="toggle-switch">
+<input type="checkbox" v-model="stabSettings.stabEnabled" @change="updateStabilizerSettings">
+<span class="toggle-slider"></span>
+</label>
+</div>
+<div class="cam-row">
+<span class="cam-label">Yaw</span>
+<input type="range" class="cam-slider" v-model.number="stabSettings.yaw" min="-90" max="90" step="0.5" @input="debounceStabUpdate">
+<span class="cam-value">{{stabSettings.yaw.toFixed(1)}}°</span>
+</div>
+<div class="cam-row">
+<span class="cam-label">Pitch</span>
+<input type="range" class="cam-slider" v-model.number="stabSettings.pitch" min="-90" max="90" step="0.5" @input="debounceStabUpdate">
+<span class="cam-value">{{stabSettings.pitch.toFixed(1)}}°</span>
+</div>
+<div class="cam-row">
+<span class="cam-label">Roll</span>
+<input type="range" class="cam-slider" v-model.number="stabSettings.roll" min="-45" max="45" step="0.5" @input="debounceStabUpdate">
+<span class="cam-value">{{stabSettings.roll.toFixed(1)}}°</span>
+</div>
+<div style="text-align:center;margin:4px 0 8px">
+<button class="cam-reset-btn" @click="resetViewAngle">↺ 重置视角</button>
+</div>
+<div class="cam-row">
+<span class="cam-label">FOV</span>
+<input type="range" class="cam-slider" v-model.number="stabSettings.fov" min="30" max="160" step="1" @input="debounceStabUpdate">
+<span class="cam-value">{{Math.round(stabSettings.fov)}}°</span>
+</div>
+<div class="cam-row">
+<span class="cam-label">畸变</span>
+<input type="range" class="cam-slider" v-model.number="stabSettings.distRatio" min="0" max="1" step="0.01" @input="debounceStabUpdate">
+<span class="cam-value">{{stabSettings.distRatio.toFixed(2)}}</span>
+</div>
+</div>
+
+<div class="cam-section">
+<div class="cam-section-title">🏃 活动模式</div>
+<div class="cam-toggle-row">
+<span class="cam-toggle-label">活动模式</span>
+<label class="toggle-switch">
+<input type="checkbox" v-model="stabSettings.activityMode" @change="updateStabilizerSettings">
+<span class="toggle-slider"></span>
+</label>
+</div>
+<div class="cam-row" v-if="stabSettings.activityMode">
+<span class="cam-label">跟随</span>
+<input type="range" class="cam-slider" v-model.number="stabSettings.activitySmoothFactor" min="0.01" max="0.2" step="0.01" @input="debounceStabUpdate">
+<span class="cam-value">{{stabSettings.activitySmoothFactor.toFixed(2)}}</span>
+</div>
+</div>
+
+<div class="cam-section" v-if="audioSettings.isStereoMixEnabled">
+<div class="cam-section-title">🎤 立体声增益</div>
+<div class="cam-row">
+<span class="cam-label">机台</span>
+<input type="range" class="cam-slider" v-model.number="audioSettings.leftGain" min="0" max="2" step="0.05" @input="debounceAudioUpdate">
+<span class="cam-value">{{Math.round(audioSettings.leftGain*100)}}%</span>
+</div>
+<div class="cam-row">
+<span class="cam-label">领夹</span>
+<input type="range" class="cam-slider" v-model.number="audioSettings.rightGain" min="0" max="2" step="0.05" @input="debounceAudioUpdate">
+<span class="cam-value">{{Math.round(audioSettings.rightGain*100)}}%</span>
+</div>
 </div>
 </div>
 
@@ -647,7 +799,15 @@ stressStartTime:0,
 sse:null,
 sseLastId:0,
 sseReconnectAttempts:0,
-sseConnected:false
+sseConnected:false,
+previewActive:false,
+previewKey:Date.now(),
+camSettings:{iso:2000,minISO:50,maxISO:3200,shutterTimescale:244,focusValue:0.5,autoFocusEnabled:false,selectedLens:'Main',awbLocked:false},
+stabSettings:{stabEnabled:true,yaw:0,pitch:0,roll:0,fov:100,distRatio:0,activityMode:false,activitySmoothFactor:0.03},
+audioSettings:{leftGain:1,rightGain:1,isStereoMixEnabled:false},
+camDebounceTimer:null,
+stabDebounceTimer:null,
+audioDebounceTimer:null
 }},
 computed:{
 currentSong:function(){
@@ -1084,6 +1244,76 @@ updateStressStatus:function(){
 if(!this.stressRunning)return
 var elapsed=((Date.now()-this.stressStartTime)/1000).toFixed(0)
 this.stressStatus='⏱ '+elapsed+'s | 💬'+this.stressStats.danmaku+' 🎁'+this.stressStats.gift+' 💰'+this.stressStats.sc+' ⏭'+this.stressStats.skip+' ❌'+this.stressStats.errors
+},
+togglePreview:function(){
+  this.previewActive=!this.previewActive
+  if(this.previewActive){this.previewKey=Date.now()}
+},
+fetchCameraSettings:function(){
+  this.apiGet('/api/camera/settings',function(d){
+    this.camSettings=d
+  }.bind(this))
+},
+fetchStabilizerSettings:function(){
+  this.apiGet('/api/stabilizer/settings',function(d){
+    this.stabSettings=d
+  }.bind(this))
+},
+fetchAudioSettings:function(){
+  this.apiGet('/api/audio/gain',function(d){
+    this.audioSettings=d
+  }.bind(this))
+},
+updateCameraSettings:function(){
+  this.apiPost('/api/camera/settings',this.camSettings,function(d){
+    if(d.iso!==undefined)this.camSettings.iso=d.iso
+    if(d.minISO!==undefined)this.camSettings.minISO=d.minISO
+    if(d.maxISO!==undefined)this.camSettings.maxISO=d.maxISO
+    if(d.shutterTimescale!==undefined)this.camSettings.shutterTimescale=d.shutterTimescale
+    if(d.focusValue!==undefined)this.camSettings.focusValue=d.focusValue
+    if(d.autoFocusEnabled!==undefined)this.camSettings.autoFocusEnabled=d.autoFocusEnabled
+    if(d.selectedLens!==undefined)this.camSettings.selectedLens=d.selectedLens
+    if(d.awbLocked!==undefined)this.camSettings.awbLocked=d.awbLocked
+  }.bind(this))
+},
+updateStabilizerSettings:function(){
+  this.apiPost('/api/stabilizer/settings',this.stabSettings,function(d){
+    if(d.stabEnabled!==undefined)this.stabSettings.stabEnabled=d.stabEnabled
+    if(d.yaw!==undefined)this.stabSettings.yaw=d.yaw
+    if(d.pitch!==undefined)this.stabSettings.pitch=d.pitch
+    if(d.roll!==undefined)this.stabSettings.roll=d.roll
+    if(d.fov!==undefined)this.stabSettings.fov=d.fov
+    if(d.distRatio!==undefined)this.stabSettings.distRatio=d.distRatio
+    if(d.activityMode!==undefined)this.stabSettings.activityMode=d.activityMode
+    if(d.activitySmoothFactor!==undefined)this.stabSettings.activitySmoothFactor=d.activitySmoothFactor
+  }.bind(this))
+},
+updateAudioSettings:function(){
+  this.apiPost('/api/audio/gain',{leftGain:this.audioSettings.leftGain,rightGain:this.audioSettings.rightGain},function(d){
+    if(d.leftGain!==undefined)this.audioSettings.leftGain=d.leftGain
+    if(d.rightGain!==undefined)this.audioSettings.rightGain=d.rightGain
+  }.bind(this))
+},
+debounceCamUpdate:function(){
+  var self=this
+  if(this.camDebounceTimer)clearTimeout(this.camDebounceTimer)
+  this.camDebounceTimer=setTimeout(function(){self.updateCameraSettings()},100)
+},
+debounceStabUpdate:function(){
+  var self=this
+  if(this.stabDebounceTimer)clearTimeout(this.stabDebounceTimer)
+  this.stabDebounceTimer=setTimeout(function(){self.updateStabilizerSettings()},100)
+},
+debounceAudioUpdate:function(){
+  var self=this
+  if(this.audioDebounceTimer)clearTimeout(this.audioDebounceTimer)
+  this.audioDebounceTimer=setTimeout(function(){self.updateAudioSettings()},100)
+},
+resetViewAngle:function(){
+  this.stabSettings.yaw=0
+  this.stabSettings.pitch=0
+  this.stabSettings.roll=0
+  this.updateStabilizerSettings()
 }
 },
 mounted:function(){
@@ -1092,10 +1322,14 @@ this.fetchStatus()
 this.fetchActivityMode()
 this.fetchSongRequestConfig()
 this.fetchAnnouncement()
+this.fetchCameraSettings()
+this.fetchStabilizerSettings()
+this.fetchAudioSettings()
 this.connectSSE()
 var self=this
 setInterval(function(){self.fetchQueue()},1500)
 setInterval(function(){self.fetchStatus()},2000)
+setInterval(function(){if(self.tab==='camera')self.fetchAudioSettings()},2000)
 },
 beforeUnmount:function(){
 if(this.sse)this.sse.close()
