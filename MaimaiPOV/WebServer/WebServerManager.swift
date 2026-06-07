@@ -211,12 +211,17 @@ final class WebServerManager: @unchecked Sendable {
             guard let self = self else { return .internalServerError }
             switch request.method {
             case "GET":
-                let activityMode = self.pipeline?.activityMode ?? false
-                let smoothFactor = self.pipeline?.activitySmoothFactor ?? Config.activitySmoothFactor
-                let data = try? JSONSerialization.data(withJSONObject: [
-                    "activityMode": activityMode,
-                    "smoothFactor": Double(smoothFactor)
-                ])
+                let sem = DispatchSemaphore(value: 0)
+                let result = LockedValue<[String: Any]>([:])
+                Task { @MainActor in
+                    result.set([
+                        "activityMode": self.pipeline?.activityMode ?? false,
+                        "smoothFactor": Double(self.pipeline?.activitySmoothFactor ?? Config.activitySmoothFactor)
+                    ])
+                    sem.signal()
+                }
+                sem.wait()
+                let data = try? JSONSerialization.data(withJSONObject: result.get())
                 guard let jsonData = data else { return .internalServerError }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
                     try writer.write(jsonData)
