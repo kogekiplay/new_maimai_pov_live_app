@@ -1568,7 +1568,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
         if !compositor.hasTitleTexture {
             let manager = WeakLivePipelineManager(self)
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 renderer.renderTitle { texture in
                     manager.value?.rightPanelCompositor?.updateTitleTexture(texture)
                 }
@@ -1625,7 +1625,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     private func ensureTitleTexture() {
         guard let compositor = rightPanelCompositor, !compositor.hasTitleTexture, let renderer = rightPanelRenderer else { return }
         let manager = WeakLivePipelineManager(self)
-        DispatchQueue.main.async {
+        Task { @MainActor in
             renderer.renderTitle { texture in
                 manager.value?.rightPanelCompositor?.updateTitleTexture(texture)
             }
