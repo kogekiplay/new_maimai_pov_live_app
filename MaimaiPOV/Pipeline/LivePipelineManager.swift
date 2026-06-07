@@ -1130,10 +1130,9 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         MotionManager.shared.stopUpdates()
         stopFPSTimer()
         songCardManager.stopExpirationTimer()
-        let manager = WeakLivePipelineManager(self)
-        DispatchQueue.main.async {
-            manager.value?.deviceStatusManager?.stopMonitoring()
-            manager.value?.debug.stopFlushTimer()
+        Task { @MainActor [weak self] in
+            self?.deviceStatusManager?.stopMonitoring()
+            self?.debug.stopFlushTimer()
         }
     }
 
