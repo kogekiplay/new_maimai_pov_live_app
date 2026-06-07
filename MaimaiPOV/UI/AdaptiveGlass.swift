@@ -24,6 +24,28 @@ extension View {
     }
 
     @ViewBuilder
+    func adaptiveGlassPanelBackground(
+        cornerRadius: CGFloat = 12,
+        tint: Color = .clear
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            self.background {
+                Color.clear
+                    .glassEffect(.regular.tint(tint), in: .rect(cornerRadius: cornerRadius))
+                    .allowsHitTesting(false)
+            }
+        } else {
+            self
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 0.5)
+                        .allowsHitTesting(false)
+                }
+        }
+    }
+
+    @ViewBuilder
     func adaptiveGlassButton(prominent: Bool = false) -> some View {
         if #available(iOS 26.0, *) {
             if prominent {

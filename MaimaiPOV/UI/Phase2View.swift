@@ -336,7 +336,8 @@ struct Phase2View: View {
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .accessibilityLabel(tab.title)
+            .accessibilityIdentifier("control-panel-toggle")
+            .accessibilityLabel(panelExpanded ? tab.title : L10n.streamStatus(pipeline.streamManager.streamStatus))
             .accessibilityHint(L10n.string(panelExpanded ? "Collapse control panel" : "Expand control panel"))
 
             if panelExpanded {
@@ -353,7 +354,7 @@ struct Phase2View: View {
         }
         .padding(.horizontal, 6)
         .padding(.top, 6)
-        .adaptiveGlassPanel(cornerRadius: 14, tint: Color.black.opacity(0.18))
+        .adaptiveGlassPanelBackground(cornerRadius: 14, tint: Color.black.opacity(0.18))
     }
 
     // MARK: - Camera Tab

@@ -36,7 +36,7 @@ struct DebugOverlayView: View {
         .font(.system(size: 10, design: .monospaced))
         .foregroundColor(.white)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .adaptiveGlassPanel(cornerRadius: 10, tint: Color.black.opacity(isCollapsed ? 0.28 : 0.42))
+        .adaptiveGlassPanelBackground(cornerRadius: 10, tint: Color.black.opacity(isCollapsed ? 0.28 : 0.42))
     }
 
     // MARK: - Header Bar
@@ -83,6 +83,7 @@ struct DebugOverlayView: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
         .contentShape(Rectangle())
+        .accessibilityIdentifier("debug-toggle")
         .accessibilityLabel("Debug")
         .accessibilityHint(L10n.string(isCollapsed ? "Expand debug details" : "Collapse debug details"))
     }
