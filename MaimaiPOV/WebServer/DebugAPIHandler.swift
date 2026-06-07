@@ -15,7 +15,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
@@ -84,7 +84,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
@@ -135,7 +135,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
@@ -197,7 +197,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
@@ -249,7 +249,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[[String: Any]]>([])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 sem.signal()
                 return
@@ -285,7 +285,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
@@ -317,7 +317,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
@@ -346,7 +346,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()
@@ -369,7 +369,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let pipeline = self?.pipeline else {
                 result.set(["success": false, "error": "Pipeline not available"])
                 sem.signal()

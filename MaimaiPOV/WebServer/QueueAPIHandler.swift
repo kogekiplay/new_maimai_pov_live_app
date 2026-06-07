@@ -56,7 +56,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let response = LockedValue<[String: Any]>([:])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             response.set(self?.buildQueueResponse() ?? [:])
             sem.signal()
         }
@@ -68,7 +68,7 @@ final class QueueAPIHandler: @unchecked Sendable {
     func skip() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.pipeline?.triggerSongCardSwitch()
             sem.signal()
         }
@@ -80,7 +80,7 @@ final class QueueAPIHandler: @unchecked Sendable {
     func clear() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.pipeline?.clearSongQueue()
             sem.signal()
         }
@@ -100,7 +100,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let success = LockedValue(false)
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
                 sem.signal()
                 return
@@ -146,7 +146,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         let success = LockedValue(false)
         let errorMsg = LockedValue<String?>(nil)
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
                 errorMsg.set("Pipeline not available")
                 sem.signal()
@@ -228,7 +228,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         let success = LockedValue(false)
         let errorMsg = LockedValue<String?>(nil)
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
                 errorMsg.set("Pipeline not available")
                 sem.signal()
@@ -303,7 +303,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let success = LockedValue(false)
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
                 sem.signal()
                 return
@@ -341,7 +341,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>([:])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
                 sem.signal()
                 return

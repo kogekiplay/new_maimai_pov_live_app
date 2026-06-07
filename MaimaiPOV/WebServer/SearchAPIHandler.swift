@@ -19,7 +19,7 @@ final class SearchAPIHandler: @unchecked Sendable {
         let sem = DispatchSemaphore(value: 0)
         let response = LockedValue<[String: Any]>([:])
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
                 sem.signal()
                 return
