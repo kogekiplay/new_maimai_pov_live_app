@@ -40,6 +40,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     }
     private var savedYoloEnabled: Bool = true
     @Published var activitySmoothFactor: Float = Config.activitySmoothFactor
+    @Published var yawFilterEnabled: Bool = Config.yawFilterEnabled
     @Published var lagMs: Double = 0
 
     @Published var yoloEnabled: Bool = Config.yoloEnabled
@@ -769,6 +770,9 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
         stab?.useRollingShutter = readoutTimeMs > 0
         self.stabilizer = stab
 
+        // 初始化 Yaw 滤波器
+        MotionManager.shared.yawFilter.enabled = yawFilterEnabled
+
         debug.fov = fov
         debug.distRatio = distRatio
         debug.stabEnabled = stabEnabled
@@ -877,10 +881,10 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                       let qTop    = MotionManager.shared.getQuaternion(at: topTime),
                       let qBottom = MotionManager.shared.getQuaternion(at: bottomTime) else { return }
 
-                // 磁力计 & Yaw 诊断数据
+                // 磁力计 & Yaw 诊断数据（从 MotionManager 获取）
                 let magAccuracy = MotionManager.shared.latestMagneticAccuracy
-                let alignedQC = MetalStabilizer.alignIMU(qCenter)
-                let rawYaw = MotionManager.extractYaw(from: alignedQC) * 180.0 / .pi
+                let rawYaw = MotionManager.shared.latestRawYawDeg
+                let filteredYaw = MotionManager.shared.latestFilteredYawDeg
 
                 var detectionResult: YOLODetector.DetectionResult?
 
@@ -1012,6 +1016,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
                     snapshot.trackAspectRatio = track.aspectRatio
                     snapshot.magneticAccuracy = magAccuracy
                     snapshot.rawYawDeg = rawYaw
+                    snapshot.filteredYawDeg = filteredYaw
                     self.debug.stageFrameData(snapshot)
                 }
 
@@ -1179,6 +1184,11 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
     func updateActivitySmoothFactor() {
         Config.activitySmoothFactor = activitySmoothFactor
         stabilizer?.activitySmoothFactor = activitySmoothFactor
+    }
+
+    func updateYawFilterEnabled() {
+        Config.yawFilterEnabled = yawFilterEnabled
+        MotionManager.shared.yawFilter.enabled = yawFilterEnabled
     }
 
     @MainActor func updateFov() {

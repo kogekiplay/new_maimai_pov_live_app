@@ -203,9 +203,11 @@ class WebServerManager {
             case "GET":
                 let activityMode = self.pipeline?.activityMode ?? false
                 let smoothFactor = self.pipeline?.activitySmoothFactor ?? Config.activitySmoothFactor
+                let yawFilter = self.pipeline?.yawFilterEnabled ?? Config.yawFilterEnabled
                 let data = try? JSONSerialization.data(withJSONObject: [
                     "activityMode": activityMode,
-                    "smoothFactor": Double(smoothFactor)
+                    "smoothFactor": Double(smoothFactor),
+                    "yawFilterEnabled": yawFilter
                 ])
                 guard let jsonData = data else { return .internalServerError }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -224,13 +226,19 @@ class WebServerManager {
                         self.pipeline?.activitySmoothFactor = Float(sf)
                         self.pipeline?.updateActivitySmoothFactor()
                     }
+                    if let yf = bodyData["yawFilterEnabled"] as? Bool {
+                        self.pipeline?.yawFilterEnabled = yf
+                        self.pipeline?.updateYawFilterEnabled()
+                    }
                 }
                 let activityMode = self.pipeline?.activityMode ?? false
                 let smoothFactor = self.pipeline?.activitySmoothFactor ?? Config.activitySmoothFactor
+                let yawFilter = self.pipeline?.yawFilterEnabled ?? Config.yawFilterEnabled
                 let data = try? JSONSerialization.data(withJSONObject: [
                     "success": true,
                     "activityMode": activityMode,
-                    "smoothFactor": Double(smoothFactor)
+                    "smoothFactor": Double(smoothFactor),
+                    "yawFilterEnabled": yawFilter
                 ])
                 guard let jsonData = data else { return .internalServerError }
                 return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
@@ -447,7 +455,8 @@ class WebServerManager {
                         "fov": Double(pipeline.fov),
                         "distRatio": Double(pipeline.distRatio),
                         "activityMode": pipeline.activityMode,
-                        "activitySmoothFactor": Double(pipeline.activitySmoothFactor)
+                        "activitySmoothFactor": Double(pipeline.activitySmoothFactor),
+                        "yawFilterEnabled": pipeline.yawFilterEnabled
                     ]
                     sem.signal()
                 }
@@ -498,6 +507,10 @@ class WebServerManager {
                         pipeline.activitySmoothFactor = Float(sf)
                         pipeline.updateActivitySmoothFactor()
                     }
+                    if let yf = bodyData["yawFilterEnabled"] as? Bool {
+                        pipeline.yawFilterEnabled = yf
+                        pipeline.updateYawFilterEnabled()
+                    }
                     result = [
                         "success": true,
                         "stabEnabled": pipeline.stabEnabled,
@@ -507,7 +520,8 @@ class WebServerManager {
                         "fov": Double(pipeline.fov),
                         "distRatio": Double(pipeline.distRatio),
                         "activityMode": pipeline.activityMode,
-                        "activitySmoothFactor": Double(pipeline.activitySmoothFactor)
+                        "activitySmoothFactor": Double(pipeline.activitySmoothFactor),
+                        "yawFilterEnabled": pipeline.yawFilterEnabled
                     ]
                     sem.signal()
                 }
