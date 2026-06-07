@@ -174,7 +174,9 @@ class DebugInfoManager: ObservableObject {
 
     func startFlushTimer(interval: TimeInterval = 0.5) {
         flushTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            self?.flushStagingToPublished()
+            Task { @MainActor [weak self] in
+                self?.flushStagingToPublished()
+            }
         }
     }
 

@@ -96,66 +96,12 @@ struct Phase2View: View {
                 Text("检测到\(pipeline.snapshotAgeString)有点歌队列数据，是否恢复？")
             }
         }
-        .onChange(of: pipeline.selectedLens) { pipeline.handleLensChange($0) }
-        .onChange(of: pipeline.focusValue) { _ in pipeline.applyExposure() }
-        .onChange(of: pipeline.autoFocusEnabled) { _ in
-            Config.autoFocusEnabled = pipeline.autoFocusEnabled
-            pipeline.camera.setAutoFocus(pipeline.autoFocusEnabled)
-        }
-        .onChange(of: pipeline.shutterTimescale) { _ in pipeline.applyExposure() }
-        .onChange(of: pipeline.isoValue) { _ in pipeline.applyExposure() }
-        .onChange(of: pipeline.syncOffsetMs) { Config.syncOffsetMs = $0 }
-        .onChange(of: pipeline.readoutTimeMs) {
-            Config.readoutTimeMs = $0
-            pipeline.updateReadoutTime()
-        }
-        .onChange(of: pipeline.stabEnabled) { _ in pipeline.updateStabilizerEnabled() }
-        .onChange(of: pipeline.activityMode) { _ in pipeline.updateActivityMode() }
-        .onChange(of: pipeline.activitySmoothFactor) { _ in pipeline.updateActivitySmoothFactor() }
-        .onChange(of: pipeline.fov) { _ in pipeline.updateFov() }
-        .onChange(of: pipeline.distRatio) { _ in pipeline.updateDistRatio() }
-        .onChange(of: pipeline.yaw) { _ in pipeline.updateYaw() }
-        .onChange(of: pipeline.pitch) { _ in pipeline.updatePitch() }
-        .onChange(of: pipeline.roll) { _ in pipeline.updateRoll() }
-        .onChange(of: pipeline.yoloPadding) { _ in pipeline.updateYoloPadding() }
-        .onChange(of: pipeline.yoloEnabled) { newValue in
-            Config.yoloEnabled = newValue
-        }
-        .onChange(of: pipeline.previewEnabled) { newValue in
-            Config.previewEnabled = newValue
-        }
-        .onChange(of: pipeline.trackTargetRatio) { _ in pipeline.updateTrackTargetRatio() }
-        .onChange(of: pipeline.trackRecenterSpeed) { _ in pipeline.updateTrackRecenterSpeed() }
-        .onChange(of: pipeline.recenterGraceMs) { _ in pipeline.updateRecenterGraceMs() }
-        .onChange(of: pipeline.acquireSpeed) { _ in pipeline.updateAcquireSpeed() }
-        .onChange(of: pipeline.smoothingEnabled) { _ in pipeline.updateSmoothingEnabled() }
-        .onChange(of: pipeline.smoothingBaseAlpha) { _ in pipeline.updateSmoothingBaseAlpha() }
-        .onChange(of: pipeline.smoothingMinDeviation) { _ in pipeline.updateSmoothingMinDeviation() }
-        .onChange(of: pipeline.smoothingMaxDeviation) { _ in pipeline.updateSmoothingMaxDeviation() }
-        .onChange(of: pipeline.smoothingCenterFloor) { _ in pipeline.updateSmoothingCenterFloor() }
-        .onChange(of: pipeline.overlayEnabled) { _ in pipeline.updateOverlayEnabled() }
-        .onChange(of: pipeline.overlayPosX) { _ in pipeline.updateOverlayPosition() }
-        .onChange(of: pipeline.overlayPosY) { _ in pipeline.updateOverlayPosition() }
-        .onChange(of: pipeline.overlayScale) { _ in pipeline.updateOverlayScale() }
-        .onChange(of: pipeline.overlayOpacity) { _ in pipeline.updateOverlayOpacity() }
-        .onChange(of: pipeline.overlayRotation) { _ in pipeline.updateOverlayRotation() }
-        .onChange(of: pipeline.streamManager.isStreaming) { streaming in
-            if streaming {
-                pipeline.debug.isDetailVisible = false
-            }
-        }
-        .onChange(of: panelExpanded) { expanded in
-            if expanded {
-                antiTouchTimer?.invalidate()
-                antiTouchTimer = nil
-                isAntiTouchMode = false
-            } else {
-                antiTouchTimer?.invalidate()
-                antiTouchTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
-                    isAntiTouchMode = true
-                }
-            }
-        }
+        .phase2ChangeHandlers(
+            pipeline: pipeline,
+            panelExpanded: $panelExpanded,
+            isAntiTouchMode: $isAntiTouchMode,
+            antiTouchTimer: $antiTouchTimer
+        )
         .onDisappear {
             antiTouchTimer?.invalidate()
             antiTouchTimer = nil
@@ -652,7 +598,7 @@ struct Phase2View: View {
         } valueLabel: {
             Text("\(Int(pipeline.isoValue))").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
-        .onChange(of: pipeline.camera.isRunning) { running in
+        .onChange(of: pipeline.camera.isRunning) { _, running in
             if running { pipeline.updateISORange() }
         }
     }
@@ -761,7 +707,7 @@ struct Phase2View: View {
             Text("YOLOOverlay").font(.caption).frame(width: 80, alignment: .leading)
             Toggle("", isOn: $pipeline.yoloOverlayEnabled)
                 .labelsHidden()
-                .onChange(of: pipeline.yoloOverlayEnabled) { _ in
+                .onChange(of: pipeline.yoloOverlayEnabled) { _, _ in
                     pipeline.updateYoloOverlayEnabled()
                 }
             Spacer()
@@ -784,7 +730,7 @@ struct Phase2View: View {
                     .foregroundColor(pipeline.overlayEnabled ? .cyan : .gray)
             }
             .disabled(!pipeline.overlayEnabled)
-            .onChange(of: selectedPhotoItem) { newItem in
+            .onChange(of: selectedPhotoItem) { _, newItem in
                 guard let newItem = newItem else { return }
                 Task {
                     if let data = try? await newItem.loadTransferable(type: Data.self),
@@ -891,7 +837,7 @@ struct Phase2View: View {
         } valueLabel: {
             Text("\(Int(pipeline.cropHorizontalOffset))px").font(.caption).foregroundColor(.gray).frame(width: 50, alignment: .trailing)
         }
-        .onChange(of: pipeline.cropHorizontalOffset) { _ in
+        .onChange(of: pipeline.cropHorizontalOffset) { _, _ in
             pipeline.updateCropHorizontalOffset()
         }
     }
@@ -1150,6 +1096,201 @@ struct Phase2View: View {
     }
 }
 
+// MARK: - Top-level change handlers
+
+private extension View {
+    func phase2ChangeHandlers(
+        pipeline: LivePipelineManager,
+        panelExpanded: Binding<Bool>,
+        isAntiTouchMode: Binding<Bool>,
+        antiTouchTimer: Binding<Timer?>
+    ) -> some View {
+        self
+            .modifier(CameraChangeHandlers(pipeline: pipeline))
+            .modifier(StabilizerChangeHandlers(pipeline: pipeline))
+            .modifier(YoloPreviewChangeHandlers(pipeline: pipeline))
+            .modifier(TrackingChangeHandlers(pipeline: pipeline))
+            .modifier(OverlayChangeHandlers(pipeline: pipeline))
+            .modifier(SessionChangeHandlers(
+                pipeline: pipeline,
+                panelExpanded: panelExpanded,
+                isAntiTouchMode: isAntiTouchMode,
+                antiTouchTimer: antiTouchTimer
+            ))
+    }
+}
+
+private struct CameraChangeHandlers: ViewModifier {
+    @ObservedObject var pipeline: LivePipelineManager
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: pipeline.selectedLens) { _, newValue in
+                pipeline.handleLensChange(newValue)
+            }
+            .onChange(of: pipeline.focusValue) { _, _ in
+                pipeline.applyExposure()
+            }
+            .onChange(of: pipeline.autoFocusEnabled) { _, _ in
+                Config.autoFocusEnabled = pipeline.autoFocusEnabled
+                pipeline.camera.setAutoFocus(pipeline.autoFocusEnabled)
+            }
+            .onChange(of: pipeline.shutterTimescale) { _, _ in
+                pipeline.applyExposure()
+            }
+            .onChange(of: pipeline.isoValue) { _, _ in
+                pipeline.applyExposure()
+            }
+            .onChange(of: pipeline.syncOffsetMs) { _, newValue in
+                Config.syncOffsetMs = newValue
+            }
+            .onChange(of: pipeline.readoutTimeMs) { _, newValue in
+                Config.readoutTimeMs = newValue
+                pipeline.updateReadoutTime()
+            }
+    }
+}
+
+private struct StabilizerChangeHandlers: ViewModifier {
+    @ObservedObject var pipeline: LivePipelineManager
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: pipeline.stabEnabled) { _, _ in
+                pipeline.updateStabilizerEnabled()
+            }
+            .onChange(of: pipeline.activityMode) { _, _ in
+                pipeline.updateActivityMode()
+            }
+            .onChange(of: pipeline.activitySmoothFactor) { _, _ in
+                pipeline.updateActivitySmoothFactor()
+            }
+            .onChange(of: pipeline.fov) { _, _ in
+                pipeline.updateFov()
+            }
+            .onChange(of: pipeline.distRatio) { _, _ in
+                pipeline.updateDistRatio()
+            }
+            .onChange(of: pipeline.yaw) { _, _ in
+                pipeline.updateYaw()
+            }
+            .onChange(of: pipeline.pitch) { _, _ in
+                pipeline.updatePitch()
+            }
+            .onChange(of: pipeline.roll) { _, _ in
+                pipeline.updateRoll()
+            }
+    }
+}
+
+private struct YoloPreviewChangeHandlers: ViewModifier {
+    @ObservedObject var pipeline: LivePipelineManager
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: pipeline.yoloPadding) { _, _ in
+                pipeline.updateYoloPadding()
+            }
+            .onChange(of: pipeline.yoloEnabled) { _, newValue in
+                Config.yoloEnabled = newValue
+            }
+            .onChange(of: pipeline.previewEnabled) { _, newValue in
+                Config.previewEnabled = newValue
+            }
+    }
+}
+
+private struct TrackingChangeHandlers: ViewModifier {
+    @ObservedObject var pipeline: LivePipelineManager
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: pipeline.trackTargetRatio) { _, _ in
+                pipeline.updateTrackTargetRatio()
+            }
+            .onChange(of: pipeline.trackRecenterSpeed) { _, _ in
+                pipeline.updateTrackRecenterSpeed()
+            }
+            .onChange(of: pipeline.recenterGraceMs) { _, _ in
+                pipeline.updateRecenterGraceMs()
+            }
+            .onChange(of: pipeline.acquireSpeed) { _, _ in
+                pipeline.updateAcquireSpeed()
+            }
+            .onChange(of: pipeline.smoothingEnabled) { _, _ in
+                pipeline.updateSmoothingEnabled()
+            }
+            .onChange(of: pipeline.smoothingBaseAlpha) { _, _ in
+                pipeline.updateSmoothingBaseAlpha()
+            }
+            .onChange(of: pipeline.smoothingMinDeviation) { _, _ in
+                pipeline.updateSmoothingMinDeviation()
+            }
+            .onChange(of: pipeline.smoothingMaxDeviation) { _, _ in
+                pipeline.updateSmoothingMaxDeviation()
+            }
+            .onChange(of: pipeline.smoothingCenterFloor) { _, _ in
+                pipeline.updateSmoothingCenterFloor()
+            }
+    }
+}
+
+private struct OverlayChangeHandlers: ViewModifier {
+    @ObservedObject var pipeline: LivePipelineManager
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: pipeline.overlayEnabled) { _, _ in
+                pipeline.updateOverlayEnabled()
+            }
+            .onChange(of: pipeline.overlayPosX) { _, _ in
+                pipeline.updateOverlayPosition()
+            }
+            .onChange(of: pipeline.overlayPosY) { _, _ in
+                pipeline.updateOverlayPosition()
+            }
+            .onChange(of: pipeline.overlayScale) { _, _ in
+                pipeline.updateOverlayScale()
+            }
+            .onChange(of: pipeline.overlayOpacity) { _, _ in
+                pipeline.updateOverlayOpacity()
+            }
+            .onChange(of: pipeline.overlayRotation) { _, _ in
+                pipeline.updateOverlayRotation()
+            }
+    }
+}
+
+private struct SessionChangeHandlers: ViewModifier {
+    @ObservedObject var pipeline: LivePipelineManager
+    @Binding var panelExpanded: Bool
+    @Binding var isAntiTouchMode: Bool
+    @Binding var antiTouchTimer: Timer?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: pipeline.streamManager.isStreaming) { _, streaming in
+                if streaming {
+                    pipeline.debug.isDetailVisible = false
+                }
+            }
+            .onChange(of: panelExpanded) { _, expanded in
+                if expanded {
+                    antiTouchTimer?.invalidate()
+                    antiTouchTimer = nil
+                    isAntiTouchMode = false
+                } else {
+                    antiTouchTimer?.invalidate()
+                    antiTouchTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+                        DispatchQueue.main.async {
+                            isAntiTouchMode = true
+                        }
+                    }
+                }
+            }
+    }
+}
+
 struct LevelBar: View {
     let level: Float
     let color: Color
@@ -1181,7 +1322,10 @@ private struct CameraPreviewView: UIViewRepresentable {
         let v = PreviewView2()
         v.previewLayer.session = session
         v.previewLayer.videoGravity = .resizeAspectFill
-        v.previewLayer.connection?.videoOrientation = .portrait
+        if let connection = v.previewLayer.connection,
+           connection.isVideoRotationAngleSupported(90) {
+            connection.videoRotationAngle = 90
+        }
         v.backgroundColor = .black
         return v
     }

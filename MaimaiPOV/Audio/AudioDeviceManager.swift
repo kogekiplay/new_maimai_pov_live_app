@@ -73,7 +73,7 @@ class AudioDeviceManager: ObservableObject {
 
     func configureBuiltInMic() {
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+            try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetoothHFP])
             try audioSession.setActive(true)
 
             guard let inputs = audioSession.availableInputs else { return }
@@ -98,7 +98,7 @@ class AudioDeviceManager: ObservableObject {
 
     func configureExternalDevice() {
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+            try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetoothHFP])
             try audioSession.setActive(true)
 
             let inputs = audioSession.availableInputs

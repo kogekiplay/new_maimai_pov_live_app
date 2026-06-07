@@ -25,7 +25,7 @@ class CameraCaptureManager: NSObject, ObservableObject {
     var onAudioSample: ((CMSampleBuffer, Double) -> Void)?
     var onDeviceReady: (() -> Void)?
 
-    private var masterClock: CMClock?
+    private var captureClock: CMClock?
     private let hostClock = CMClockGetHostTimeClock()
 
     func checkPermissionAndStart() {
@@ -54,7 +54,7 @@ class CameraCaptureManager: NSObject, ObservableObject {
         sessionQueue.async { [weak self] in
             guard let self, !self.session.isRunning else { return }
             self.session.startRunning()
-            self.masterClock = self.session.masterClock
+            self.captureClock = self.session.synchronizationClock
             DispatchQueue.main.async { self.isRunning = true }
         }
     }
@@ -72,7 +72,7 @@ class CameraCaptureManager: NSObject, ObservableObject {
         sessionQueue.async { [weak self] in
             guard let self else { return }
             self.configureSession(for: lens)
-            self.masterClock = self.session.masterClock
+            self.captureClock = self.session.synchronizationClock
             DispatchQueue.main.async { self.activeLens = lens }
         }
     }
@@ -86,7 +86,7 @@ class CameraCaptureManager: NSObject, ObservableObject {
             self.configureSession(for: self.activeLens)
             self.configureAudioSession()
             self.session.startRunning()
-            self.masterClock = self.session.masterClock
+            self.captureClock = self.session.synchronizationClock
             DispatchQueue.main.async { self.isRunning = true }
         }
     }
@@ -163,7 +163,7 @@ class CameraCaptureManager: NSObject, ObservableObject {
 
     private func configureAudioSession() {
         let audioSession = AVAudioSession.sharedInstance()
-        try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+        try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try? audioSession.setActive(true)
 
         if let inputs = audioSession.availableInputs,
@@ -194,13 +194,13 @@ class CameraCaptureManager: NSObject, ObservableObject {
             }
 
             self.reconfigureAudioInput()
-            self.masterClock = self.session.masterClock
+            self.captureClock = self.session.synchronizationClock
         }
     }
 
     private func configureExternalAudioSession() {
         let audioSession = AVAudioSession.sharedInstance()
-        try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetooth])
+        try? audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try? audioSession.setActive(true)
         let inputs = audioSession.availableInputs
         let isExternal: (AVAudioSessionPortDescription) -> Bool = { $0.portType == AVAudioSession.Port.usbAudio || $0.portType == .headsetMic }
@@ -419,20 +419,20 @@ extension CameraCaptureManager: AVCaptureVideoDataOutputSampleBufferDelegate,
 
     private func handleVideoSample(_ sampleBuffer: CMSampleBuffer) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        guard let masterClock else { return }
+        guard let captureClock else { return }
 
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-        let hostTime = CMSyncConvertTime(pts, from: masterClock, to: hostClock)
+        let hostTime = CMSyncConvertTime(pts, from: captureClock, to: hostClock)
         let alignedTime = CMTimeGetSeconds(hostTime)
 
         onVideoFrame?(pixelBuffer, alignedTime)
     }
 
     private func handleAudioSample(_ sampleBuffer: CMSampleBuffer) {
-        guard let masterClock else { return }
+        guard let captureClock else { return }
 
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-        let hostTime = CMSyncConvertTime(pts, from: masterClock, to: hostClock)
+        let hostTime = CMSyncConvertTime(pts, from: captureClock, to: hostClock)
         let alignedTime = CMTimeGetSeconds(hostTime)
 
         if let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {

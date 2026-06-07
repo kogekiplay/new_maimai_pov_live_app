@@ -291,7 +291,7 @@ struct DebugOverlayView: View {
                     }
                 }
                 .frame(maxHeight: 300)
-                .onChange(of: debug.logMessages.count) { count in
+                .onChange(of: debug.logMessages.count) { _, count in
                     if count > 0 {
                         proxy.scrollTo(count - 1, anchor: .bottom)
                     }
