@@ -647,21 +647,26 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         case .notACommand:
             let name = sc.authorName
             let coinValue = sc.price * 1000
+            let price = sc.price
             songCardManager.userGiftPool[name, default: 0] += coinValue
+            let trackedGiftValue: Int?
             if let index = songCardManager.findSongIndex(byName: name) {
                 _ = songCardManager.updateGiftValue(name: name, delta: coinValue)
                 let lockedEnd = songCardManager.lockedEndIndex
                 if index >= lockedEnd {
                     songCardManager.reorderQueueByGiftValue()
                 }
-                DispatchQueue.main.async {
-                    self.debug.log("[SC追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
-                }
+                trackedGiftValue = songCardManager.userGiftPool[name] ?? 0
             } else {
+                trackedGiftValue = nil
                 songCardManager.scheduleSave()
             }
-            DispatchQueue.main.async {
-                self.postMarquee("💰 感谢 \(sc.authorName) 的SC ¥\(sc.price)", type: .superChat)
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                if let trackedGiftValue {
+                    self.debug.log("[SC追踪] \(name) 累积 \(trackedGiftValue) 金瓜子")
+                }
+                self.postMarquee("💰 感谢 \(name) 的SC ¥\(price)", type: .superChat)
             }
         case .cancelRequest:
             break
