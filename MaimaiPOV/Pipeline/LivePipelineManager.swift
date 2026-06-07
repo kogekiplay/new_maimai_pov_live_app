@@ -524,8 +524,9 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             let name = sc.authorName
             let originalQuery = result.originalQuery
 
-            DispatchQueue.main.async {
-                self.debug.log("[SC点歌] 解析: query=\"\(query)\" original=\"\(originalQuery)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") price=\(sc.price)")
+            let parseLog = "[SC点歌] 解析: query=\"\(query)\" original=\"\(originalQuery)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") price=\(sc.price)"
+            Task { @MainActor [weak self] in
+                self?.debug.log(parseLog)
             }
 
             if songCardManager.hasSongInQueue(name: name) {
@@ -537,8 +538,9 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                     songCardManager.reorderQueueByGiftValue()
                 }
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_duplicate")
-                DispatchQueue.main.async {
-                    self.debug.log("[SC点歌] \(sc.authorName) 已有歌曲在队列中，SC金额累加到送礼池")
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.debug.log("[SC点歌] \(name) 已有歌曲在队列中，SC金额累加到送礼池")
                     self.postMarquee("❌ \(name) 已有歌曲在队列中", type: .songFailure)
                 }
                 return
@@ -552,7 +554,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                     songCardManager.userGiftPool[name, default: 0] += sc.price * 1000
                     songCardManager.scheduleSave()
                     DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "rejected_paused")
-                    DispatchQueue.main.async {
+                    Task { @MainActor [weak self] in
+                        guard let self = self else { return }
                         self.debug.log("[SC点歌] 🚫 \(name) 点歌已暂停，送礼值不足(\(totalWithSC)/\(thresholdCoins))")
                         self.postMarquee("🚫 \(name) 点歌已暂停，SC点歌仍可使用", type: .songFailure)
                     }
