@@ -112,7 +112,6 @@ struct Phase2View: View {
         .onChange(of: pipeline.stabEnabled) { _ in pipeline.updateStabilizerEnabled() }
         .onChange(of: pipeline.activityMode) { _ in pipeline.updateActivityMode() }
         .onChange(of: pipeline.activitySmoothFactor) { _ in pipeline.updateActivitySmoothFactor() }
-        .onChange(of: pipeline.yawFilterEnabled) { _ in pipeline.updateYawFilterEnabled() }
         .onChange(of: pipeline.fov) { _ in pipeline.updateFov() }
         .onChange(of: pipeline.distRatio) { _ in pipeline.updateDistRatio() }
         .onChange(of: pipeline.yaw) { _ in pipeline.updateYaw() }
@@ -375,7 +374,6 @@ struct Phase2View: View {
 
             if advancedExpanded {
                 VStack(spacing: 8) {
-                    yawFilterToggleRow
                     activitySmoothFactorRow
                     syncRow
                     yoloPaddingRow
@@ -721,16 +719,6 @@ struct Phase2View: View {
             Slider(value: Binding(get: { Double(pipeline.activitySmoothFactor) }, set: { pipeline.activitySmoothFactor = Float($0) }), in: 0.01...0.2)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.activitySmoothFactor)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
-        }
-    }
-
-    private var yawFilterToggleRow: some View {
-        labeledRow("YawFix") {
-            Toggle("", isOn: $pipeline.yawFilterEnabled)
-                .labelsHidden()
-                .scaleEffect(0.8)
-        } valueLabel: {
-            Text(pipeline.yawFilterEnabled ? "ON" : "OFF").font(.caption).foregroundColor(pipeline.yawFilterEnabled ? .green : .gray).frame(width: 40, alignment: .trailing)
         }
     }
 

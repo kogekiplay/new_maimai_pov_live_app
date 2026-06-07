@@ -127,7 +127,6 @@ class DebugInfoManager: ObservableObject {
         var audioQueueDepth: Int = 0
         var magneticAccuracy: Int32 = -1
         var rawYawDeg: Float = 0
-        var filteredYawDeg: Float = 0
     }
 
     private var stagingData: FrameDebugData?
@@ -237,7 +236,7 @@ class DebugInfoManager: ObservableObject {
         // 磁力计 & Yaw 诊断
         magneticAccuracy = data.magneticAccuracy
         rawYawDeg = data.rawYawDeg
-        filteredYawDeg = data.filteredYawDeg
-        yawDeltaDeg = data.rawYawDeg - data.filteredYawDeg
+        filteredYawDeg = data.rawYawDeg
+        yawDeltaDeg = 0
     }
 }
