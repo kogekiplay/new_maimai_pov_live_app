@@ -196,7 +196,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         }.store(in: &cancellables)
 
         streamManager.$isStreaming.sink { [weak self] streaming in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.debug.isStreaming = streaming
             }
         }.store(in: &cancellables)
@@ -229,7 +229,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             guard let self = self else { return }
             self.latestDanmaku = "\(msg.authorName): \(msg.content)"
             self.danmakuCount += 1
-            DispatchQueue.main.async { self.debug.log("[弹幕] \(msg.authorName): \(msg.content)") }
+            DebugInfoManager.logAsync("[弹幕] \(msg.authorName): \(msg.content)")
 
             let parseResult = self.danmakuParser.parse(msg.content)
             let isSongRequest: Bool
@@ -268,7 +268,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         blivechatClient.onGift = { [weak self] msg in
             guard let self = self else { return }
             let coinValue = max(msg.totalCoin, msg.totalFreeCoin)
-            DispatchQueue.main.async { self.debug.log("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))") }
+            DebugInfoManager.logAsync("[礼物] \(msg.authorName) 送 \(msg.giftName) x\(msg.num) (金瓜子:\(coinValue))")
 
             _ = danmakuBuffer.addEntry(
                 type: .gift,
@@ -294,7 +294,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                     if index >= lockedEnd {
                         self.songCardManager.reorderQueueByGiftValue()
                     }
-                    DispatchQueue.main.async { self.debug.log("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子") }
+                    DebugInfoManager.logAsync("[礼物追踪] \(name) 累积 \(self.songCardManager.userGiftPool[name] ?? 0) 金瓜子")
                 } else {
                     self.scheduleRefreshLeftPanel()
                     self.songCardManager.scheduleSave()
@@ -304,7 +304,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
         blivechatClient.onSuperChat = { [weak self] msg in
             guard let self = self else { return }
-            DispatchQueue.main.async { self.debug.log("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)") }
+            DebugInfoManager.logAsync("[SC] \(msg.authorName): ¥\(msg.price) \(msg.content)")
 
             _ = danmakuBuffer.addEntry(
                 type: .sc,
@@ -336,7 +336,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 self.scheduleRefreshLeftPanel()
                 self.songCardManager.scheduleSave()
             }
-            DispatchQueue.main.async { self.debug.log("[上舰] \(msg.authorName)") }
+            DebugInfoManager.logAsync("[上舰] \(msg.authorName)")
 
             _ = danmakuBuffer.addEntry(
                 type: .member,
@@ -353,16 +353,12 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             self.postMarquee("⭐ \(msg.authorName) 上舰了!", type: .member)
         }
 
-        blivechatClient.onError = { [weak self] error in
-            guard let self = self else { return }
-            DispatchQueue.main.async { self.debug.log("[blivechat错误] code=\(error.code) \(error.message)") }
+        blivechatClient.onError = { error in
+            DebugInfoManager.logAsync("[blivechat错误] code=\(error.code) \(error.message)")
         }
 
-        blivechatClient.onReconnectLog = { [weak self] message in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                self.debug.log(message)
-            }
+        blivechatClient.onReconnectLog = { message in
+            DebugInfoManager.logAsync(message)
         }
     }
 
