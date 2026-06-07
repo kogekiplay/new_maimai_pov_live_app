@@ -148,12 +148,17 @@ class DebugInfoManager: ObservableObject {
         }
     }
 
-    /// 从非 MainActor 上下文安全调用 log
-    nonisolated func logAsync(_ msg: String) {
+    /// 从非 MainActor 上下文安全写入全局调试日志。
+    nonisolated static func logAsync(_ msg: String) {
         let msg = msg
         Task { @MainActor in
             DebugInfoManager.shared.log(msg)
         }
+    }
+
+    /// 从非 MainActor 上下文安全调用 log
+    nonisolated func logAsync(_ msg: String) {
+        Self.logAsync(msg)
     }
 
     func stageFrameData(_ data: FrameDebugData) {

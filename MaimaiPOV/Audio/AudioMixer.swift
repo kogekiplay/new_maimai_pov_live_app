@@ -88,7 +88,7 @@ class AudioMixer: ObservableObject {
         // 非 Float32 格式需要先转换（如 interleaved Int16）
         conversionDiagCounter += 1
         if conversionDiagCounter % 100 == 0 {
-            DebugInfoManager.shared.logAsync("MixerCvt: non-float sr=\(Int(input.format.sampleRate)) ch=\(input.format.channelCount) il=\(input.format.isInterleaved) cf=\(input.format.commonFormat.rawValue) inFL=\(frameLength) cnt=\(conversionDiagCounter)")
+            DebugInfoManager.logAsync("MixerCvt: non-float sr=\(Int(input.format.sampleRate)) ch=\(input.format.channelCount) il=\(input.format.isInterleaved) cf=\(input.format.commonFormat.rawValue) inFL=\(frameLength) cnt=\(conversionDiagCounter)")
         }
         guard let converted = convertToStandardFormat(input),
               let leftChannel = converted.floatChannelData?[0],
@@ -201,7 +201,7 @@ class AudioMixer: ObservableObject {
         guard status != .error else { return nil }
         // 防御性裁剪：确保输出帧数不超过输入帧数
         if buffer.frameLength > AVAudioFrameCount(frameLength) {
-            DebugInfoManager.shared.logAsync("MixerCvt: trimmed fl from \(buffer.frameLength) to \(frameLength)")
+            DebugInfoManager.logAsync("MixerCvt: trimmed fl from \(buffer.frameLength) to \(frameLength)")
             buffer.frameLength = AVAudioFrameCount(frameLength)
         }
         return buffer

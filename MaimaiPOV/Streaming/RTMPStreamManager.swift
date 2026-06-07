@@ -1,5 +1,5 @@
 import SwiftUI
-import HaishinKit
+@preconcurrency import HaishinKit
 import CoreMedia
 import VideoToolbox
 import AVFAudio
@@ -127,6 +127,8 @@ class RTMPStreamManager: ObservableObject {
 
         setupStatusMonitoring(connection: connection, stream: stream)
 
+        let publishURL = rtmpUrl
+        let publishKey = streamKey
         Task { [weak self] in
             var videoSettings = VideoCodecSettings(
                 videoSize: resolution.size,
@@ -141,18 +143,11 @@ class RTMPStreamManager: ObservableObject {
             await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
 
             do {
-                _ = try await connection.connect(rtmpUrl)
-                _ = try await stream.publish(streamKey)
-                await MainActor.run {
-                    self?.reconnectAttempt = 0
-                    self?.streamStatus = "Publishing"
-                    DebugInfoManager.shared.rtmpStatus = "Publishing"
-                    DebugInfoManager.shared.log("RTMP: Publishing")
-                }
+                _ = try await connection.connect(publishURL)
+                _ = try await stream.publish(publishKey)
+                await self?.handlePublishStarted()
             } catch {
-                await MainActor.run {
-                    self?.attemptReconnect(reason: error.localizedDescription)
-                }
+                await self?.attemptReconnect(reason: error.localizedDescription)
             }
         }
     }
@@ -207,20 +202,27 @@ class RTMPStreamManager: ObservableObject {
         statsTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { break }
-                let currentStream: RTMPStream?
-                self.lock.lock()
-                currentStream = self.stream
-                self.lock.unlock()
+                let currentStream = self.lock.withLock { self.stream }
                 guard let currentStream else { break }
                 let info = await currentStream.info
                 let fps = await currentStream.currentFPS
-                DispatchQueue.main.async {
-                    DebugInfoManager.shared.rtmpBitrate = info.currentBytesPerSecond * 8 / 1000
-                    DebugInfoManager.shared.rtmpFPS = Int(fps)
+                let bitrateKbps = info.currentBytesPerSecond * 8 / 1000
+                let fpsValue = Int(fps)
+                await MainActor.run {
+                    DebugInfoManager.shared.rtmpBitrate = bitrateKbps
+                    DebugInfoManager.shared.rtmpFPS = fpsValue
                 }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
         }
+    }
+
+    @MainActor
+    private func handlePublishStarted() {
+        reconnectAttempt = 0
+        streamStatus = "Publishing"
+        DebugInfoManager.shared.rtmpStatus = "Publishing"
+        DebugInfoManager.shared.log("RTMP: Publishing")
     }
 
     @MainActor
@@ -351,7 +353,7 @@ class RTMPStreamManager: ObservableObject {
            cachedAudioFormat!.channelCount != newFormat.channelCount ||
            cachedAudioFormat!.isInterleaved != newFormat.isInterleaved ||
            cachedAudioFormat!.commonFormat != newFormat.commonFormat {
-            DebugInfoManager.shared.logAsync("Audio: input fmt changed sr=\(newFormat.sampleRate) ch=\(newFormat.channelCount) il=\(newFormat.isInterleaved) cf=\(newFormat.commonFormat.rawValue)")
+            DebugInfoManager.logAsync("Audio: input fmt changed sr=\(newFormat.sampleRate) ch=\(newFormat.channelCount) il=\(newFormat.isInterleaved) cf=\(newFormat.commonFormat.rawValue)")
             cachedAudioFormat = newFormat
         }
         guard let audioFormat = cachedAudioFormat else { return }
@@ -381,7 +383,7 @@ class RTMPStreamManager: ObservableObject {
         let outFmt = bufferToQueue.format
         if outputAudioFormat == nil || outputAudioFormat != outFmt {
             let oldDesc = outputAudioFormat.map { "sr=\($0.sampleRate) ch=\($0.channelCount) il=\($0.isInterleaved) cf=\($0.commonFormat.rawValue)" } ?? "nil"
-            DebugInfoManager.shared.logAsync("Audio: out fmt changed \(oldDesc) -> sr=\(outFmt.sampleRate) ch=\(outFmt.channelCount) il=\(outFmt.isInterleaved) cf=\(outFmt.commonFormat.rawValue)")
+            DebugInfoManager.logAsync("Audio: out fmt changed \(oldDesc) -> sr=\(outFmt.sampleRate) ch=\(outFmt.channelCount) il=\(outFmt.isInterleaved) cf=\(outFmt.commonFormat.rawValue)")
             outputAudioFormat = outFmt
         }
 
@@ -432,13 +434,13 @@ class RTMPStreamManager: ObservableObject {
                 // 跳变检测：err 相比上一轮变化超过 0.5ms
                 if audioBufferCount > 200 && abs(errMs - prevErr) > 0.5 {
                     let mode = isStereo ? "S" : "M"
-                    DebugInfoManager.shared.logAsync(String(format: "ADiag[JUMP %@]: err %.3f→%.3fms acc=%.1fms ptsD=%.4f exp=%.4f frames=%u", mode, prevErr, errMs, audioTimeAccumError * 1000, ptsDelta * 1000, expectedDuration * 1000, bufferToQueue.frameLength))
+                    DebugInfoManager.logAsync(String(format: "ADiag[JUMP %@]: err %.3f→%.3fms acc=%.1fms ptsD=%.4f exp=%.4f frames=%u", mode, prevErr, errMs, audioTimeAccumError * 1000, ptsDelta * 1000, expectedDuration * 1000, bufferToQueue.frameLength))
                 }
             }
             // 每 1000 帧输出一条紧凑滚动日志
             if audioBufferCount % 1000 == 0 {
                 let mode = isStereo ? "S" : "M"
-                DebugInfoManager.shared.logAsync(String(format: "ADiag[%@]: err=%.3f acc=%.1fms ptsD=%.4f buf=%d", mode, error * 1000, audioTimeAccumError * 1000, ptsDelta * 1000, audioBufferCount))
+                DebugInfoManager.logAsync(String(format: "ADiag[%@]: err=%.3f acc=%.1fms ptsD=%.4f buf=%d", mode, error * 1000, audioTimeAccumError * 1000, ptsDelta * 1000, audioBufferCount))
             }
         }
         prevAudioAlignedTime = alignedTime
@@ -498,7 +500,7 @@ class RTMPStreamManager: ObservableObject {
         // 重置PTS间隙检测状态
         hasFirstConsumedVideoFrame = false
         lastConsumedVideoPts = 0
-        DebugInfoManager.shared.logAsync("Audio: state fully reset")
+        DebugInfoManager.logAsync("Audio: state fully reset")
     }
 
     @MainActor
@@ -594,7 +596,7 @@ class RTMPStreamManager: ObservableObject {
         if gapMs > 20.0 {
             let estimatedFrames = Int(gapMs / 16.67)
             let skipInfo = String(format: "%.0fms (~%d fr)", gapMs, estimatedFrames)
-            DebugInfoManager.shared.logAsync("[VSKIP] gap=\(skipInfo) vBuf=\(videoBufferCount) aBuf=\(audioBufferCount)")
+            DebugInfoManager.logAsync("[VSKIP] gap=\(skipInfo) vBuf=\(videoBufferCount) aBuf=\(audioBufferCount)")
             Task { @MainActor in
                 DebugInfoManager.shared.videoPtsGapCount += 1
                 if gapMs > DebugInfoManager.shared.videoMaxPtsGapMs {
