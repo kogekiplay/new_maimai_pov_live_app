@@ -1,27 +1,6 @@
 import Foundation
 import Swifter
 
-private final class LockedQueueValue<Value>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: Value
-
-    init(_ value: Value) {
-        self.value = value
-    }
-
-    func set(_ newValue: Value) {
-        lock.withLock {
-            value = newValue
-        }
-    }
-
-    func get() -> Value {
-        lock.withLock {
-            value
-        }
-    }
-}
-
 final class QueueAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
@@ -75,7 +54,7 @@ final class QueueAPIHandler: @unchecked Sendable {
 
     func getQueue() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
-        let response = LockedQueueValue<[String: Any]>([:])
+        let response = LockedValue<[String: Any]>([:])
 
         DispatchQueue.main.async { [weak self] in
             response.set(self?.buildQueueResponse() ?? [:])
@@ -119,7 +98,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         let preserveGift = body["preserveGift"] as? Bool ?? false
 
         let sem = DispatchSemaphore(value: 0)
-        let success = LockedQueueValue(false)
+        let success = LockedValue(false)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -164,8 +143,8 @@ final class QueueAPIHandler: @unchecked Sendable {
         let username = body["username"] as? String ?? "LAN"
 
         let sem = DispatchSemaphore(value: 0)
-        let success = LockedQueueValue(false)
-        let errorMsg = LockedQueueValue<String?>(nil)
+        let success = LockedValue(false)
+        let errorMsg = LockedValue<String?>(nil)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -246,8 +225,8 @@ final class QueueAPIHandler: @unchecked Sendable {
         let chartType = body["chartType"] as? String
 
         let sem = DispatchSemaphore(value: 0)
-        let success = LockedQueueValue(false)
-        let errorMsg = LockedQueueValue<String?>(nil)
+        let success = LockedValue(false)
+        let errorMsg = LockedValue<String?>(nil)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -322,7 +301,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        let success = LockedQueueValue(false)
+        let success = LockedValue(false)
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {
@@ -360,7 +339,7 @@ final class QueueAPIHandler: @unchecked Sendable {
         let username = rawUsername.removingPercentEncoding ?? rawUsername
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedQueueValue<[String: Any]>([:])
+        let result = LockedValue<[String: Any]>([:])
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {

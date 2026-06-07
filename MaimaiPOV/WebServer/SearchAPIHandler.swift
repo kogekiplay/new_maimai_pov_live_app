@@ -1,23 +1,6 @@
 import Foundation
 import Swifter
 
-private final class LockedSearchResponse: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: [String: Any] = [:]
-
-    func set(_ newValue: [String: Any]) {
-        lock.withLock {
-            value = newValue
-        }
-    }
-
-    func get() -> [String: Any] {
-        lock.withLock {
-            value
-        }
-    }
-}
-
 final class SearchAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
@@ -34,7 +17,7 @@ final class SearchAPIHandler: @unchecked Sendable {
         let query = queryParam.removingPercentEncoding ?? queryParam
 
         let sem = DispatchSemaphore(value: 0)
-        let response = LockedSearchResponse()
+        let response = LockedValue<[String: Any]>([:])
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let pipeline = self.pipeline else {

@@ -8,44 +8,6 @@ private struct CoverFetchResult: Sendable {
     let contentType: String
 }
 
-private final class LockedCoverFetchResult: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: CoverFetchResult?
-
-    func set(_ newValue: CoverFetchResult) {
-        lock.withLock {
-            value = newValue
-        }
-    }
-
-    func get() -> CoverFetchResult? {
-        lock.withLock {
-            value
-        }
-    }
-}
-
-private final class LockedWebJSONResult<Value>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: Value
-
-    init(_ value: Value) {
-        self.value = value
-    }
-
-    func set(_ newValue: Value) {
-        lock.withLock {
-            value = newValue
-        }
-    }
-
-    func get() -> Value {
-        lock.withLock {
-            value
-        }
-    }
-}
-
 final class WebServerManager: @unchecked Sendable {
     private let server = HttpServer()
     private(set) var isRunning: Bool = false
@@ -395,7 +357,7 @@ final class WebServerManager: @unchecked Sendable {
             switch request.method {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
-                let result = LockedWebJSONResult<[String: Any]>([:])
+                let result = LockedValue<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     result.set([
@@ -422,7 +384,7 @@ final class WebServerManager: @unchecked Sendable {
                     return .badRequest(.text("Invalid JSON"))
                 }
                 let sem = DispatchSemaphore(value: 0)
-                let result = LockedWebJSONResult<[String: Any]>([:])
+                let result = LockedValue<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let iso = bodyData["iso"] as? Double {
@@ -484,7 +446,7 @@ final class WebServerManager: @unchecked Sendable {
             switch request.method {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
-                let result = LockedWebJSONResult<[String: Any]>([:])
+                let result = LockedValue<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     result.set([
@@ -511,7 +473,7 @@ final class WebServerManager: @unchecked Sendable {
                     return .badRequest(.text("Invalid JSON"))
                 }
                 let sem = DispatchSemaphore(value: 0)
-                let result = LockedWebJSONResult<[String: Any]>([:])
+                let result = LockedValue<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let enabled = bodyData["stabEnabled"] as? Bool {
@@ -576,7 +538,7 @@ final class WebServerManager: @unchecked Sendable {
             switch request.method {
             case "GET":
                 let sem = DispatchSemaphore(value: 0)
-                let result = LockedWebJSONResult<[String: Any]>([:])
+                let result = LockedValue<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     result.set([
@@ -601,7 +563,7 @@ final class WebServerManager: @unchecked Sendable {
                     return .badRequest(.text("Invalid JSON"))
                 }
                 let sem = DispatchSemaphore(value: 0)
-                let result = LockedWebJSONResult<[String: Any]>([:])
+                let result = LockedValue<[String: Any]>([:])
                 DispatchQueue.main.async {
                     guard let pipeline = self.pipeline else { sem.signal(); return }
                     if let leftGain = bodyData["leftGain"] as? Double {
@@ -692,7 +654,7 @@ final class WebServerManager: @unchecked Sendable {
             guard let self = self else { return .internalServerError }
 
             let sem = DispatchSemaphore(value: 0)
-            let result = LockedWebJSONResult<[String: Any]>([:])
+            let result = LockedValue<[String: Any]>([:])
 
             DispatchQueue.main.async {
                 let streamManager = self.pipeline?.streamManager
@@ -782,7 +744,7 @@ final class WebServerManager: @unchecked Sendable {
             guard let url = URL(string: urlString) else { continue }
 
             let requestSem = DispatchSemaphore(value: 0)
-            let foundResult = LockedCoverFetchResult()
+            let foundResult = LockedValue<CoverFetchResult?>(nil)
 
             let task = URLSession.shared.dataTask(with: url) { data, response, _ in
                 if let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {

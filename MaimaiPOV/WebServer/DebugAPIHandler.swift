@@ -1,27 +1,6 @@
 import Foundation
 import Swifter
 
-private final class LockedDebugResult<Value>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: Value
-
-    init(_ value: Value) {
-        self.value = value
-    }
-
-    func set(_ newValue: Value) {
-        lock.withLock {
-            value = newValue
-        }
-    }
-
-    func get() -> Value {
-        lock.withLock {
-            value
-        }
-    }
-}
-
 final class DebugAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
@@ -34,7 +13,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let totalCoin = body["totalCoin"] as? Int ?? 1000
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[String: Any]>(["success": true])
+        let result = LockedValue<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -103,7 +82,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let content = body["content"] as? String ?? ""
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[String: Any]>(["success": true])
+        let result = LockedValue<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -154,7 +133,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[String: Any]>(["success": true])
+        let result = LockedValue<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -216,7 +195,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[String: Any]>(["success": true])
+        let result = LockedValue<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -268,7 +247,7 @@ final class DebugAPIHandler: @unchecked Sendable {
 
     func getGiftPool() -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[[String: Any]]>([])
+        let result = LockedValue<[[String: Any]]>([])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -304,7 +283,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let textPrefix = body["textPrefix"] as? String
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[String: Any]>(["success": true])
+        let result = LockedValue<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -336,7 +315,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         let level = body["level"] as? Int
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[String: Any]>(["success": true])
+        let result = LockedValue<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -365,7 +344,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         }
 
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[String: Any]>(["success": true])
+        let result = LockedValue<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
@@ -388,7 +367,7 @@ final class DebugAPIHandler: @unchecked Sendable {
 
     func triggerExpirationCheck(request: HttpRequest) -> HttpResponse {
         let sem = DispatchSemaphore(value: 0)
-        let result = LockedDebugResult<[String: Any]>(["success": true])
+        let result = LockedValue<[String: Any]>(["success": true])
 
         DispatchQueue.main.async { [weak self] in
             guard let pipeline = self?.pipeline else {
