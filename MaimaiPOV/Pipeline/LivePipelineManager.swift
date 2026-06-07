@@ -1545,8 +1545,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     }
 
     func renderLeftPanelAnnouncement() {
-        guard let renderer = leftPanelRenderer, let compositor = leftPanelCompositor else { return }
-        DispatchQueue.main.async {
+        Task { @MainActor [weak self] in
+            guard let self = self,
+                  let renderer = self.leftPanelRenderer,
+                  let compositor = self.leftPanelCompositor else { return }
             renderer.renderAnnouncement(Config.announcementText) { texture in
                 if let texture = texture {
                     compositor.setAnnouncement(texture: texture)
