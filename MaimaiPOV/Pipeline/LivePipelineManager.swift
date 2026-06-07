@@ -1374,10 +1374,6 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
     func onSongRemoved(queueIndex: Int) {
         rightPanelCompositor?.removeRow(queueIndex: queueIndex)
-        let manager = WeakLivePipelineManager(self)
-        DispatchQueue.main.async {
-            manager.value?.rightPanelRenderer?.invalidateRow(queueIndex: queueIndex)
-        }
     }
 
     func onGiftValueChanged(_ song: SongCardData, queueIndex: Int) {

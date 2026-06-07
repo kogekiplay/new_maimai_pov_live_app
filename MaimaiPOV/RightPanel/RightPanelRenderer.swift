@@ -192,15 +192,8 @@ final class RightPanelRenderer {
         rowTextureCache.removeValue(forKey: cacheKey(for: data))
     }
 
-    func invalidateRow(queueIndex: Int) {
-    }
-
     func getCachedRow(data: SongCardData) -> MTLTexture? {
         return rowTextureCache[cacheKey(for: data)]
-    }
-
-    func getCachedRow(queueIndex: Int) -> MTLTexture? {
-        return nil
     }
 
     func getTitleTexture() -> MTLTexture? {
