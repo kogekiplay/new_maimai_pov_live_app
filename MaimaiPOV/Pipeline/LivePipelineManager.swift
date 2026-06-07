@@ -1463,10 +1463,9 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     func clearSongQueue() {
         leftPanelCompositor?.clearAll()
         rightPanelCompositor?.clearAll()
-        let manager = WeakLivePipelineManager(self)
-        DispatchQueue.main.async {
-            manager.value?.rightPanelRenderer?.invalidateCache()
-            manager.value?.leftPanelRenderer?.invalidateCache()
+        Task { @MainActor [weak self] in
+            self?.rightPanelRenderer?.invalidateCache()
+            self?.leftPanelRenderer?.invalidateCache()
         }
         songCardManager.clearQueue()
         if leftPanelCompositor != nil {
