@@ -137,7 +137,7 @@ class LivePipelineManager: ObservableObject, SongCardDataProvider {
 
     let pipelineQueue = DispatchQueue(label: "com.maimai.pipeline", qos: .userInteractive)
 
-    private var ioSurfacePool: IOSurfaceOutputPool?
+    private(set) var ioSurfacePool: IOSurfaceOutputPool?
     private var frameCount: Int = 0
     private var streamFrameCount: Int = 0
     private var fpsTimer: Timer?

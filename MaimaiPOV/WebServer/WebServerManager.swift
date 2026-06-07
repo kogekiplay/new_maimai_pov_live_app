@@ -340,6 +340,246 @@ class WebServerManager {
             }
         }
 
+        server["/api/camera/settings"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            switch request.method {
+            case "GET":
+                let sem = DispatchSemaphore(value: 0)
+                var result: [String: Any] = [:]
+                DispatchQueue.main.async {
+                    guard let pipeline = self.pipeline else { sem.signal(); return }
+                    result = [
+                        "iso": pipeline.isoValue,
+                        "minISO": pipeline.minISO,
+                        "maxISO": pipeline.maxISO,
+                        "shutterTimescale": pipeline.shutterTimescale,
+                        "focusValue": pipeline.focusValue,
+                        "autoFocusEnabled": pipeline.autoFocusEnabled,
+                        "selectedLens": pipeline.selectedLens.rawValue,
+                        "awbLocked": pipeline.camera.awbLocked
+                    ]
+                    sem.signal()
+                }
+                sem.wait()
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                    return .internalServerError
+                }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            case "POST":
+                guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any] else {
+                    return .badRequest(.text("Invalid JSON"))
+                }
+                let sem = DispatchSemaphore(value: 0)
+                var result: [String: Any] = [:]
+                DispatchQueue.main.async {
+                    guard let pipeline = self.pipeline else { sem.signal(); return }
+                    if let iso = bodyData["iso"] as? Double {
+                        pipeline.isoValue = iso
+                        pipeline.applyExposure()
+                    }
+                    if let shutter = bodyData["shutterTimescale"] as? Double {
+                        pipeline.shutterTimescale = shutter
+                        pipeline.applyExposure()
+                    }
+                    if let focus = bodyData["focusValue"] as? Double {
+                        pipeline.focusValue = focus
+                        pipeline.applyExposure()
+                    }
+                    if let autoFocus = bodyData["autoFocusEnabled"] as? Bool {
+                        pipeline.autoFocusEnabled = autoFocus
+                        Config.autoFocusEnabled = autoFocus
+                        pipeline.camera.setAutoFocus(autoFocus)
+                    }
+                    if let lens = bodyData["selectedLens"] as? String,
+                       let lensType = LensType(rawValue: lens) {
+                        pipeline.selectedLens = lensType
+                        pipeline.handleLensChange(lensType)
+                    }
+                    if let awbLock = bodyData["awbLocked"] as? Bool {
+                        if awbLock && !pipeline.camera.awbLocked {
+                            pipeline.camera.lockWhiteBalance()
+                        } else if !awbLock && pipeline.camera.awbLocked {
+                            pipeline.camera.unlockWhiteBalance()
+                        }
+                    }
+                    result = [
+                        "success": true,
+                        "iso": pipeline.isoValue,
+                        "minISO": pipeline.minISO,
+                        "maxISO": pipeline.maxISO,
+                        "shutterTimescale": pipeline.shutterTimescale,
+                        "focusValue": pipeline.focusValue,
+                        "autoFocusEnabled": pipeline.autoFocusEnabled,
+                        "selectedLens": pipeline.selectedLens.rawValue,
+                        "awbLocked": pipeline.camera.awbLocked
+                    ]
+                    sem.signal()
+                }
+                sem.wait()
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                    return .internalServerError
+                }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            default:
+                return .badRequest(.text("Method not allowed"))
+            }
+        }
+
+        server["/api/stabilizer/settings"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            switch request.method {
+            case "GET":
+                let sem = DispatchSemaphore(value: 0)
+                var result: [String: Any] = [:]
+                DispatchQueue.main.async {
+                    guard let pipeline = self.pipeline else { sem.signal(); return }
+                    result = [
+                        "stabEnabled": pipeline.stabEnabled,
+                        "yaw": Double(pipeline.yaw),
+                        "pitch": Double(pipeline.pitch),
+                        "roll": Double(pipeline.roll),
+                        "fov": Double(pipeline.fov),
+                        "distRatio": Double(pipeline.distRatio),
+                        "activityMode": pipeline.activityMode,
+                        "activitySmoothFactor": Double(pipeline.activitySmoothFactor)
+                    ]
+                    sem.signal()
+                }
+                sem.wait()
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                    return .internalServerError
+                }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            case "POST":
+                guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any] else {
+                    return .badRequest(.text("Invalid JSON"))
+                }
+                let sem = DispatchSemaphore(value: 0)
+                var result: [String: Any] = [:]
+                DispatchQueue.main.async {
+                    guard let pipeline = self.pipeline else { sem.signal(); return }
+                    if let enabled = bodyData["stabEnabled"] as? Bool {
+                        pipeline.stabEnabled = enabled
+                        pipeline.updateStabilizerEnabled()
+                    }
+                    if let yaw = bodyData["yaw"] as? Double {
+                        pipeline.yaw = Float(yaw)
+                        pipeline.updateYaw()
+                    }
+                    if let pitch = bodyData["pitch"] as? Double {
+                        pipeline.pitch = Float(pitch)
+                        pipeline.updatePitch()
+                    }
+                    if let roll = bodyData["roll"] as? Double {
+                        pipeline.roll = Float(roll)
+                        pipeline.updateRoll()
+                    }
+                    if let fov = bodyData["fov"] as? Double {
+                        pipeline.fov = Float(fov)
+                        pipeline.updateFov()
+                    }
+                    if let dist = bodyData["distRatio"] as? Double {
+                        pipeline.distRatio = Float(dist)
+                        pipeline.updateDistRatio()
+                    }
+                    if let activityMode = bodyData["activityMode"] as? Bool {
+                        pipeline.activityMode = activityMode
+                        pipeline.updateActivityMode()
+                    }
+                    if let sf = bodyData["activitySmoothFactor"] as? Double {
+                        pipeline.activitySmoothFactor = Float(sf)
+                        pipeline.updateActivitySmoothFactor()
+                    }
+                    result = [
+                        "success": true,
+                        "stabEnabled": pipeline.stabEnabled,
+                        "yaw": Double(pipeline.yaw),
+                        "pitch": Double(pipeline.pitch),
+                        "roll": Double(pipeline.roll),
+                        "fov": Double(pipeline.fov),
+                        "distRatio": Double(pipeline.distRatio),
+                        "activityMode": pipeline.activityMode,
+                        "activitySmoothFactor": Double(pipeline.activitySmoothFactor)
+                    ]
+                    sem.signal()
+                }
+                sem.wait()
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                    return .internalServerError
+                }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            default:
+                return .badRequest(.text("Method not allowed"))
+            }
+        }
+
+        server["/api/audio/gain"] = { [weak self] request in
+            guard let self = self else { return .internalServerError }
+            switch request.method {
+            case "GET":
+                let sem = DispatchSemaphore(value: 0)
+                var result: [String: Any] = [:]
+                DispatchQueue.main.async {
+                    guard let pipeline = self.pipeline else { sem.signal(); return }
+                    result = [
+                        "leftGain": Double(pipeline.audioMixer.leftGain),
+                        "rightGain": Double(pipeline.audioMixer.rightGain),
+                        "isStereoMixEnabled": pipeline.audioMixer.isStereoMixEnabled,
+                        "leftLevel": Double(pipeline.audioMixer.leftLevel),
+                        "rightLevel": Double(pipeline.audioMixer.rightLevel),
+                        "mixedLevel": Double(pipeline.audioMixer.mixedLevel)
+                    ]
+                    sem.signal()
+                }
+                sem.wait()
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                    return .internalServerError
+                }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            case "POST":
+                guard let bodyData = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any] else {
+                    return .badRequest(.text("Invalid JSON"))
+                }
+                let sem = DispatchSemaphore(value: 0)
+                var result: [String: Any] = [:]
+                DispatchQueue.main.async {
+                    guard let pipeline = self.pipeline else { sem.signal(); return }
+                    if let leftGain = bodyData["leftGain"] as? Double {
+                        pipeline.audioMixer.leftGain = Float(leftGain)
+                    }
+                    if let rightGain = bodyData["rightGain"] as? Double {
+                        pipeline.audioMixer.rightGain = Float(rightGain)
+                    }
+                    result = [
+                        "success": true,
+                        "leftGain": Double(pipeline.audioMixer.leftGain),
+                        "rightGain": Double(pipeline.audioMixer.rightGain),
+                        "isStereoMixEnabled": pipeline.audioMixer.isStereoMixEnabled
+                    ]
+                    sem.signal()
+                }
+                sem.wait()
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else {
+                    return .internalServerError
+                }
+                return .raw(200, "OK", ["Content-Type": "application/json; charset=utf-8"]) { writer in
+                    try writer.write(jsonData)
+                }
+            default:
+                return .badRequest(.text("Method not allowed"))
+            }
+        }
+
         server["/api/status"] = { [weak self] _ in
             guard let self = self else { return .internalServerError }
 
