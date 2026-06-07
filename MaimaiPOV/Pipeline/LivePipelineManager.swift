@@ -1482,13 +1482,15 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     }
 
     private func renderLeftPanelCurrentSong(_ song: SongCardData?) {
-        guard let renderer = leftPanelRenderer, let compositor = leftPanelCompositor else { return }
+        guard leftPanelRenderer != nil, leftPanelCompositor != nil else { return }
 
         if let song = song {
             if let musicId = song.musicId {
                 CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
-                    guard self != nil else { return }
-                    DispatchQueue.main.async {
+                    Task { @MainActor [weak self] in
+                        guard let self = self,
+                              let renderer = self.leftPanelRenderer,
+                              let compositor = self.leftPanelCompositor else { return }
                         renderer.renderCurrentSong(song, coverBase64: base64) { texture in
                             if let texture = texture {
                                 compositor.setCurrentSong(texture: texture, data: song)
@@ -1497,7 +1499,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                     }
                 }
             } else {
-                DispatchQueue.main.async {
+                Task { @MainActor [weak self] in
+                    guard let self = self,
+                          let renderer = self.leftPanelRenderer,
+                          let compositor = self.leftPanelCompositor else { return }
                     renderer.renderCurrentSong(song, coverBase64: nil) { texture in
                         if let texture = texture {
                             compositor.setCurrentSong(texture: texture, data: song)
@@ -1506,7 +1511,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 }
             }
         } else {
-            DispatchQueue.main.async {
+            Task { @MainActor [weak self] in
+                guard let self = self,
+                      let renderer = self.leftPanelRenderer,
+                      let compositor = self.leftPanelCompositor else { return }
                 renderer.renderCurrentSong(nil, coverBase64: nil) { texture in
                     if let texture = texture {
                         compositor.setCurrentSong(texture: texture, data: nil)
