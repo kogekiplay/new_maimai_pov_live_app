@@ -78,6 +78,10 @@ class RTMPStreamManager: ObservableObject {
     private var videoInitialOffsetSec: Double = 0.0
     private var videoFrameCount: Int = 0
 
+    // 视频PTS间隙检测
+    private var lastConsumedVideoPts: Double = 0
+    private var hasFirstConsumedVideoFrame: Bool = false
+
     @MainActor
     func startPublish(url: String, streamKey: String) {
         guard !isStreaming else { return }
@@ -162,6 +166,8 @@ class RTMPStreamManager: ObservableObject {
         videoIngestTask = Task { [weak self, weak stream] in
             for await buffer in vStream {
                 self?.decrementVideoBufferCount()
+                // PTS间隙检测
+                self?.detectVideoPtsGap(buffer)
                 await stream?.append(buffer)
             }
         }
@@ -318,6 +324,13 @@ class RTMPStreamManager: ObservableObject {
         let count = videoBufferCount
         bufferCountLock.unlock()
 
+        // 更新浮窗buffer计数（每10帧更新一次，避免频繁UI刷新）
+        if count % 10 == 0 {
+            Task { @MainActor in
+                DebugInfoManager.shared.videoBufferCount = count
+            }
+        }
+
         if count > Int(Double(Config.streamVideoBufferFrames) * 1.5) {
             forceClearBuffers()
             return
@@ -416,14 +429,14 @@ class RTMPStreamManager: ObservableObject {
                     DebugInfoManager.shared.audioPtsDelta = ptsDelta * 1000
                     DebugInfoManager.shared.audioFrameLen = Int(bufferToQueue.frameLength)
                 }
-                // 跳变检测：err 相比上一轮变化超过 0.05ms
-                if audioBufferCount > 200 && abs(errMs - prevErr) > 0.05 {
+                // 跳变检测：err 相比上一轮变化超过 0.5ms
+                if audioBufferCount > 200 && abs(errMs - prevErr) > 0.5 {
                     let mode = isStereo ? "S" : "M"
                     DebugInfoManager.shared.logAsync(String(format: "ADiag[JUMP %@]: err %.3f→%.3fms acc=%.1fms ptsD=%.4f exp=%.4f frames=%u", mode, prevErr, errMs, audioTimeAccumError * 1000, ptsDelta * 1000, expectedDuration * 1000, bufferToQueue.frameLength))
                 }
             }
-            // 每 300 帧输出一条紧凑滚动日志
-            if audioBufferCount % 300 == 0 {
+            // 每 1000 帧输出一条紧凑滚动日志
+            if audioBufferCount % 1000 == 0 {
                 let mode = isStereo ? "S" : "M"
                 DebugInfoManager.shared.logAsync(String(format: "ADiag[%@]: err=%.3f acc=%.1fms ptsD=%.4f buf=%d", mode, error * 1000, audioTimeAccumError * 1000, ptsDelta * 1000, audioBufferCount))
             }
@@ -448,6 +461,13 @@ class RTMPStreamManager: ObservableObject {
         audioBufferCount += 1
         let count = audioBufferCount
         bufferCountLock.unlock()
+
+        // 更新浮窗buffer计数（每20帧更新一次）
+        if count % 20 == 0 {
+            Task { @MainActor in
+                DebugInfoManager.shared.audioBufferCount = count
+            }
+        }
 
         if count > Int(Double(Config.streamAudioBufferFrames) * 1.5) {
             forceClearBuffers()
@@ -475,6 +495,9 @@ class RTMPStreamManager: ObservableObject {
         // 重置初始偏移状态
         videoInitialOffsetSec = 0.0
         videoFrameCount = 0
+        // 重置PTS间隙检测状态
+        hasFirstConsumedVideoFrame = false
+        lastConsumedVideoPts = 0
         DebugInfoManager.shared.logAsync("Audio: state fully reset")
     }
 
@@ -559,8 +582,34 @@ class RTMPStreamManager: ObservableObject {
         bufferCountLock.unlock()
     }
 
+    private func detectVideoPtsGap(_ sampleBuffer: CMSampleBuffer) {
+        let pts = CMTimeGetSeconds(sampleBuffer.presentationTimeStamp)
+        if !hasFirstConsumedVideoFrame {
+            hasFirstConsumedVideoFrame = true
+            lastConsumedVideoPts = pts
+            return
+        }
+        let gapMs = (pts - lastConsumedVideoPts) * 1000.0
+        // 正常60fps帧间隔约16.7ms，超过20ms视为异常间隙
+        if gapMs > 20.0 {
+            let estimatedFrames = Int(gapMs / 16.67)
+            let skipInfo = String(format: "%.0fms (~%d fr)", gapMs, estimatedFrames)
+            DebugInfoManager.shared.logAsync("[VSKIP] gap=\(skipInfo) vBuf=\(videoBufferCount) aBuf=\(audioBufferCount)")
+            Task { @MainActor in
+                DebugInfoManager.shared.videoPtsGapCount += 1
+                if gapMs > DebugInfoManager.shared.videoMaxPtsGapMs {
+                    DebugInfoManager.shared.videoMaxPtsGapMs = gapMs
+                }
+                DebugInfoManager.shared.lastSkipInfo = skipInfo
+            }
+        }
+        lastConsumedVideoPts = pts
+    }
+
     private func forceClearBuffers() {
         bufferCountLock.lock()
+        let vBuf = videoBufferCount
+        let aBuf = audioBufferCount
         videoBufferCount = 0
         audioBufferCount = 0
         bufferCountLock.unlock()
@@ -572,6 +621,9 @@ class RTMPStreamManager: ObservableObject {
         videoDriftCompensationSec = 0.0
         videoInitialOffsetSec = 0.0
         videoFrameCount = 0
+        // 重置PTS间隙检测状态
+        hasFirstConsumedVideoFrame = false
+        lastConsumedVideoPts = 0
         videoContinuation?.finish()
         audioContinuation?.finish()
         lock.lock()
@@ -587,7 +639,7 @@ class RTMPStreamManager: ObservableObject {
         cachedAudioFormat = nil
         outputAudioFormat = nil
         Task { @MainActor in
-            DebugInfoManager.shared.log("RTMP: 缓冲区强制清空")
+            DebugInfoManager.shared.log("RTMP: 缓冲区强制清空 (vBuf=\(vBuf) aBuf=\(aBuf) encoded=\(videoFrameCount))")
         }
     }
 
@@ -623,6 +675,8 @@ class RTMPStreamManager: ObservableObject {
         videoFrameCount = 0
         prevAudioAlignedTime = 0
         audioTimeAccumError = 0
+        hasFirstConsumedVideoFrame = false
+        lastConsumedVideoPts = 0
         prevDisplayedErr = 0
     }
 

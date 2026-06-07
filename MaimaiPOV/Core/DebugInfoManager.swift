@@ -73,13 +73,20 @@ class DebugInfoManager: ObservableObject {
 
     @Published var logMessages: [String] = []
     @Published var streamInfo: String = "--"
-    private let maxLogMessages = 30
+    private let maxLogMessages = 50
 
     @Published var rtmpStatus: String = "Idle"
     @Published var rtmpBitrate: Int = 0
     @Published var rtmpFPS: Int = 0
     @Published var deviceTemperature: Double = 0.0
     @Published var streamingDuration: String = "--"
+
+    // 视频跳变诊断
+    @Published var videoPtsGapCount: Int = 0        // 累计PTS跳变次数
+    @Published var videoMaxPtsGapMs: Double = 0      // 最大PTS间隙(ms)
+    @Published var lastSkipInfo: String = "--"        // 最近跳变描述
+    @Published var videoBufferCount: Int = 0          // 当前视频缓冲区计数
+    @Published var audioBufferCount: Int = 0          // 当前音频缓冲区计数
 
     struct FrameDebugData {
         var hasYoloResult: Bool = false

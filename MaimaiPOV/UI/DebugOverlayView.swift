@@ -4,19 +4,24 @@ struct DebugOverlayView: View {
     @ObservedObject var debug: DebugInfoManager
     @Binding var isAntiTouchMode: Bool
     @State private var dragOffset: CGSize = .zero
-    @State private var showLog = false
+    @State private var selectedTab: DebugTab = .stream
 
     private var isCollapsed: Bool { !debug.isDetailVisible }
+
+    enum DebugTab: String, CaseIterable {
+        case stream = "STREAM"
+        case yolo = "YOLO"
+        case track = "TRACK"
+        case log = "LOG"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerBar
 
             if !isCollapsed {
-                infoContent
-                if showLog {
-                    logSection
-                }
+                tabBar
+                tabContent
             }
         }
         .font(.system(size: 10, design: .monospaced))
@@ -30,6 +35,8 @@ struct DebugOverlayView: View {
         .offset(dragOffset)
         .gesture(dragGesture)
     }
+
+    // MARK: - Header Bar
 
     private var headerBar: some View {
         HStack(spacing: 6) {
@@ -50,18 +57,15 @@ struct DebugOverlayView: View {
                 .foregroundColor(debug.pipelineLagMs < 10 ? .green :
                                    debug.pipelineLagMs < 20 ? .yellow : .red)
 
-            if !isCollapsed {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        showLog.toggle()
-                    }
-                } label: {
-                    Image(systemName: showLog ? "list.bullet.rectangle" : "list.bullet")
-                        .font(.system(size: 14))
-                        .foregroundColor(showLog ? .cyan : .gray)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 4)
-                }
+            if isCollapsed && debug.isStreaming {
+                Text(debug.rtmpBitrate > 0 ? "\(debug.rtmpBitrate)kbps" : "")
+                    .foregroundColor(.gray)
+            }
+
+            if isCollapsed && debug.isStreaming {
+                Text(debug.rtmpStatus == "Publishing" ? "PUB" : debug.rtmpStatus)
+                    .foregroundColor(rtmpStatusColor(debug.rtmpStatus))
+                    .font(.system(size: 8, weight: .bold))
             }
 
             Button {
@@ -82,39 +86,150 @@ struct DebugOverlayView: View {
         .background(Color.black.opacity(0.5))
     }
 
-    private var infoContent: some View {
+    // MARK: - Tab Bar
+
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(DebugTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.system(size: 9, weight: selectedTab == tab ? .bold : .regular))
+                        .foregroundColor(selectedTab == tab ? .cyan : .gray)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(selectedTab == tab ? Color.cyan.opacity(0.15) : Color.clear)
+                }
+            }
+        }
+        .background(Color.black.opacity(0.3))
+    }
+
+    // MARK: - Tab Content
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .stream:
+            ScrollView {
+                streamContent
+            }
+            .frame(maxHeight: 280)
+        case .yolo:
+            ScrollView {
+                yoloContent
+            }
+            .frame(maxHeight: 280)
+        case .track:
+            ScrollView {
+                trackContent
+            }
+            .frame(maxHeight: 280)
+        case .log:
+            logContent
+        }
+    }
+
+    // MARK: - STREAM Tab
+
+    private var streamContent: some View {
         VStack(alignment: .leading, spacing: 2) {
-            sectionHeader("STAB")
-            infoRow("Temp", String(format: "%.1f°C", debug.deviceTemperature))
-            infoRow("FOV", String(format: "%.0f°", debug.fov))
-            infoRow("Dist", String(format: "%.2f", debug.distRatio))
-            infoRow("Lens", debug.lensType)
-            infoRow("Stab", debug.stabEnabled ? "ON" : "OFF",
-                    color: debug.stabEnabled ? .green : .red)
-            infoRow("Frame", "\(debug.frameCount)")
+            sectionHeader("RTMP")
+            infoRow("Status", debug.rtmpStatus,
+                    color: rtmpStatusColor(debug.rtmpStatus))
+            infoRow("Duration", debug.streamingDuration)
+            infoRow("Bitrate", "\(debug.rtmpBitrate)kbps")
+            infoRow("FPS", "\(debug.rtmpFPS)")
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 
-            sectionHeader("YOLO")
+            sectionHeader("VIDEO")
+            infoRow("Readback", debug.streamInfo,
+                    color: debug.streamInfo != "--" ? .green : .gray)
+            infoRow("VBuf", "\(debug.videoBufferCount) bufs",
+                    color: debug.videoBufferCount > 60 ? .red :
+                           debug.videoBufferCount > 30 ? .yellow : .green)
+            infoRow("Lag", String(format: "%.1fms", debug.pipelineLagMs),
+                    color: debug.pipelineLagMs < 10 ? .green :
+                           debug.pipelineLagMs < 20 ? .yellow : .red)
+
+            Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
+
+            sectionHeader("SKIP DIAG")
+            infoRow("SkipCnt", "\(debug.videoPtsGapCount)",
+                    color: debug.videoPtsGapCount > 0 ? .red : .green)
+            infoRow("MaxGap", String(format: "%.1fms", debug.videoMaxPtsGapMs),
+                    color: debug.videoMaxPtsGapMs > 50 ? .red :
+                           debug.videoMaxPtsGapMs > 20 ? .yellow : .green)
+            infoRow("LastSkip", debug.lastSkipInfo,
+                    color: debug.lastSkipInfo != "--" ? .yellow : .gray)
+
+            Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
+
+            sectionHeader("AUDIO SYNC")
+            infoRow("ABuf", "\(debug.audioBufferCount) bufs",
+                    color: debug.audioBufferCount > 100 ? .red :
+                           debug.audioBufferCount > 50 ? .yellow : .green)
+            infoRow("ADrift", String(format: "%.1fms", debug.audioDriftMs),
+                    color: abs(debug.audioDriftMs) < 5 ? .green : .yellow)
+            infoRow("VComp", String(format: "%.1fms", debug.videoDriftCompensationMs),
+                    color: abs(debug.videoDriftCompensationMs) < 5 ? .green : .yellow)
+            infoRow("VInit", String(format: "%.1fms", debug.videoInitialOffsetMs),
+                    color: debug.videoInitialOffsetMs < 55 ? .green : .yellow)
+            infoRow("AErr", String(format: "%.3fms", debug.audioDiagErr),
+                    color: abs(debug.audioDiagErr) < 0.1 ? .green : (debug.audioDiagErr < 0 ? .red : .yellow))
+            infoRow("AAccum", String(format: "%.1fms", debug.audioDiagAccum),
+                    color: abs(debug.audioDiagAccum) < 5 ? .green : .red)
+            infoRow("AMode", debug.audioMode,
+                    color: debug.audioMode == "STEREO" ? .cyan : .white)
+            infoRow("AMix", String(format: "%.3fms", debug.audioMixTime),
+                    color: debug.audioMixTime < 1.0 ? .green : .yellow)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - YOLO Tab
+
+    private var yoloContent: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            sectionHeader("DETECTION")
             infoRow("Detect", debug.yoloDetected ? "YES" : "NO",
                     color: debug.yoloDetected ? .green : .red)
             infoRow("Conf", String(format: "%.2f", debug.yoloConfidence))
             infoRow("Infer", String(format: "%.1fms", debug.yoloInferenceMs))
             infoRow("Prep", String(format: "%.1fms", debug.yoloPreprocessMs))
             infoRow("Total", String(format: "%.1fms", debug.yoloInferenceMs + debug.yoloPreprocessMs))
-            infoRow("Pad", "\(debug.yoloPadding)px")
-            infoRow("Raw", debug.yoloRawCoord)
-            infoRow("Stab", debug.yoloStabCoord)
+
+            Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
+
+            sectionHeader("DETAIL")
             infoRow("Boxes", debug.yoloBoxesInfo)
             infoRow("Top3", debug.yoloTopBoxes)
             infoRow("Rank", "\(debug.yoloBestRank)", color: debug.yoloBestRank == 1 ? .green : .orange)
             infoRow("YFPS", String(format: "%.0f/%.0f", debug.yoloActualFPS, debug.yoloTargetFPS),
                     color: debug.yoloActualFPS >= debug.yoloTargetFPS * 0.8 ? .green : .orange)
+            infoRow("Pad", "\(debug.yoloPadding)px")
             infoRow("U", debug.yoloUniforms)
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 
-            sectionHeader("TRACK")
+            sectionHeader("COORDS")
+            infoRow("Raw", debug.yoloRawCoord)
+            infoRow("Stab", debug.yoloStabCoord)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - TRACK Tab
+
+    private var trackContent: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            sectionHeader("TRACKING")
             infoRow("State", debug.trackState == "tracking" && debug.trackTrust < 1.0 ? "tracking*" : debug.trackState,
                     color: debug.trackState == "tracking" ? (debug.trackTrust < 1.0 ? .yellow : .green) :
                            debug.trackState == "acquiring" ? .cyan :
@@ -137,45 +252,22 @@ struct DebugOverlayView: View {
 
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
 
-            sectionHeader("STREAM")
-            infoRow("Readback", debug.streamInfo,
-                    color: debug.streamInfo != "--" ? .green : .gray)
-            infoRow("AQueue", "\(debug.audioQueueDepth) bufs")
-            infoRow("AMode", debug.audioMode,
-                    color: debug.audioMode == "STEREO" ? .cyan : .white)
-            infoRow("AErr", String(format: "%.3fms", debug.audioDiagErr),
-                    color: abs(debug.audioDiagErr) < 0.1 ? .green : (debug.audioDiagErr < 0 ? .red : .yellow))
-            infoRow("APtsD", String(format: "%.3fms fl=%d", debug.audioPtsDelta, debug.audioFrameLen),
-                    color: .white)
-            infoRow("AAccum", String(format: "%.1fms", debug.audioDiagAccum),
-                    color: abs(debug.audioDiagAccum) < 5 ? .green : .red)
-            infoRow("ADrift", String(format: "%.1fms", debug.audioDriftMs),
-                    color: abs(debug.audioDriftMs) < 5 ? .green : .yellow)
-            infoRow("VComp", String(format: "%.1fms", debug.videoDriftCompensationMs),
-                    color: abs(debug.videoDriftCompensationMs) < 5 ? .green : .yellow)
-            infoRow("VInit", String(format: "%.1fms", debug.videoInitialOffsetMs),
-                    color: debug.videoInitialOffsetMs < 55 ? .green : .yellow)
-            infoRow("AInFmt", debug.audioInFmt)
-            infoRow("AOutFmt", debug.audioOutFmt)
-            infoRow("AMix", String(format: "%.3fms", debug.audioMixTime),
-                    color: debug.audioMixTime < 1.0 ? .green : .yellow)
-
-            Divider().background(Color.white.opacity(0.2)).padding(.vertical, 2)
-
-            sectionHeader("RTMP")
-            infoRow("Status", debug.rtmpStatus,
-                    color: rtmpStatusColor(debug.rtmpStatus))
-            infoRow("Duration", debug.streamingDuration)
-            infoRow("Bitrate", "\(debug.rtmpBitrate)kbps")
-            infoRow("FPS", "\(debug.rtmpFPS)")
+            sectionHeader("STABILIZER")
+            infoRow("FOV", String(format: "%.0f°", debug.fov))
+            infoRow("Dist", String(format: "%.2f", debug.distRatio))
+            infoRow("Lens", debug.lensType)
+            infoRow("Stab", debug.stabEnabled ? "ON" : "OFF",
+                    color: debug.stabEnabled ? .green : .red)
+            infoRow("Frame", "\(debug.frameCount)")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
     }
 
-    private var logSection: some View {
+    // MARK: - LOG Tab
+
+    private var logContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Divider().background(Color.white.opacity(0.2))
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 1) {
@@ -187,7 +279,7 @@ struct DebugOverlayView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 120)
+                .frame(maxHeight: 300)
                 .onChange(of: debug.logMessages.count) { count in
                     if count > 0 {
                         proxy.scrollTo(count - 1, anchor: .bottom)
@@ -198,6 +290,8 @@ struct DebugOverlayView: View {
             .padding(.vertical, 4)
         }
     }
+
+    // MARK: - Helpers
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
