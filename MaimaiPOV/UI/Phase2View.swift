@@ -233,8 +233,9 @@ struct Phase2View: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.gray.opacity(0.2))
+                .adaptiveGlassPanel(cornerRadius: 8, tint: Color.white.opacity(0.04), interactive: true)
             }
+            .buttonStyle(.plain)
 
             if panelExpanded {
                 ScrollView(.vertical, showsIndicators: false) {
@@ -259,16 +260,24 @@ struct Phase2View: View {
                             }
                             .foregroundColor(selectedTab == tab ? .white : .gray)
                             .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .adaptiveGlassPanel(
+                                cornerRadius: 8,
+                                tint: selectedTab == tab ? Color.cyan.opacity(0.16) : Color.clear,
+                                interactive: true
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.vertical, 8)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
                 .padding(.bottom, bottomSafeArea)
-                .background(Color.black.opacity(0.3))
             }
         }
-        .background(.ultraThinMaterial)
-        .cornerRadius(10, corners: [.topLeft, .topRight])
+        .padding(.horizontal, 6)
+        .padding(.top, 6)
+        .adaptiveGlassPanel(cornerRadius: 14, tint: Color.black.opacity(0.18))
     }
 
     // MARK: - Camera Tab
@@ -367,8 +376,7 @@ struct Phase2View: View {
                                 }
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(Color.white.opacity(0.1))
-                                .cornerRadius(8)
+                                .adaptiveGlassPanel(cornerRadius: 8, tint: Color.white.opacity(0.06), interactive: true)
                             }
                             .buttonStyle(.plain)
                         }
@@ -417,6 +425,7 @@ struct Phase2View: View {
                     }
                 }
             }
+            .adaptiveGlassButton()
 
             rtmpUrlRow
             streamKeyRow
@@ -466,7 +475,7 @@ struct Phase2View: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .adaptiveGlassButton(prominent: true)
                     .tint(.red)
                     .controlSize(.small)
                 } else if isBlivechatReconnecting {
@@ -479,7 +488,7 @@ struct Phase2View: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .adaptiveGlassButton(prominent: true)
                     .tint(.red)
                     .controlSize(.small)
                 } else {
@@ -492,7 +501,7 @@ struct Phase2View: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .adaptiveGlassButton(prominent: true)
                     .tint(.green)
                     .controlSize(.small)
                     .disabled(pipeline.blivechatIdentityCode.isEmpty)
@@ -623,24 +632,33 @@ struct Phase2View: View {
     }
 
     private var stabilizerToggleRow: some View {
-        HStack {
+        HStack(spacing: 6) {
             Text("Stabilizer").font(.caption).frame(width: 55, alignment: .leading)
-            Toggle("", isOn: $pipeline.stabEnabled).labelsHidden()
-            Spacer()
-            Text("Activity").font(.caption2).foregroundColor(pipeline.activityMode ? .green : .gray)
-            Toggle("", isOn: $pipeline.activityMode).labelsHidden()
-            Spacer()
-            Text("Preview").font(.caption2).foregroundColor(.gray)
+            Toggle("", isOn: $pipeline.stabEnabled).labelsHidden().controlSize(.small)
+            Spacer(minLength: 2)
+            Image(systemName: "figure.run")
+                .font(.caption2)
+                .foregroundColor(pipeline.activityMode ? .green : .gray)
+                .frame(width: 12)
+            Toggle("", isOn: $pipeline.activityMode).labelsHidden().controlSize(.small)
+            Spacer(minLength: 2)
+            Image(systemName: "eye")
+                .font(.caption2)
+                .foregroundColor(.gray)
+                .frame(width: 12)
             Toggle("", isOn: Binding(
                 get: { pipeline.previewEnabled },
                 set: { newValue in
                     previewOverride = true
                     pipeline.previewEnabled = newValue
                 }
-            )).labelsHidden()
-            Spacer()
-            Text("Lag: \(String(format: "%.1f", pipeline.lagMs))ms")
+            )).labelsHidden().controlSize(.small)
+            Spacer(minLength: 2)
+            Text("\(String(format: "%.1f", pipeline.lagMs))ms")
                 .font(.caption2).foregroundColor(.gray)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(width: 38, alignment: .trailing)
         }
     }
 
@@ -1034,7 +1052,7 @@ struct Phase2View: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .adaptiveGlassButton(prominent: true)
                 .tint(.red)
                 .controlSize(.small)
             } else {
@@ -1050,7 +1068,7 @@ struct Phase2View: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .adaptiveGlassButton(prominent: true)
                 .tint(.green)
                 .controlSize(.small)
                 .disabled(rtmpUrl.isEmpty || streamKey.isEmpty)

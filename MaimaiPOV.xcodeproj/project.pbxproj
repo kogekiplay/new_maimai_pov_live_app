@@ -43,6 +43,7 @@
 		6CE4353EC6B597860DCE328A /* control.html in Resources */ = {isa = PBXBuildFile; fileRef = 5F1BD65E0BD5E33DCC72F850 /* control.html */; };
 		78CC0FF0ABEA27E267983FF8 /* DeviceStatusManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A33673687D074D5BD061425 /* DeviceStatusManager.swift */; };
 		7DB1B7870DCB7DADBFFA35F0 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DC9DBF549FCD41DA96D579 /* MotionManager.swift */; };
+		7EF5C76438961F5DB1AD264A /* AdaptiveGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E58A83BD1A0869DEB491F7E /* AdaptiveGlass.swift */; };
 		7FAC7FB862F7407302F619D1 /* LensCalibration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65BEAE1C55494423CE1F151 /* LensCalibration.swift */; };
 		81578B61CAB7EE2AF6E53847 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41217B676FC8DD8A2AFF5BA3 /* AppDelegate.swift */; };
 		818427BCB8DFFF770AC80ECD /* Canvas.metal in Sources */ = {isa = PBXBuildFile; fileRef = D6BE78835FA6529BF275DC17 /* Canvas.metal */; };
@@ -109,6 +110,7 @@
 		25E6F0A4F9789427F05DA77C /* MaimaiPOV.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MaimaiPOV.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2853B1A01EFD58A2EAFC9EF6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A33673687D074D5BD061425 /* DeviceStatusManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusManager.swift; sourceTree = "<group>"; };
+		2E58A83BD1A0869DEB491F7E /* AdaptiveGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveGlass.swift; sourceTree = "<group>"; };
 		339EF47C06E70715103F6083 /* QueueAPIHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueAPIHandler.swift; sourceTree = "<group>"; };
 		399687749510E66D6FAFE990 /* Marquee.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Marquee.metal; sourceTree = "<group>"; };
 		3A81F719441FC7FFE9B8916F /* DebugAPIHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugAPIHandler.swift; sourceTree = "<group>"; };
@@ -505,6 +507,7 @@
 		E208DD022E880850F1B0AF05 /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				2E58A83BD1A0869DEB491F7E /* AdaptiveGlass.swift */,
 				4EDF1351FE018822E54EA583 /* DebugOverlayView.swift */,
 				601C17EDF83A4FEA8B86970F /* HomeIndicatorHider.swift */,
 				666CD3279AED00AF4535230E /* Phase2View.swift */,
@@ -617,6 +620,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7EF5C76438961F5DB1AD264A /* AdaptiveGlass.swift in Sources */,
 				81578B61CAB7EE2AF6E53847 /* AppDelegate.swift in Sources */,
 				426419F3952EA618098C1063 /* AudioDeviceManager.swift in Sources */,
 				837196FDED6C6ACA9559898B /* AudioMixer.swift in Sources */,

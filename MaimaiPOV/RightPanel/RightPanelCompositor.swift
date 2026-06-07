@@ -316,14 +316,6 @@ class RightPanelCompositor {
 
                 if isMovingUp && distance > 0.001 {
                     row.zOrder = 100
-                    let scaleStep = RightPanelAnimationStep(
-                        targetPosX: normalPosX,
-                        targetPosY: targetPosY,
-                        targetOpacity: 1.0,
-                        targetScale: 1.20,
-                        duration: 0.45,
-                        delay: 0
-                    )
                     let scaleBackStep = RightPanelAnimationStep(
                         targetPosX: normalPosX,
                         targetPosY: targetPosY,
@@ -548,7 +540,7 @@ class RightPanelCompositor {
 
         if isScrollAnimating {
             let elapsed = Float(now - scrollAnimStartTime)
-            var progress = min(max(elapsed / scrollAnimDuration, 0), 1)
+            let progress = min(max(elapsed / scrollAnimDuration, 0), 1)
             let eased = easeOutCubic(progress)
             scrollOffset = startScrollOffset + (targetScrollOffset - startScrollOffset) * eased
             updateRowPositionsForScroll()
@@ -578,7 +570,7 @@ class RightPanelCompositor {
 
         if globalOpacityAnimating {
             let elapsed = Float(now - globalOpacityAnimStartTime)
-            var progress = min(max(elapsed / globalOpacityAnimDuration, 0), 1)
+            let progress = min(max(elapsed / globalOpacityAnimDuration, 0), 1)
             let eased = easeOutCubic(progress)
             globalOpacity = startGlobalOpacity + (targetGlobalOpacity - startGlobalOpacity) * eased
 
@@ -802,7 +794,7 @@ class RightPanelCompositor {
         if isScrollAnimating {
             if preservePosition {
                 let elapsed = Float(CACurrentMediaTime() - scrollAnimStartTime)
-                var progress = min(max(elapsed / scrollAnimDuration, 0), 1)
+                let progress = min(max(elapsed / scrollAnimDuration, 0), 1)
                 let eased = easeOutCubic(progress)
                 scrollOffset = startScrollOffset + (targetScrollOffset - startScrollOffset) * eased
             } else {
@@ -820,7 +812,7 @@ class RightPanelCompositor {
                 if preservePosition {
                     let elapsed = Float(CACurrentMediaTime() - rows[i].animStartTime)
                     if elapsed >= 0 {
-                        var progress = min(max(elapsed / rows[i].animDuration, 0), 1)
+                        let progress = min(max(elapsed / rows[i].animDuration, 0), 1)
                         let eased = easeOutCubic(progress)
                         rows[i].currentPosX = rows[i].startPosX + (rows[i].targetPosX - rows[i].startPosX) * eased
                         rows[i].currentPosY = rows[i].startPosY + (rows[i].targetPosY - rows[i].startPosY) * eased

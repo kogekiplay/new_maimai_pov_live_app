@@ -26,12 +26,7 @@ struct DebugOverlayView: View {
         }
         .font(.system(size: 10, design: .monospaced))
         .foregroundColor(.white)
-        .background(Color.black.opacity(isCollapsed ? 0.6 : 0.75))
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-        )
+        .adaptiveGlassPanel(cornerRadius: 10, tint: Color.black.opacity(isCollapsed ? 0.28 : 0.42))
         .offset(dragOffset)
         .gesture(dragGesture)
     }
@@ -79,11 +74,12 @@ struct DebugOverlayView: View {
                     .foregroundColor(.gray)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
+                    .adaptiveGlassPanel(cornerRadius: 8, tint: Color.white.opacity(0.04), interactive: true)
             }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(Color.black.opacity(0.5))
     }
 
     // MARK: - Tab Bar
@@ -101,11 +97,17 @@ struct DebugOverlayView: View {
                         .foregroundColor(selectedTab == tab ? .cyan : .gray)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(selectedTab == tab ? Color.cyan.opacity(0.15) : Color.clear)
+                        .adaptiveGlassPanel(
+                            cornerRadius: 6,
+                            tint: selectedTab == tab ? Color.cyan.opacity(0.16) : Color.clear,
+                            interactive: true
+                        )
                 }
+                .buttonStyle(.plain)
             }
         }
-        .background(Color.black.opacity(0.3))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
     }
 
     // MARK: - Tab Content

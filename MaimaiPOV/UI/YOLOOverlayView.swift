@@ -82,8 +82,6 @@ struct YOLOOverlayView: View {
         
         let x1 = cx - halfW
         let y1 = cy - halfH
-        let x2 = cx + halfW
-        let y2 = cy + halfH
         
         let scaleX = size.width / CGFloat(stabWidth)
         let scaleY = size.height / CGFloat(stabHeight)
