@@ -216,7 +216,7 @@ final class AudioMixer: ObservableObject, @unchecked Sendable {
         let rl = smoothedRightLevel
         let ml = smoothedMixedLevel
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.leftLevel = ll
             self?.rightLevel = rl
             self?.mixedLevel = ml
