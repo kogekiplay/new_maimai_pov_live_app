@@ -1401,8 +1401,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         if let data = newCurrentData {
             if let musicId = data.musicId {
                 CoverImageLoader.shared.loadCoverBase64(musicId: musicId) { [weak self] base64 in
-                    guard let self = self else { return }
-                    DispatchQueue.main.async {
+                    Task { @MainActor [weak self] in
+                        guard let self = self else { return }
                         self.leftPanelRenderer?.renderCurrentSong(data, coverBase64: base64) { [weak self] texture in
                             guard let self = self else { return }
                             self.leftPanelCompositor?.switchToNext(newCurrentTexture: texture, newCurrentData: data)
@@ -1413,7 +1413,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                     }
                 }
             } else {
-                DispatchQueue.main.async { [weak self] in
+                Task { @MainActor [weak self] in
                     guard let self = self else { return }
                     self.leftPanelRenderer?.renderCurrentSong(data, coverBase64: nil) { [weak self] texture in
                         guard let self = self else { return }
@@ -1425,7 +1425,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 }
             }
         } else {
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 guard let self = self else { return }
                 self.leftPanelRenderer?.renderCurrentSong(nil, coverBase64: nil) { [weak self] texture in
                     guard let self = self else { return }
