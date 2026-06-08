@@ -37,7 +37,7 @@
 
 ## 本项目规则
 
-- iOS 26+：能用标准控件就用标准控件。例如分段切换优先使用 `Picker` + `.pickerStyle(.segmented)`，不要自己画胶囊背景。
+- iOS 26+：能用标准控件就用标准控件。但如果交互要求是按住并拖动 glass thumb，系统 `Picker` 的 segmented 样式不够用，必须用 `GlassEffectContainer` + `glassEffect(...interactive())` 做自定义控件。
 - iOS 26+：自定义 glass 只用于没有合适标准控件的 surface/chip/button，并且必须是 `glassEffect` 或 `.buttonStyle(.glass/.glassProminent)`。
 - iOS 26+：不要用 `.background(.ultraThinMaterial)`、半透明 `Color`、blur、stroke 组合冒充 Liquid Glass。
 - iOS 17 fallback：可以继续用 `.ultraThinMaterial` 等旧 material，但必须通过 `#available(iOS 26.0, *)` 与原生 Liquid Glass 分支分开。
@@ -52,5 +52,5 @@
 
 `MaimaiPOV/UI/DebugOverlayView.swift` 中的调试分段：
 
-- iOS 26+ 使用系统 `Picker("", selection:)` + `.pickerStyle(.segmented)`，让系统提供原生 Liquid Glass 分段外观和交互。
+- iOS 26+ 使用自定义可拖动分段：track 和 thumb 放进 `GlassEffectContainer`；thumb 使用 `.glassEffect(.regular.tint(...).interactive(), in: .rect(cornerRadius: ...))`；`glassEffectID` 负责 glass 形状跟随选择变化。
 - iOS 17 使用旧的自定义 fallback，保留可拖动选择体验和 material 背景。
