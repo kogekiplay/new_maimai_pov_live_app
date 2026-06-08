@@ -58,7 +58,6 @@ struct Phase2View: View {
     @State private var volumeObservation: NSKeyValueObservation?
     @State private var startupTask: Task<Void, Never>?
     @State private var pipelineStarted: Bool = false
-    @State private var previewOverride: Bool = false
     @State private var advancedExpanded: Bool = false
     @State private var presets: [StreamPreset] = Config.streamPresets
     @State private var showAddPresetSheet = false
@@ -348,7 +347,6 @@ struct Phase2View: View {
                 isAntiTouchMode = false
                 withAnimation(.easeInOut(duration: 0.2)) {
                     panelExpanded.toggle()
-                    previewOverride = false
                     pipeline.previewEnabled = panelExpanded
                 }
             } label: {
@@ -933,7 +931,6 @@ struct Phase2View: View {
             Toggle("", isOn: Binding(
                 get: { pipeline.previewEnabled },
                 set: { newValue in
-                    previewOverride = true
                     pipeline.previewEnabled = newValue
                 }
             )).labelsHidden().controlSize(.small)
