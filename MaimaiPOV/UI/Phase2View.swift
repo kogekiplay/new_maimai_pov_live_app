@@ -107,6 +107,7 @@ struct Phase2View: View {
             antiTouchTimer: $antiTouchTimer
         )
         .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
             antiTouchTimer?.invalidate()
             antiTouchTimer = nil
             volumeObservation?.invalidate()
