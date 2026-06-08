@@ -29,6 +29,10 @@ private enum ControlTab: CaseIterable, Hashable {
     }
 }
 
+private enum ControlPanelLayout {
+    static let expandedContentHeight: CGFloat = 240
+}
+
 struct Phase2View: View {
     @StateObject private var pipeline = LivePipelineManager()
     @State private var selectedTab: ControlTab = .camera
@@ -358,20 +362,30 @@ struct Phase2View: View {
 
             if panelExpanded {
                 ScrollView(.vertical, showsIndicators: false) {
-                    switch tab {
-                    case .camera: cameraTabContent
-                    case .effects: effectsTabContent
-                    case .stream: streamTabContent
-                    case .blivechat: blivechatTabContent
-                    }
+                    controlPanelContent(for: tab)
+                        .frame(maxWidth: .infinity)
+                        .frame(
+                            minHeight: ControlPanelLayout.expandedContentHeight,
+                            alignment: .center
+                        )
                 }
-                .frame(maxHeight: 240)
+                .frame(maxHeight: ControlPanelLayout.expandedContentHeight)
             }
         }
         .padding(.horizontal, 6)
         .padding(.top, 6)
         .padding(.bottom, panelExpanded ? 0 : 6)
         .adaptiveGlassPanelBackground(cornerRadius: 14, tint: Color.black.opacity(0.18))
+    }
+
+    @ViewBuilder
+    private func controlPanelContent(for tab: ControlTab) -> some View {
+        switch tab {
+        case .camera: cameraTabContent
+        case .effects: effectsTabContent
+        case .stream: streamTabContent
+        case .blivechat: blivechatTabContent
+        }
     }
 
     // MARK: - Camera Tab
