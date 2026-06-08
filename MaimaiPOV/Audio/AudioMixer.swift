@@ -30,6 +30,7 @@ final class AudioMixer: ObservableObject, @unchecked Sendable {
     private var stereoDiagCounter: Int = 0
     /// 格式转换路径计数器
     private var conversionDiagCounter: Int = 0
+    private var conversionFailureDiagCounter: Int = 0
 
     func process(_ input: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         if isStereoMixEnabled && input.format.channelCount >= 2 {
@@ -176,9 +177,20 @@ final class AudioMixer: ObservableObject, @unchecked Sendable {
         let channels = input.format.channelCount
         let frameLength = Int(input.frameLength)
 
-        if standardFormat == nil || standardFormat!.sampleRate != sampleRate || standardFormat!.channelCount != channels {
-            standardFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels)
-            audioConverter = AVAudioConverter(from: input.format, to: standardFormat!)
+        if standardFormat?.sampleRate != sampleRate || standardFormat?.channelCount != channels {
+            guard let nextFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels),
+                  let nextConverter = AVAudioConverter(from: input.format, to: nextFormat) else {
+                conversionFailureDiagCounter += 1
+                if conversionFailureDiagCounter % 30 == 1 {
+                    DebugInfoManager.logAsync("MixerCvt: failed to create converter sr=\(Int(sampleRate)) ch=\(channels) il=\(input.format.isInterleaved) cf=\(input.format.commonFormat.rawValue)")
+                }
+                standardFormat = nil
+                audioConverter = nil
+                standardBuffer = nil
+                return nil
+            }
+            standardFormat = nextFormat
+            audioConverter = nextConverter
             standardBuffer = nil
         }
 
