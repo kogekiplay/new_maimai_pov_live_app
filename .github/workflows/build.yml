@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build:
     name: Build & Archive
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
 
     steps:
@@ -37,6 +37,41 @@ jobs:
         run: |
           xcodegen generate
           echo "=== Project generated ==="
+
+      - name: Select iOS Simulator
+        id: simulator
+        run: |
+          DESTINATION=$(python3 - <<'PY'
+          import json
+          import subprocess
+
+          devices = json.loads(
+              subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"])
+          )
+          for runtime, runtime_devices in devices.get("devices", {}).items():
+              if "iOS" not in runtime:
+                  continue
+              for device in runtime_devices:
+                  if device.get("isAvailable") and device.get("name", "").startswith("iPhone"):
+                      print(f"platform=iOS Simulator,id={device['udid']}")
+                      raise SystemExit(0)
+          raise SystemExit("No available iPhone simulator found")
+          PY
+          )
+          echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
+
+      - name: Run Unit Tests
+        run: |
+          xcodebuild test \
+            -project MaimaiPOV.xcodeproj \
+            -scheme MaimaiPOV \
+            -destination "${{ steps.simulator.outputs.destination }}" \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            2>&1
 
       - name: Build Archive
         run: |

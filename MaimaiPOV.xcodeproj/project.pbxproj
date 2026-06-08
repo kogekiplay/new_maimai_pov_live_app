@@ -7,10 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A1B2C3D4E5F678901234560 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F678901234563 /* Localization.swift */; };
-		0A1B2C3D4E5F678901234561 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F678901234566 /* Localizable.strings */; };
-		0A1B2C3D4E5F678901234562 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F678901234567 /* InfoPlist.strings */; };
-		C0D3A11C0DEC0DED00000001 /* LockedValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3A11C0DEC0DED00000002 /* LockedValue.swift */; };
 		00F189F6543C246C828ADB93 /* CanvasUniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4A844146075774AB81D1FD /* CanvasUniforms.swift */; };
 		074798CB331544E3930BF961 /* OverlayCompositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8647E108476D7F423F530E5 /* OverlayCompositor.swift */; };
 		0986160EADF9E2B6DAD5BAC7 /* YOLOOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E6AD6052E973E084A95101 /* YOLOOverlayView.swift */; };
@@ -30,16 +26,19 @@
 		426419F3952EA618098C1063 /* AudioDeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5B69C649A2719D9D2B1872 /* AudioDeviceManager.swift */; };
 		43693D576236385D4334BCFF /* LeftPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1EDA25735BD66CB491ACCF /* LeftPanelRenderer.swift */; };
 		4960C39DA3C28E9CD47EA077 /* SongCard.metal in Sources */ = {isa = PBXBuildFile; fileRef = 5421EF97A1F11E3BF7A5E378 /* SongCard.metal */; };
+		4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */; };
 		4CE678CFEBFC4A1963693E35 /* RTMPStreamManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8E46D40CF64FBA81EFC6BA /* RTMPStreamManager.swift */; };
 		4D0941CC730BD57BBB07F8D2 /* MarqueeCompositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E6AD18BADBC0BB8B8EDD2F /* MarqueeCompositor.swift */; };
 		4E47A9A4A5EEBF681EC898A3 /* LivePipelineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EA31DEED25EEBEAA443CE9 /* LivePipelineManager.swift */; };
 		4EFAF8678F1C841FA9296BAB /* DeviceStatusRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DC50D8FD92C6255BC29FE34 /* DeviceStatusRenderer.swift */; };
+		5BD05D887D8C306492C8851B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2822F11F9EC300388A415280 /* Localizable.strings */; };
 		5E581FF67E38238455039F42 /* SearchAPIHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F2D4C48566FAB764DB15B4 /* SearchAPIHandler.swift */; };
 		5E7DDBB19A445B82C2C3D9E0 /* YOLOPreprocessUniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F7EBD17B204010D7E9FE84 /* YOLOPreprocessUniforms.swift */; };
 		6241903E117AB282E500E147 /* Phase2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666CD3279AED00AF4535230E /* Phase2View.swift */; };
 		62869CD571FCD745781E49CD /* best.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 1AC9C46B0789B237EBE9C526 /* best.mlpackage */; };
 		663CCB70A4C96442D12D22E4 /* IOSurfaceOutputPool.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF25DCF7B1AD031CB73442A3 /* IOSurfaceOutputPool.swift */; };
 		66C5912CDBA7496F2F09542B /* SongDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F714B1A6A5856FD035FC13 /* SongDatabase.swift */; };
+		681F6448E996A2945BABAE01 /* LockedValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7926E386FB459F48DAEDE4 /* LockedValue.swift */; };
 		695E7AB2B54A58F25838929D /* HomeIndicatorHider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 601C17EDF83A4FEA8B86970F /* HomeIndicatorHider.swift */; };
 		6AD5AD4FCF0BF8AB75C40165 /* DeviceStatusUniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DE005BEA625FAB3ACD3C113 /* DeviceStatusUniforms.swift */; };
 		6B2EF8EEFD93B93A43CB29BE /* MarqueeUniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EF91FF33B5979A440E9387D /* MarqueeUniforms.swift */; };
@@ -67,6 +66,7 @@
 		B0A661B9C714856E4F3769C8 /* Stabilizer.metal in Sources */ = {isa = PBXBuildFile; fileRef = 116DFFFD90A0D2767EC58B5D /* Stabilizer.metal */; };
 		B0D684E375FC25CB200AC554 /* BlivechatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBE8DDE579A7717A6971C50 /* BlivechatMessage.swift */; };
 		B776CF6FF76B81418F469E6B /* WebServerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8E39390DD94738B7AB38E16 /* WebServerManager.swift */; };
+		B885EDAFAFD48A7C3E0F66AA /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 4C6A80BF985D9AFDA72C2246 /* InfoPlist.strings */; };
 		BBEC6B588215A3195AEB8F04 /* StabilizerUniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1C200B026E1FC7F7551E184 /* StabilizerUniforms.swift */; };
 		BBF1A866AE73530E5F1FC687 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2853B1A01EFD58A2EAFC9EF6 /* Assets.xcassets */; };
 		BD0D89596DFB2AA009246685 /* RightPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47F1B8D9ACBA18C8111F6308 /* RightPanelRenderer.swift */; };
@@ -89,19 +89,27 @@
 		E9B57BA96FAC3A223303BF7E /* CoverImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08B200D56D96DF09958081F3 /* CoverImageLoader.swift */; };
 		EC1841384677AAB9DAC574B3 /* TextureHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0367C0613BC4E28578FD98DC /* TextureHelper.swift */; };
 		F8B576A6F76DBEF1FCE447DB /* DebugOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EDF1351FE018822E54EA583 /* DebugOverlayView.swift */; };
+		FE1090A13CF97BB9420F22DC /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB5BE47CA7E23F002BF7B89A /* Localization.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		F2057F769E35B3740E90A51D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 20427E8FD0059652140AE170 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 55B681EFE3261F770ECCEC0C;
+			remoteInfo = MaimaiPOV;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		0A1B2C3D4E5F678901234563 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
-		0A1B2C3D4E5F678901234564 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
-		0A1B2C3D4E5F678901234565 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
-		C0D3A11C0DEC0DED00000002 /* LockedValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockedValue.swift; sourceTree = "<group>"; };
 		0367C0613BC4E28578FD98DC /* TextureHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextureHelper.swift; sourceTree = "<group>"; };
 		047C39BEEA272C0D82992C3E /* MarqueeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeItem.swift; sourceTree = "<group>"; };
 		08B200D56D96DF09958081F3 /* CoverImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageLoader.swift; sourceTree = "<group>"; };
 		08FD90470A4B05202A2AB12F /* SongCardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardRenderer.swift; sourceTree = "<group>"; };
 		0B8E46D40CF64FBA81EFC6BA /* RTMPStreamManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RTMPStreamManager.swift; sourceTree = "<group>"; };
 		0BEE3C29F1C588421F1DC055 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		0C7926E386FB459F48DAEDE4 /* LockedValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockedValue.swift; sourceTree = "<group>"; };
 		0DC50D8FD92C6255BC29FE34 /* DeviceStatusRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusRenderer.swift; sourceTree = "<group>"; };
 		116DFFFD90A0D2767EC58B5D /* Stabilizer.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Stabilizer.metal; sourceTree = "<group>"; };
 		127FCAFBAAB0F803FA916DE4 /* MarqueeRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeRenderer.swift; sourceTree = "<group>"; };
@@ -114,6 +122,7 @@
 		22BAF22F0529DA0F70D9BFCF /* DeviceStatusCompositor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusCompositor.swift; sourceTree = "<group>"; };
 		234526FDF17F5B4CDE8507D5 /* MarqueeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeManager.swift; sourceTree = "<group>"; };
 		25E6F0A4F9789427F05DA77C /* MaimaiPOV.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MaimaiPOV.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2822F11F9EC300388A415280 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		2853B1A01EFD58A2EAFC9EF6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A33673687D074D5BD061425 /* DeviceStatusManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusManager.swift; sourceTree = "<group>"; };
 		2E58A83BD1A0869DEB491F7E /* AdaptiveGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveGlass.swift; sourceTree = "<group>"; };
@@ -124,6 +133,7 @@
 		41217B676FC8DD8A2AFF5BA3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		43EA31DEED25EEBEAA443CE9 /* LivePipelineManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePipelineManager.swift; sourceTree = "<group>"; };
 		47F1B8D9ACBA18C8111F6308 /* RightPanelRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightPanelRenderer.swift; sourceTree = "<group>"; };
+		4C6A80BF985D9AFDA72C2246 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		4DE005BEA625FAB3ACD3C113 /* DeviceStatusUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusUniforms.swift; sourceTree = "<group>"; };
 		4EDF1351FE018822E54EA583 /* DebugOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugOverlayView.swift; sourceTree = "<group>"; };
 		52170AB3E7C57BBAAB6870C8 /* Overlay.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Overlay.metal; sourceTree = "<group>"; };
@@ -156,6 +166,9 @@
 		B8E39390DD94738B7AB38E16 /* WebServerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebServerManager.swift; sourceTree = "<group>"; };
 		BD5B69C649A2719D9D2B1872 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
 		C0FC22CE1AFAA8DC5D0CCCAC /* SongRequest */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SongRequest; path = MaimaiPOV/SongRequest; sourceTree = SOURCE_ROOT; };
+		C12CF72CC59DB900A8E50A5D /* MaimaiPOVTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MaimaiPOVTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardDataTests.swift; sourceTree = "<group>"; };
+		CB5BE47CA7E23F002BF7B89A /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		CFB9A694361D510732BBCF68 /* HaishinKit_source */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HaishinKit_source; path = HaishinKit_source; sourceTree = SOURCE_ROOT; };
 		D1C200B026E1FC7F7551E184 /* StabilizerUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StabilizerUniforms.swift; sourceTree = "<group>"; };
 		D372EC3DD1EA2193F727E971 /* Crop.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Crop.metal; sourceTree = "<group>"; };
@@ -203,6 +216,7 @@
 			isa = PBXGroup;
 			children = (
 				25E6F0A4F9789427F05DA77C /* MaimaiPOV.app */,
+				C12CF72CC59DB900A8E50A5D /* MaimaiPOVTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -287,6 +301,14 @@
 				76187EFA9F76752F2029C793 /* Shaders */,
 			);
 			path = Rendering;
+			sourceTree = "<group>";
+		};
+		45E23CD36CDDE574D23E6328 /* MaimaiPOVTests */ = {
+			isa = PBXGroup;
+			children = (
+				CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */,
+			);
+			path = MaimaiPOVTests;
 			sourceTree = "<group>";
 		};
 		460B1EB03F40F5F069D7C4F9 /* LeftPanel */ = {
@@ -383,8 +405,8 @@
 			isa = PBXGroup;
 			children = (
 				2853B1A01EFD58A2EAFC9EF6 /* Assets.xcassets */,
-				0A1B2C3D4E5F678901234567 /* InfoPlist.strings */,
-				0A1B2C3D4E5F678901234566 /* Localizable.strings */,
+				4C6A80BF985D9AFDA72C2246 /* InfoPlist.strings */,
+				2822F11F9EC300388A415280 /* Localizable.strings */,
 				C0FC22CE1AFAA8DC5D0CCCAC /* SongRequest */,
 				7B9068AFB1E3D4D68ED7709A /* App */,
 				4FBD642F1CE0DAB4AA8EFE5D /* Audio */,
@@ -417,8 +439,8 @@
 				DA3335E687B44BB3ABF1322E /* Config.swift */,
 				99A583BDDF4E4F1121159357 /* DebugInfoManager.swift */,
 				F65BEAE1C55494423CE1F151 /* LensCalibration.swift */,
-				0A1B2C3D4E5F678901234563 /* Localization.swift */,
-				C0D3A11C0DEC0DED00000002 /* LockedValue.swift */,
+				CB5BE47CA7E23F002BF7B89A /* Localization.swift */,
+				0C7926E386FB459F48DAEDE4 /* LockedValue.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -493,6 +515,7 @@
 			isa = PBXGroup;
 			children = (
 				95E574912484A4CBDD3E0595 /* MaimaiPOV */,
+				45E23CD36CDDE574D23E6328 /* MaimaiPOVTests */,
 				493918F013A750CDA1802060 /* Packages */,
 				0B76E36328A61AB0D106FED4 /* Products */,
 			);
@@ -569,6 +592,24 @@
 			productReference = 25E6F0A4F9789427F05DA77C /* MaimaiPOV.app */;
 			productType = "com.apple.product-type.application";
 		};
+		7DE5DCECB3DCD9EE30EA34A7 /* MaimaiPOVTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E793027B1BA2E37893791BBF /* Build configuration list for PBXNativeTarget "MaimaiPOVTests" */;
+			buildPhases = (
+				07449F3F46C48CAFE144B6FF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A4ED0A468F2E14D5A2B6B0BC /* PBXTargetDependency */,
+			);
+			name = MaimaiPOVTests;
+			packageProductDependencies = (
+			);
+			productName = MaimaiPOVTests;
+			productReference = C12CF72CC59DB900A8E50A5D /* MaimaiPOVTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -603,6 +644,7 @@
 			projectRoot = "";
 			targets = (
 				55B681EFE3261F770ECCEC0C /* MaimaiPOV */,
+				7DE5DCECB3DCD9EE30EA34A7 /* MaimaiPOVTests */,
 			);
 		};
 /* End PBXProject section */
@@ -613,8 +655,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				BBF1A866AE73530E5F1FC687 /* Assets.xcassets in Resources */,
-				0A1B2C3D4E5F678901234562 /* InfoPlist.strings in Resources */,
-				0A1B2C3D4E5F678901234561 /* Localizable.strings in Resources */,
+				B885EDAFAFD48A7C3E0F66AA /* InfoPlist.strings in Resources */,
+				5BD05D887D8C306492C8851B /* Localizable.strings in Resources */,
 				DA4F5216377F449B53C69B2A /* SongRequest in Resources */,
 				6CE4353EC6B597860DCE328A /* control.html in Resources */,
 			);
@@ -623,6 +665,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		07449F3F46C48CAFE144B6FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		61233FD228659BC3DDF85598 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -660,9 +710,9 @@
 				43693D576236385D4334BCFF /* LeftPanelRenderer.swift in Sources */,
 				DA3C087311DA9A28A8B8E21D /* LeftPanelTemplate.swift in Sources */,
 				7FAC7FB862F7407302F619D1 /* LensCalibration.swift in Sources */,
-				0A1B2C3D4E5F678901234560 /* Localization.swift in Sources */,
-				C0D3A11C0DEC0DED00000001 /* LockedValue.swift in Sources */,
 				4E47A9A4A5EEBF681EC898A3 /* LivePipelineManager.swift in Sources */,
+				FE1090A13CF97BB9420F22DC /* Localization.swift in Sources */,
+				681F6448E996A2945BABAE01 /* LockedValue.swift in Sources */,
 				3368665641794D0D2A5B5356 /* MaimaiPOVApp.swift in Sources */,
 				8D6D2EEF6DED370069D4DB60 /* Marquee.metal in Sources */,
 				4D0941CC730BD57BBB07F8D2 /* MarqueeCompositor.swift in Sources */,
@@ -707,26 +757,32 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXVariantGroup section */
-		0A1B2C3D4E5F678901234566 /* Localizable.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				0A1B2C3D4E5F678901234564 /* zh-Hans */,
-			);
-			name = Localizable.strings;
-			sourceTree = "<group>";
+/* Begin PBXTargetDependency section */
+		A4ED0A468F2E14D5A2B6B0BC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 55B681EFE3261F770ECCEC0C /* MaimaiPOV */;
+			targetProxy = F2057F769E35B3740E90A51D /* PBXContainerItemProxy */;
 		};
-		0A1B2C3D4E5F678901234567 /* InfoPlist.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				0A1B2C3D4E5F678901234565 /* zh-Hans */,
-			);
-			name = InfoPlist.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		03C79D23FCCF01AE5D7EBDAB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.maimai.MaimaiPOVTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MaimaiPOV.app/MaimaiPOV";
+			};
+			name = Release;
+		};
 		20F8328E6AE234A0C2EFD02E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -827,6 +883,23 @@
 				VALID_ARCHS = arm64;
 			};
 			name = Release;
+		};
+		411E4C11786CEFF9F652AC55 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.maimai.MaimaiPOVTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MaimaiPOV.app/MaimaiPOV";
+			};
+			name = Debug;
 		};
 		6EC0C2B316BC2AD4BBBEC6C5 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -953,6 +1026,15 @@
 			buildConfigurations = (
 				6EC0C2B316BC2AD4BBBEC6C5 /* Debug */,
 				20F8328E6AE234A0C2EFD02E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E793027B1BA2E37893791BBF /* Build configuration list for PBXNativeTarget "MaimaiPOVTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				411E4C11786CEFF9F652AC55 /* Debug */,
+				03C79D23FCCF01AE5D7EBDAB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

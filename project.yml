@@ -90,3 +90,14 @@ targets:
       properties:
         com.apple.developer.networking.multipath: true
         com.apple.developer.networking.wifi-info: true
+  MaimaiPOVTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MaimaiPOVTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.maimai.MaimaiPOVTests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: MaimaiPOV

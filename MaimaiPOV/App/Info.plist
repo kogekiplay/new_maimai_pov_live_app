@@ -22,6 +22,8 @@
 	<string>MaimaiPOV needs photo library access to choose images for the live video overlay</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIBackgroundModes</key>

@@ -47,7 +47,7 @@ struct SongCardData: Codable, Identifiable, Sendable {
         requesterName = try container.decodeIfPresent(String.self, forKey: .requesterName)
         musicId = try container.decodeIfPresent(Int.self, forKey: .musicId)
         chartType = try container.decodeIfPresent(String.self, forKey: .chartType)
-        isPriority = try container.decode(Bool.self, forKey: .isPriority)
+        isPriority = try container.decodeIfPresent(Bool.self, forKey: .isPriority) ?? false
         bpm = try container.decodeIfPresent(Int.self, forKey: .bpm)
         giftValue = try container.decodeIfPresent(Int.self, forKey: .giftValue) ?? 0
         addedAt = try container.decodeIfPresent(Date.self, forKey: .addedAt) ?? Date()
