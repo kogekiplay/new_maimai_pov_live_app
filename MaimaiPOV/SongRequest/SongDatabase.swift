@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 struct Song: Codable {
     let id: Int
@@ -135,6 +136,8 @@ struct FindCandidatesResult {
 }
 
 class SongDatabase {
+    private static let logger = Logger(subsystem: "com.maimai.MaimaiPOV", category: "SongDatabase")
+
     private var songList: [Song] = []
     private var aliasMap: [String: [String]] = [:]
 
@@ -185,7 +188,8 @@ class SongDatabase {
             }
             let bundlePath = Bundle.main.bundlePath
             lastError = "JSON not found (song=\(songURL != nil), alias=\(aliasURL != nil)) jsons=[\(allJsonFiles.joined(separator: ","))] bundle=\(bundlePath)"
-            print("[SongDatabase] ERROR: \(lastError!)")
+            let errorMessage = lastError ?? "JSON not found"
+            Self.logger.error("\(errorMessage, privacy: .public)")
             return
         }
 
@@ -207,10 +211,13 @@ class SongDatabase {
             let stdCount = songList.filter { $0.chartType == "standard" }.count
             let dxCount = songList.filter { $0.chartType == "dx" }.count
             let utageCount = songList.filter { $0.chartType == "utage" }.count
-            print("[SongDatabase] Loaded \(songList.count) songs (std=\(stdCount) dx=\(dxCount) utage=\(utageCount)) byTitle=\(byTitle.count) byAlias=\(byAlias.count)")
+            let loadedCount = songList.count
+            let titleIndexCount = byTitle.count
+            let aliasIndexCount = byAlias.count
+            Self.logger.info("Loaded \(loadedCount) songs (std=\(stdCount) dx=\(dxCount) utage=\(utageCount)) byTitle=\(titleIndexCount) byAlias=\(aliasIndexCount)")
         } catch {
             lastError = "JSON decode error: \(error.localizedDescription)"
-            print("[SongDatabase] ERROR loading data: \(error)")
+            Self.logger.error("JSON load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
