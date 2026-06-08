@@ -184,15 +184,6 @@ struct Phase2View: View {
             controlPanel(for: tab)
         }
         .background(Color.black)
-        .padding(.bottom, rootTabBarClearance)
-    }
-
-    private var rootTabBarClearance: CGFloat {
-        if #available(iOS 26.0, *) {
-            return 66
-        } else {
-            return 0
-        }
     }
 
     // MARK: - Preview
