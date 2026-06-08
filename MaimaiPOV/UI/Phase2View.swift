@@ -32,6 +32,11 @@ private enum ControlTab: CaseIterable, Hashable {
 private enum ControlPanelLayout {
     static let maxExpandedContentHeight: CGFloat = 240
     static let heightUpdateTolerance: CGFloat = 0.5
+    static let compactControlHeight: CGFloat = 40
+    static let compactCornerRadius: CGFloat = 20
+    static let compactFontSize: CGFloat = 11
+    static let compactLabelWidth: CGFloat = 58
+    static let blivechatStatusWidth: CGFloat = 108
 }
 
 private struct ControlPanelContentHeightKey: PreferenceKey {
@@ -407,8 +412,24 @@ struct Phase2View: View {
     }
 
     private func controlPanelContentViewportHeight(for tab: ControlTab) -> CGFloat {
-        let measuredHeight = controlPanelContentHeights[tab] ?? ControlPanelLayout.maxExpandedContentHeight
+        let measuredHeight = controlPanelContentHeights[tab] ?? fallbackControlPanelContentHeight(for: tab)
         return min(measuredHeight, ControlPanelLayout.maxExpandedContentHeight)
+    }
+
+    private func fallbackControlPanelContentHeight(for tab: ControlTab) -> CGFloat {
+        switch tab {
+        case .camera:
+            return pipeline.autoFocusEnabled ? 178 : 216
+        case .effects:
+            return advancedExpanded ? ControlPanelLayout.maxExpandedContentHeight : 214
+        case .stream:
+            return ControlPanelLayout.maxExpandedContentHeight
+        case .blivechat:
+            if isBlivechatConnected {
+                return pipeline.webServerURL.isEmpty ? 176 : 204
+            }
+            return 156
+        }
     }
 
     private func updateControlPanelContentHeight(for tab: ControlTab, height: CGFloat) {
@@ -593,7 +614,7 @@ struct Phase2View: View {
     // MARK: - Blivechat Tab
 
     private var blivechatTabContent: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             blivechatServerRow
             blivechatIdentityRow
             blivechatConnectionRow
@@ -602,7 +623,7 @@ struct Phase2View: View {
                 blivechatConnectedDetails
             }
         }
-        .padding(12)
+        .padding(10)
     }
 
     private var blivechatServerRow: some View {
@@ -645,11 +666,11 @@ struct Phase2View: View {
             }
             .foregroundColor(isBlivechatConnected ? .gray : Color(red: 1.0, green: 0.25, blue: 0.42))
             .padding(.horizontal, 12)
-            .frame(height: 42)
+            .frame(height: ControlPanelLayout.compactControlHeight)
             .frame(maxWidth: .infinity)
             .contentShape(Capsule())
         }
-        .adaptiveGlassPanel(cornerRadius: 18, tint: Color.white.opacity(0.05), interactive: true)
+        .adaptiveGlassPanel(cornerRadius: ControlPanelLayout.compactCornerRadius, tint: Color.white.opacity(0.05), interactive: true)
         .disabled(isBlivechatConnected)
         .accessibilityLabel(L10n.string("Server"))
         .accessibilityValue(pipeline.blivechatServer.displayName)
@@ -666,12 +687,12 @@ struct Phase2View: View {
                 .textInputAutocapitalization(.never)
                 .disabled(isBlivechatConnected)
                 .padding(.horizontal, 12)
-                .frame(height: 38)
-                .background(Color.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-                }
+                .frame(height: ControlPanelLayout.compactControlHeight)
+                .adaptiveGlassPanel(
+                    cornerRadius: ControlPanelLayout.compactCornerRadius,
+                    tint: Color.white.opacity(0.03),
+                    interactive: true
+                )
         }
     }
 
@@ -679,7 +700,7 @@ struct Phase2View: View {
         HStack(spacing: 8) {
             blivechatActionButton
                 .frame(maxWidth: .infinity)
-                .frame(height: 42)
+                .frame(height: ControlPanelLayout.compactControlHeight)
             blivechatStatusPill
         }
     }
@@ -692,9 +713,7 @@ struct Phase2View: View {
             } label: {
                 blivechatActionLabel(icon: "xmark.circle", title: "Disconnect")
             }
-            .adaptiveGlassButton(prominent: true)
-            .tint(.red)
-            .controlSize(.small)
+            .blivechatActionGlass(tint: .red)
         } else if isBlivechatReconnecting {
             Button {
                 pipeline.disconnectBlivechat()
@@ -703,23 +722,18 @@ struct Phase2View: View {
                     ProgressView()
                         .scaleEffect(0.62)
                     Text("Force Disconnect")
-                        .font(.caption)
-                        .fontWeight(.semibold)
+                        .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
                 }
-                .frame(maxWidth: .infinity, minHeight: 34)
+                .frame(maxWidth: .infinity, minHeight: ControlPanelLayout.compactControlHeight)
             }
-            .adaptiveGlassButton(prominent: true)
-            .tint(.red)
-            .controlSize(.small)
+            .blivechatActionGlass(tint: .red)
         } else {
             Button {
                 pipeline.connectBlivechat()
             } label: {
                 blivechatActionLabel(icon: "link", title: "Connect")
             }
-            .adaptiveGlassButton(prominent: true)
-            .tint(.green)
-            .controlSize(.small)
+            .blivechatActionGlass(tint: .green)
             .disabled(pipeline.blivechatIdentityCode.isEmpty)
         }
     }
@@ -727,12 +741,12 @@ struct Phase2View: View {
     private func blivechatActionLabel(icon: String, title: LocalizedStringKey) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
             Text(title)
-                .font(.caption)
-                .fontWeight(.semibold)
+                .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
         }
-        .frame(maxWidth: .infinity, minHeight: 34)
+        .frame(maxWidth: .infinity, minHeight: ControlPanelLayout.compactControlHeight)
+        .contentShape(Capsule())
     }
 
     private var blivechatStatusPill: some View {
@@ -741,14 +755,17 @@ struct Phase2View: View {
                 .fill(blivechatStateColor)
                 .frame(width: 6, height: 6)
             Text(blivechatStateText)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold, design: .monospaced))
                 .lineLimit(1)
                 .minimumScaleFactor(0.74)
         }
         .foregroundColor(blivechatStateColor)
         .padding(.horizontal, 8)
-        .frame(width: 104, height: 42)
-        .adaptiveGlassPanel(cornerRadius: 21, tint: blivechatStateColor.opacity(0.08))
+        .frame(width: ControlPanelLayout.blivechatStatusWidth, height: ControlPanelLayout.compactControlHeight)
+        .adaptiveGlassPanel(
+            cornerRadius: ControlPanelLayout.compactCornerRadius,
+            tint: blivechatStateColor.opacity(0.08)
+        )
     }
 
     private var blivechatConnectedDetails: some View {
@@ -782,7 +799,7 @@ struct Phase2View: View {
         HStack(spacing: 8) {
             blivechatRowLabel(label)
             Text(value)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.system(size: ControlPanelLayout.compactFontSize, design: .monospaced))
                 .foregroundColor(.cyan)
                 .lineLimit(1)
                 .truncationMode(copyValue == nil ? .tail : .middle)
@@ -812,12 +829,11 @@ struct Phase2View: View {
 
     private func blivechatRowLabel(_ key: LocalizedStringKey) -> some View {
         Text(key)
-            .font(.caption)
-            .fontWeight(.medium)
+            .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
             .foregroundColor(.white.opacity(0.78))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .frame(width: 58, alignment: .leading)
+            .frame(width: ControlPanelLayout.compactLabelWidth, alignment: .leading)
     }
 
     private var isBlivechatConnected: Bool {
@@ -1579,6 +1595,21 @@ private struct SessionChangeHandlers: ViewModifier {
                     }
                 }
             }
+    }
+}
+
+private extension View {
+    func blivechatActionGlass(tint: Color) -> some View {
+        self
+            .buttonStyle(.plain)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: ControlPanelLayout.compactControlHeight)
+            .contentShape(Capsule())
+            .adaptiveGlassPanel(
+                cornerRadius: ControlPanelLayout.compactCornerRadius,
+                tint: tint.opacity(0.16),
+                interactive: true
+            )
     }
 }
 
