@@ -147,17 +147,16 @@ final class QueueAPIHandler: @unchecked Sendable {
         let errorMsg = LockedValue<String?>(nil)
 
         Task { @MainActor [weak self] in
+            defer { sem.signal() }
             guard let self = self, let pipeline = self.pipeline else {
                 errorMsg.set("Pipeline not available")
-                sem.signal()
                 return
             }
 
+            let candidates = await pipeline.findSongCandidates(query: String(musicId))
             let db = pipeline.songDatabase
-            let candidates = db.findCandidates(query: String(musicId))
             if candidates.candidates.isEmpty {
                 errorMsg.set("Song not found: \(musicId)")
-                sem.signal()
                 return
             }
 
@@ -170,14 +169,12 @@ final class QueueAPIHandler: @unchecked Sendable {
                 diffInput: difficulty
             ) else {
                 errorMsg.set("Cannot pick song from candidates")
-                sem.signal()
                 return
             }
 
             let targetDiffNum = db.resolveDiffInput(difficulty)
             guard let noteResult = db.findNote(song: song, targetDiffNum: targetDiffNum) else {
                 errorMsg.set("No available difficulty for \(song.title)")
-                sem.signal()
                 return
             }
 
@@ -204,7 +201,6 @@ final class QueueAPIHandler: @unchecked Sendable {
 
             pipeline.addSongToQueue(cardData)
             success.set(true)
-            sem.signal()
         }
 
         sem.wait()
@@ -229,17 +225,16 @@ final class QueueAPIHandler: @unchecked Sendable {
         let errorMsg = LockedValue<String?>(nil)
 
         Task { @MainActor [weak self] in
+            defer { sem.signal() }
             guard let self = self, let pipeline = self.pipeline else {
                 errorMsg.set("Pipeline not available")
-                sem.signal()
                 return
             }
 
+            let candidates = await pipeline.findSongCandidates(query: String(musicId))
             let db = pipeline.songDatabase
-            let candidates = db.findCandidates(query: String(musicId))
             if candidates.candidates.isEmpty {
                 errorMsg.set("Song not found: \(musicId)")
-                sem.signal()
                 return
             }
 
@@ -252,14 +247,12 @@ final class QueueAPIHandler: @unchecked Sendable {
                 diffInput: difficulty
             ) else {
                 errorMsg.set("Cannot pick song from candidates")
-                sem.signal()
                 return
             }
 
             let targetDiffNum = db.resolveDiffInput(difficulty)
             guard let noteResult = db.findNote(song: song, targetDiffNum: targetDiffNum) else {
                 errorMsg.set("No available difficulty for \(song.title)")
-                sem.signal()
                 return
             }
 
@@ -283,7 +276,6 @@ final class QueueAPIHandler: @unchecked Sendable {
 
             pipeline.addSongToQueue(cardData)
             success.set(true)
-            sem.signal()
         }
 
         sem.wait()
