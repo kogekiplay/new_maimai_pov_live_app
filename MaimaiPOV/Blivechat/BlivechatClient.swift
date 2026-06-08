@@ -26,6 +26,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
     private var roomKeyValue: String = ""
     private var isIntentionalDisconnect = false
     private var hasReceivedMessage = false
+    private var connectionGeneration = 0
 
     var isManuallyDisconnected: Bool { isIntentionalDisconnect }
 
@@ -69,8 +70,10 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
 
     private func performConnect() {
         cleanup()
+        guard !isIntentionalDisconnect else { return }
         connectionState = .connecting
         hasReceivedMessage = false
+        let generation = connectionGeneration
 
         let url = server.websocketURL
         var request = URLRequest(url: url)
@@ -81,15 +84,15 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         webSocketTask = session?.webSocketTask(with: request)
         webSocketTask?.resume()
 
-        receiveMessage()
+        receiveMessage(generation: generation)
 
         joinRoomWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
             guard let self = self else { return }
-            guard !self.isIntentionalDisconnect else { return }
+            guard self.isActiveConnection(generation: generation) else { return }
             self.joinRoomWorkItem = nil
-            self.sendJoinRoom()
-            self.startHeartbeat()
+            self.sendJoinRoom(generation: generation)
+            self.startHeartbeat(generation: generation)
         }
         joinRoomWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
@@ -106,7 +109,11 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         reconnectAttemptCount = 0
     }
 
-    private func sendJoinRoom() {
+    private func isActiveConnection(generation: Int) -> Bool {
+        !isIntentionalDisconnect && connectionGeneration == generation
+    }
+
+    private func sendJoinRoom(generation: Int) {
         let joinData: [String: Any] = [
             "cmd": BlivechatCommand.joinRoom.rawValue,
             "data": [
@@ -120,58 +127,66 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
             ]
         ]
 
-        sendJSON(joinData)
+        sendJSON(joinData, generation: generation)
     }
 
-    private func startHeartbeat() {
+    private func startHeartbeat(generation: Int) {
         heartbeatTimer?.invalidate()
-        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
-            self?.sendJSON(["cmd": BlivechatCommand.heartbeat.rawValue])
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] timer in
+            guard let self,
+                  let heartbeatTimer = self.heartbeatTimer,
+                  heartbeatTimer === timer,
+                  self.isActiveConnection(generation: generation) else { return }
+            self.sendJSON(["cmd": BlivechatCommand.heartbeat.rawValue], generation: generation)
         }
     }
 
-    private func sendJSON(_ dict: [String: Any]) {
+    private func sendJSON(_ dict: [String: Any], generation: Int) {
         guard let data = try? JSONSerialization.data(withJSONObject: dict),
               let string = String(data: data, encoding: .utf8) else { return }
 
         let message = URLSessionWebSocketTask.Message.string(string)
         webSocketTask?.send(message) { [weak self] error in
-            if let error = error {
-                self?.handleConnectionErrorFromCallback(error)
-            }
+            guard let self, let error else { return }
+            guard self.isActiveConnection(generation: generation) else { return }
+            self.handleConnectionErrorFromCallback(error, generation: generation)
         }
     }
 
-    private func receiveMessage() {
+    private func receiveMessage(generation: Int) {
         webSocketTask?.receive { [weak self] result in
+            guard let self, self.isActiveConnection(generation: generation) else { return }
             switch result {
             case .success(let message):
-                Task { @MainActor in
-                    self?.confirmConnected()
+                Task { @MainActor [weak self] in
+                    guard let self, self.isActiveConnection(generation: generation) else { return }
+                    self.confirmConnected()
                 }
-                self?.handleMessage(message)
-                self?.receiveMessage()
+                self.handleMessage(message, generation: generation)
+                if self.isActiveConnection(generation: generation) {
+                    self.receiveMessage(generation: generation)
+                }
 
             case .failure(let error):
-                self?.handleConnectionErrorFromCallback(error)
+                self.handleConnectionErrorFromCallback(error, generation: generation)
             }
         }
     }
 
-    private func handleMessage(_ message: URLSessionWebSocketTask.Message) {
+    private func handleMessage(_ message: URLSessionWebSocketTask.Message, generation: Int) {
         switch message {
         case .string(let text):
-            processTextMessage(text)
+            processTextMessage(text, generation: generation)
         case .data(let data):
             if let text = String(data: data, encoding: .utf8) {
-                processTextMessage(text)
+                processTextMessage(text, generation: generation)
             }
         @unknown default:
             break
         }
     }
 
-    private func processTextMessage(_ text: String) {
+    private func processTextMessage(_ text: String, generation: Int) {
         guard let data = text.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let cmdValue = json["cmd"] as? Int,
@@ -188,7 +203,8 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .addText:
             if let array = payload as? [Any],
                let danmaku = DanmakuMessage(fromArray: array) {
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
+                    guard let self, self.isActiveConnection(generation: generation) else { return }
                     self.onDanmaku?(danmaku)
                 }
             }
@@ -196,7 +212,8 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .addGift:
             if let dict = payload as? [String: Any],
                let gift = GiftMessage(fromDict: dict) {
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
+                    guard let self, self.isActiveConnection(generation: generation) else { return }
                     self.onGift?(gift)
                 }
             }
@@ -204,7 +221,8 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .addMember:
             if let dict = payload as? [String: Any],
                let member = MemberMessage(fromDict: dict) {
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
+                    guard let self, self.isActiveConnection(generation: generation) else { return }
                     self.onMember?(member)
                 }
             }
@@ -212,7 +230,8 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .addSuperChat:
             if let dict = payload as? [String: Any],
                let sc = SuperChatMessage(fromDict: dict) {
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
+                    guard let self, self.isActiveConnection(generation: generation) else { return }
                     self.onSuperChat?(sc)
                 }
             }
@@ -226,7 +245,8 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         case .fatalError:
             if let dict = payload as? [String: Any],
                let error = BlivechatErrorMessage(fromDict: dict) {
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
+                    guard let self, self.isActiveConnection(generation: generation) else { return }
                     self.connectionState = .error(error.message)
                     self.onError?(error)
                     self.isIntentionalDisconnect = true
@@ -272,9 +292,10 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
         return desc
     }
 
-    private func handleConnectionErrorFromCallback(_ error: Error) {
+    private func handleConnectionErrorFromCallback(_ error: Error, generation: Int) {
         let friendlyMessage = friendlyErrorMessage(error)
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
+            guard let self, self.isActiveConnection(generation: generation) else { return }
             self.handleConnectionError(friendlyMessage: friendlyMessage)
         }
     }
@@ -295,8 +316,13 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
 
         onReconnectLog?(L10n.string("blivechat.reconnect.attempt", reconnectAttemptCount, Int(delay)))
 
-        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            self?.performConnect()
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] timer in
+            guard let self,
+                  let reconnectTimer = self.reconnectTimer,
+                  reconnectTimer === timer else { return }
+            self.reconnectTimer = nil
+            guard !self.isIntentionalDisconnect else { return }
+            self.performConnect()
         }
 
         reconnectDelay = min(reconnectDelay * 2, maxReconnectDelay)
@@ -314,6 +340,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
             }
         case .reconnecting, .error, .connecting:
             reconnectTimer?.invalidate()
+            reconnectTimer = nil
             reconnectDelay = 1.0
             performConnect()
         case .disconnected:
@@ -322,6 +349,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
     }
 
     private func cleanup() {
+        connectionGeneration += 1
         heartbeatTimer?.invalidate()
         heartbeatTimer = nil
         joinRoomWorkItem?.cancel()
