@@ -31,6 +31,7 @@ private enum ControlTab: CaseIterable, Hashable {
 
 private enum ControlPanelLayout {
     static let maxExpandedContentHeight: CGFloat = 240
+    static let heightUpdateTolerance: CGFloat = 0.5
 }
 
 private struct ControlPanelContentHeightKey: PreferenceKey {
@@ -385,7 +386,7 @@ struct Phase2View: View {
                 .frame(height: controlPanelContentViewportHeight(for: tab))
                 .animation(.easeInOut(duration: 0.18), value: controlPanelContentViewportHeight(for: tab))
                 .onPreferenceChange(ControlPanelContentHeightKey.self) { height in
-                    controlPanelContentHeights[tab] = height
+                    updateControlPanelContentHeight(for: tab, height: height)
                 }
             }
         }
@@ -408,6 +409,17 @@ struct Phase2View: View {
     private func controlPanelContentViewportHeight(for tab: ControlTab) -> CGFloat {
         let measuredHeight = controlPanelContentHeights[tab] ?? ControlPanelLayout.maxExpandedContentHeight
         return min(measuredHeight, ControlPanelLayout.maxExpandedContentHeight)
+    }
+
+    private func updateControlPanelContentHeight(for tab: ControlTab, height: CGFloat) {
+        guard height.isFinite, height > 0 else { return }
+
+        if let previousHeight = controlPanelContentHeights[tab],
+           abs(previousHeight - height) < ControlPanelLayout.heightUpdateTolerance {
+            return
+        }
+
+        controlPanelContentHeights[tab] = height
     }
 
     // MARK: - Camera Tab
