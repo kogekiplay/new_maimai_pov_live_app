@@ -30,6 +30,11 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
     private let expirationCheckInterval: TimeInterval = 30
     var expirationTimeout: TimeInterval = 15 * 60
 
+    deinit {
+        stopExpirationTimer()
+        cancelPendingSave()
+    }
+
     var lockedEndIndex: Int {
         guard currentIndex >= 0 else { return 0 }
         return min(currentIndex + 1, queue.count)
@@ -287,8 +292,12 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
 
     func scheduleSave() {
         saveTimer?.invalidate()
-        saveTimer = Timer.scheduledTimer(withTimeInterval: saveDebounceInterval, repeats: false) { [weak self] _ in
-            self?.performSave()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: saveDebounceInterval, repeats: false) { [weak self] timer in
+            guard let self,
+                  let saveTimer = self.saveTimer,
+                  saveTimer === timer else { return }
+            self.saveTimer = nil
+            self.performSave()
         }
     }
 
