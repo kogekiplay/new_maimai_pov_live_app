@@ -64,11 +64,9 @@ final class CoverImageLoader: @unchecked Sendable {
             return cached
         }
 
-        if let cached = loadFromDiskCache(musicId: musicId) {
-            let base64 = imageToBase64(cached)
-            if let base64 = base64 {
-                setCachedBase64(musicId: musicId, base64: base64)
-            }
+        if let cachedData = await loadJPEGDataFromDiskCache(musicId: musicId) {
+            let base64 = cachedData.base64EncodedString()
+            setCachedBase64(musicId: musicId, base64: base64)
             return base64
         }
 
@@ -108,7 +106,7 @@ final class CoverImageLoader: @unchecked Sendable {
 
                 guard let jpegData = jpegData else { return nil }
 
-                saveToDiskCache(jpegData: jpegData, musicId: musicId)
+                await saveToDiskCache(jpegData: jpegData, musicId: musicId)
                 let base64 = jpegData.base64EncodedString()
                 setCachedBase64(musicId: musicId, base64: base64)
                 return base64
@@ -125,16 +123,17 @@ final class CoverImageLoader: @unchecked Sendable {
         return jpegData.base64EncodedString()
     }
 
-    private func saveToDiskCache(jpegData: Data, musicId: Int) {
+    private func saveToDiskCache(jpegData: Data, musicId: Int) async {
         let fileURL = diskCacheDir.appendingPathComponent("\(musicId).jpg")
-        try? jpegData.write(to: fileURL)
+        await Task.detached(priority: .utility) {
+            try? jpegData.write(to: fileURL)
+        }.value
     }
 
-    private func loadFromDiskCache(musicId: Int) -> UIImage? {
+    private func loadJPEGDataFromDiskCache(musicId: Int) async -> Data? {
         let fileURL = diskCacheDir.appendingPathComponent("\(musicId).jpg")
-        guard let data = try? Data(contentsOf: fileURL),
-              let image = UIImage(data: data) else { return nil }
-        memoryCache.setObject(image, forKey: "\(musicId)" as NSString)
-        return image
+        return await Task.detached(priority: .utility) {
+            try? Data(contentsOf: fileURL)
+        }.value
     }
 }
