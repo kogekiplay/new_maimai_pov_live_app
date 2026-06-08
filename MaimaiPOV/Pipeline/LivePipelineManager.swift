@@ -841,9 +841,14 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             let result = await Task.detached(priority: .utility) {
                 SongDatabase.makeBundleSnapshot()
             }.value
+            guard !Task.isCancelled else { return }
 
             await MainActor.run {
                 guard let self else { return }
+                guard !Task.isCancelled else {
+                    self.songDatabaseLoadTask = nil
+                    return
+                }
                 self.songDatabase.install(result)
                 if self.songDatabase.songCount == 0 {
                     self.debug.log("[曲库] ❌ 加载失败: \(self.songDatabase.lastError ?? "unknown")")
@@ -1200,6 +1205,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     }
 
     func stop() {
+        songDatabaseLoadTask?.cancel()
+        songDatabaseLoadTask = nil
         camera.onVideoFrame = nil
         camera.stopRunning()
         MotionManager.shared.stopUpdates()
