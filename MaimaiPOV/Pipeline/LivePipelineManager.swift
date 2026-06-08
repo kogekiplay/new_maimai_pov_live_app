@@ -1214,6 +1214,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         songDatabaseLoadTask = nil
         camera.onVideoFrame = nil
         camera.onAudioSample = nil
+        camera.onDeviceReady = nil
         camera.stopRunning()
         MotionManager.shared.stopUpdates()
         webServerManager.stop()
