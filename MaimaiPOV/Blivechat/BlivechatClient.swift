@@ -16,6 +16,7 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
     private var session: URLSession?
     private var heartbeatTimer: Timer?
     private var reconnectTimer: Timer?
+    private var joinRoomWorkItem: DispatchWorkItem?
     private var reconnectDelay: Double = 5.0
     private let maxReconnectDelay: Double = 30.0
     private var reconnectAttemptCount: Int = 0
@@ -82,11 +83,16 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
 
         receiveMessage()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        joinRoomWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
             guard let self = self else { return }
+            guard !self.isIntentionalDisconnect else { return }
+            self.joinRoomWorkItem = nil
             self.sendJoinRoom()
             self.startHeartbeat()
         }
+        joinRoomWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
 
     private func confirmConnected() {
@@ -318,6 +324,8 @@ final class BlivechatClient: ObservableObject, @unchecked Sendable {
     private func cleanup() {
         heartbeatTimer?.invalidate()
         heartbeatTimer = nil
+        joinRoomWorkItem?.cancel()
+        joinRoomWorkItem = nil
         reconnectTimer?.invalidate()
         reconnectTimer = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
