@@ -59,10 +59,9 @@ final class CoverImageLoader: @unchecked Sendable {
         }
     }
 
-    func loadCoverBase64(musicId: Int, completion: @escaping (String?) -> Void) {
+    func loadCoverBase64(musicId: Int) async -> String? {
         if let cached = getCachedBase64(musicId: musicId) {
-            completion(cached)
-            return
+            return cached
         }
 
         if let cached = loadFromDiskCache(musicId: musicId) {
@@ -70,8 +69,7 @@ final class CoverImageLoader: @unchecked Sendable {
             if let base64 = base64 {
                 setCachedBase64(musicId: musicId, base64: base64)
             }
-            completion(base64)
-            return
+            return base64
         }
 
         if let cached = memoryCache.object(forKey: "\(musicId)" as NSString) {
@@ -79,52 +77,47 @@ final class CoverImageLoader: @unchecked Sendable {
             if let base64 = base64 {
                 setCachedBase64(musicId: musicId, base64: base64)
             }
-            completion(base64)
-            return
+            return base64
         }
 
-        tryFormat(musicId: musicId, formatIndex: 0, completion: completion)
+        return await loadRemoteCoverBase64(musicId: musicId)
     }
 
-    private func tryFormat(musicId: Int, formatIndex: Int, completion: @escaping (String?) -> Void) {
-        guard formatIndex < formats.count else {
-            completion(nil)
-            return
-        }
-
-        let format = formats[formatIndex]
+    private func loadRemoteCoverBase64(musicId: Int) async -> String? {
         let idPart = coverIdPart(from: musicId)
-        let urlString = "\(cdnBase)/\(idPart).\(format)"
-        guard let url = URL(string: urlString) else {
-            tryFormat(musicId: musicId, formatIndex: formatIndex + 1, completion: completion)
-            return
-        }
 
-        let task = session.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self else { completion(nil); return }
+        for format in formats {
+            let urlString = "\(cdnBase)/\(idPart).\(format)"
+            guard let url = URL(string: urlString) else { continue }
 
-            if let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200,
-               let image = UIImage(data: data) {
-                self.memoryCache.setObject(image, forKey: "\(musicId)" as NSString)
+            do {
+                let (data, response) = try await session.data(from: url)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200,
+                      let image = UIImage(data: data) else {
+                    continue
+                }
+
+                memoryCache.setObject(image, forKey: "\(musicId)" as NSString)
                 let jpegData: Data?
                 if format == "jpg" || format == "jpeg" {
                     jpegData = data
                 } else {
                     jpegData = image.jpegData(compressionQuality: 0.7)
                 }
-                if let jpegData = jpegData {
-                    self.saveToDiskCache(jpegData: jpegData, musicId: musicId)
-                    let base64 = jpegData.base64EncodedString()
-                    self.setCachedBase64(musicId: musicId, base64: base64)
-                    completion(base64)
-                } else {
-                    completion(nil)
-                }
-            } else {
-                self.tryFormat(musicId: musicId, formatIndex: formatIndex + 1, completion: completion)
+
+                guard let jpegData = jpegData else { return nil }
+
+                saveToDiskCache(jpegData: jpegData, musicId: musicId)
+                let base64 = jpegData.base64EncodedString()
+                setCachedBase64(musicId: musicId, base64: base64)
+                return base64
+            } catch {
+                continue
             }
         }
-        task.resume()
+
+        return nil
     }
 
     private func imageToBase64(_ image: UIImage) -> String? {

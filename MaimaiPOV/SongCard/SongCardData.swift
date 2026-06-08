@@ -1,6 +1,6 @@
 import Foundation
 
-struct SongCardData: Codable, Identifiable {
+struct SongCardData: Codable, Identifiable, Sendable {
     let id: UUID
     var songName: String
     var artist: String
