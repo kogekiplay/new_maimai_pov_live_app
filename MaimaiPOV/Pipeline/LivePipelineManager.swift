@@ -1228,6 +1228,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         songCardManager.stopExpirationTimer()
         Task { @MainActor [weak self] in
             guard let self else { return }
+            self.streamManager.stopPublish()
             self.disconnectBlivechat()
             self.deviceStatusManager?.stopMonitoring()
             self.debug.stopFlushTimer()
