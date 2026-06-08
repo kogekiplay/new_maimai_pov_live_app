@@ -1,5 +1,8 @@
 import SwiftUI
 
+// Shared bridge for native iOS 26 Liquid Glass and the iOS 17 material fallback.
+// Keep nil tint as the system default .regular glass; do not replace iOS 26
+// branches with blur/material/stroke recipes.
 extension View {
     @ViewBuilder
     func adaptiveGlassPanel(
@@ -79,6 +82,8 @@ extension View {
     @ViewBuilder
     func adaptiveGlassGroup(spacing: CGFloat = 12) -> some View {
         if #available(iOS 26.0, *) {
+            // Apple recommends grouping multiple Liquid Glass effects in a
+            // container for correct morphing behavior and rendering cost.
             GlassEffectContainer(spacing: spacing) {
                 self
             }

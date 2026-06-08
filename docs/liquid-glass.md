@@ -34,6 +34,14 @@
 
 这组 API 的边界很清楚：标准控件优先交给系统；只有标准控件不能表达目标交互时，才进入自定义 `glassEffect` 路线。
 
+本轮还读取了 Apple Developer 页面暴露的官方 Markdown alternate：
+
+- `https://docs.developer.apple.com/tutorials/data/documentation/swiftui/applying-liquid-glass-to-custom-views.md`
+- `https://docs.developer.apple.com/tutorials/data/documentation/technologyoverviews/adopting-liquid-glass.md`
+- `https://docs.developer.apple.com/tutorials/data/documentation/technologyoverviews/liquid-glass.md`
+
+这些 Markdown 比网页 shell 和 MCP 摘要更完整，后续如果 Apple 页面需要再次核对，应优先读取 HTML 里的 `link rel="alternate" type="text/markdown"`。
+
 ## 官方设计结论
 
 采用 Liquid Glass 不等于重画整个 app。官方建议先用最新 Xcode 和最新 SDK 构建，再在最新系统上观察标准 SwiftUI/UIKit/AppKit 组件自动获得的新外观。
@@ -45,12 +53,17 @@
 - 减少自定义 controls/navigation 背景。自绘背景、blur、stroke、半透明色块容易遮挡系统 Liquid Glass。
 - 自定义 Liquid Glass 要克制。过多 glass 会分散注意力，也会影响内容可读性和性能。
 - 自定义 view 需要 glass 时，使用 `glassEffect(_:in:)`；多个 glass view 同屏时，使用 `GlassEffectContainer(spacing:)`。
+- `glassEffect(_:in:)` 默认使用 `.regular` glass 和 Capsule shape。较大的 panel 或工具面板如果用 Capsule 很怪，应显式传 `.rect(cornerRadius:)`。
+- `glassEffect(_:in:)` 会捕获该 view 的内容交给 container 渲染，因此必须放在影响外观的 modifier 之后；不要先套 glass 再继续改 frame、font、foreground 等关键外观。
 - 可交互的自定义 glass surface 使用 `.interactive()`；普通 Button 优先使用 `.buttonStyle(.glass)` 或 `.buttonStyle(.glassProminent)`。
+- `GlassEffectContainer(spacing:)` 不只是动画容器，也影响多个 glass shape 之间何时合并。container spacing 大于内部 stack spacing 时，元素静止状态也可能互相融合。
 - `glassEffectID` 用于 view hierarchy 里 glass effect 出现、消失、互相 morph 的场景；不要为了普通拖动或普通状态切换滥用。
+- `glassEffectTransition` 只服务 Liquid Glass effect 在 hierarchy 中增删时的 transition。默认 matched geometry 适合距离在 container spacing 内的元素；距离更远或需要更简单过渡时使用 materialize。
 - `glassEffectUnion` 用于把多个 view 的 Liquid Glass effects 关联到同一个 union；只有确实需要合并几何时才用。
 - 控件颜色要克制，优先系统色。不要为了让玻璃“明显”而加入粉色、紫色、渐变、光晕、bokeh 或额外背景图层。
 - 无强调色时使用系统默认 `.regular` glass，不要用 `.tint(.clear)` 代表默认效果。只有状态色、危险操作、连接状态等确实需要强调时才传 tint。
 - 需要测试不同系统设置，包括降低透明度、减少动态效果和高对比。标准控件会更自然地跟随系统设置，自定义控件必须额外验证。
+- 性能上不要创建太多 `GlassEffectContainer`，也不要把大量 effect 放在 container 外。一个屏幕只给最重要的功能层使用 glass；内容区域不需要为了统一风格全部套 glass。
 
 ## 参考项目结论
 
@@ -91,7 +104,9 @@
 - iOS 26+：如果标准控件已满足视觉和交互，不要为了“源码里能看到 glassEffect”而强行自绘。
 - iOS 26+：只有标准控件不能满足交互时，才做自定义 Liquid Glass。自定义实现必须能在源码里直接看到 `glassEffect`、`GlassEffectContainer` 或 glass button style。
 - iOS 26+：自定义 glass 分支禁止用 `.background(.ultraThinMaterial)`、半透明 `Color`、blur、stroke/overlay 组合冒充 Liquid Glass。
+- iOS 26+：自定义 glass helper 的 modifier 顺序必须保持“layout/appearance 在前，`glassEffect` 在后”。如果新增 helper，要在代码里能看出这个顺序。
 - iOS 26+：自定义 glass helper 的默认态必须走 `.regular`，不要把 `.clear` 当作默认 tint 传进系统 glass。
+- iOS 26+：多个同一区域的自定义 glass effects 要放进同一个 `GlassEffectContainer`，并明确 spacing 意图；不要给每个小控件各自套独立 container。
 - iOS 17 fallback：可以使用 `.ultraThinMaterial`、半透明色、stroke 等旧 material 写法，但必须通过 `#available(iOS 26.0, *)` 与 iOS 26 分支分开。
 - 不要在没有用户确认的情况下把系统 segmented `Picker` 改成自绘 segmented control；反过来也一样，不要在用户明确需要按住拖动 glass thumb 时偷换成普通 Picker。
 - 任何 Liquid Glass UI 修改前，先用 codegraph 查看当前项目相关控件，再查看 Apple Landmarks 示例。不要凭截图或记忆改。
