@@ -77,12 +77,18 @@
 "MaxDev" = "最大偏差";
 "CFloor" = "中心下限";
 "Res" = "分辨率";
+"URL" = "地址";
+"Key" = "密钥";
+"RTMP URL" = "RTMP 地址";
+"Stream Key" = "推流密钥";
+"stream-key" = "推流密钥";
 "Available after disconnect" = "断开后可切换";
 "Bitrate" = "码率";
 "Audio" = "音频";
 "Cab" = "机台";
 "Lavalier" = "领夹";
 "Level" = "电平";
+"Mix" = "混合";
 "Stop Streaming" = "停止推流";
 "Start Streaming" = "开始推流";
 
