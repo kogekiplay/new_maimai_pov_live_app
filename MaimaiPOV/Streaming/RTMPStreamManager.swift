@@ -348,11 +348,12 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
 
         // cachedAudioFormat 始终与 CMSampleBuffer 格式一致（用于创建 pcmBuffer）
         let newFormat = AVAudioFormat(cmAudioFormatDescription: formatDescription)
-        if cachedAudioFormat == nil ||
-           cachedAudioFormat!.sampleRate != newFormat.sampleRate ||
-           cachedAudioFormat!.channelCount != newFormat.channelCount ||
-           cachedAudioFormat!.isInterleaved != newFormat.isInterleaved ||
-           cachedAudioFormat!.commonFormat != newFormat.commonFormat {
+        if cachedAudioFormat.map({
+            $0.sampleRate != newFormat.sampleRate ||
+            $0.channelCount != newFormat.channelCount ||
+            $0.isInterleaved != newFormat.isInterleaved ||
+            $0.commonFormat != newFormat.commonFormat
+        }) ?? true {
             DebugInfoManager.logAsync("Audio: input fmt changed sr=\(newFormat.sampleRate) ch=\(newFormat.channelCount) il=\(newFormat.isInterleaved) cf=\(newFormat.commonFormat.rawValue)")
             cachedAudioFormat = newFormat
         }

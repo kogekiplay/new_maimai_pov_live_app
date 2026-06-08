@@ -117,7 +117,7 @@ final class AudioMixer: ObservableObject, @unchecked Sendable {
 
         // 使用立体声输出格式（2通道），避免 HaishinKit 因格式切换导致时间戳漂移
         // 两个声道都填充混合后的音频
-        if stereoOutputFormat == nil || stereoOutputFormat!.sampleRate != sampleRate {
+        if stereoOutputFormat?.sampleRate != sampleRate {
             stereoOutputFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)
         }
         guard let stereoFmt = stereoOutputFormat,
@@ -196,7 +196,7 @@ final class AudioMixer: ObservableObject, @unchecked Sendable {
 
         guard let format = standardFormat, let converter = audioConverter else { return nil }
 
-        if standardBuffer == nil || standardBuffer!.frameCapacity < AVAudioFrameCount(frameLength) {
+        if standardBuffer?.frameCapacity ?? 0 < AVAudioFrameCount(frameLength) {
             standardBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameLength))
         }
 

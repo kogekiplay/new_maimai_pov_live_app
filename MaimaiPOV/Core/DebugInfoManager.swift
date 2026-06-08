@@ -4,7 +4,7 @@ import SwiftUI
 class DebugInfoManager: ObservableObject {
     static let shared = DebugInfoManager()
 
-    var isDetailVisible: Bool = false
+    @Published var isDetailVisible: Bool = false
     var isStreaming: Bool = false
 
     var shouldThrottle: Bool {
@@ -169,11 +169,10 @@ class DebugInfoManager: ObservableObject {
 
     func stageLagData(ms: Double, audioDepth: Int) {
         os_unfair_lock_lock(&stagingLock)
-        if stagingData == nil {
-            stagingData = FrameDebugData()
-        }
-        stagingData!.pipelineLagMs = ms
-        stagingData!.audioQueueDepth = audioDepth
+        var data = stagingData ?? FrameDebugData()
+        data.pipelineLagMs = ms
+        data.audioQueueDepth = audioDepth
+        stagingData = data
         os_unfair_lock_unlock(&stagingLock)
     }
 
