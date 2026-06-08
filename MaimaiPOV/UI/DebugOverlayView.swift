@@ -370,9 +370,9 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
     @State private var dragCenterX: CGFloat?
 
     private let height: CGFloat = 34
-    private let horizontalInset: CGFloat = 4
+    private let horizontalInset: CGFloat = 0
     private let segmentSpacing: CGFloat = 6
-    private let thumbInset: CGFloat = 3
+    private let thumbInset: CGFloat = 0
 
     var body: some View {
         if #available(iOS 26.0, *) {
@@ -398,7 +398,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
                 thumbInset: thumbInset,
                 isDragging: isDragging
             )
-            let thumbHeight = isDragging ? height : height - 2
+            let thumbHeight = height
             let thumbCenterX = dragCenterX ?? SegmentedDragMetrics.centerX(
                 for: currentIndex,
                 totalWidth: width,
