@@ -233,9 +233,8 @@ class SongDatabase {
         for song in songList {
             let key = song.title.lowercased()
             if !key.isEmpty {
-                if byTitle[key] == nil { byTitle[key] = [] }
-                if !byTitle[key]!.contains(where: { $0.id == song.id }) {
-                    byTitle[key]!.append(song)
+                if !byTitle[key, default: []].contains(where: { $0.id == song.id }) {
+                    byTitle[key, default: []].append(song)
                 }
             }
         }
@@ -254,10 +253,9 @@ class SongDatabase {
             for alias in aliases {
                 let key = alias.lowercased()
                 if !key.isEmpty {
-                    if byAlias[key] == nil { byAlias[key] = [] }
                     for c in candidates {
-                        if !byAlias[key]!.contains(where: { $0.id == c.id }) {
-                            byAlias[key]!.append(c)
+                        if !byAlias[key, default: []].contains(where: { $0.id == c.id }) {
+                            byAlias[key, default: []].append(c)
                         }
                     }
                 }
