@@ -1,7 +1,7 @@
 import Metal
 import UIKit
 
-class OverlayCompositor {
+final class OverlayCompositor: @unchecked Sendable {
     let device: MTLDevice
     private let pipelineState: MTLComputePipelineState
     private let uniformsBuffer: MTLBuffer
@@ -15,6 +15,7 @@ class OverlayCompositor {
     var rotation: Float = 0.0
 
     private var stateLock = os_unfair_lock_s()
+    private var persistedImageLoadTask: Task<Void, Never>?
 
     let outWidth = Config.outputWidth
     let outHeight = Config.outputHeight
@@ -42,18 +43,29 @@ class OverlayCompositor {
         }
         self.uniformsBuffer = uniformsBuffer
 
-        loadPersistedImage()
+        if FileManager.default.fileExists(atPath: Self.overlayImageURL.path) {
+            loadPersistedImage()
+        } else {
+            createTestTexture()
+        }
+    }
+
+    deinit {
+        persistedImageLoadTask?.cancel()
     }
 
     private func loadPersistedImage() {
         let url = Self.overlayImageURL
-        guard FileManager.default.fileExists(atPath: url.path),
-              let data = try? Data(contentsOf: url),
-              let image = UIImage(data: data) else {
-            createTestTexture()
-            return
+        persistedImageLoadTask?.cancel()
+        persistedImageLoadTask = Task.detached(priority: .utility) { [weak self] in
+            let image = (try? Data(contentsOf: url)).flatMap(UIImage.init(data:))
+            guard !Task.isCancelled, let self else { return }
+            if let image {
+                self.loadImageToTexture(image)
+            } else {
+                self.createTestTexture()
+            }
         }
-        loadImageToTexture(image)
     }
 
     private func createTestTexture() {
@@ -107,19 +119,25 @@ class OverlayCompositor {
             bytesPerRow: size * 4
         )
 
-        self.overlayTexture = texture
+        setOverlayTexture(texture)
     }
 
     func loadImage(_ uiImage: UIImage) {
-        os_unfair_lock_lock(&stateLock)
+        persistedImageLoadTask?.cancel()
+        persistedImageLoadTask = nil
         loadImageToTexture(uiImage)
-        os_unfair_lock_unlock(&stateLock)
         persistImage(uiImage)
     }
 
     private func loadImageToTexture(_ uiImage: UIImage) {
         guard let texture = TextureHelper.shared.imageToTexture(uiImage, device: device) else { return }
-        self.overlayTexture = texture
+        setOverlayTexture(texture)
+    }
+
+    private func setOverlayTexture(_ texture: MTLTexture) {
+        os_unfair_lock_lock(&stateLock)
+        overlayTexture = texture
+        os_unfair_lock_unlock(&stateLock)
     }
 
     private func persistImage(_ uiImage: UIImage) {
