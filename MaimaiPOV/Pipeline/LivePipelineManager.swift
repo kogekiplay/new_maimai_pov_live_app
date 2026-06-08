@@ -382,7 +382,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 let thresholdCoins = Config.songRequestPauseThreshold * 1000
                 if giftValue < thresholdCoins {
                     DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "rejected_paused")
-                    DispatchQueue.main.async {
+                    Task { @MainActor [weak self] in
+                        guard let self = self else { return }
                         self.debug.log("[点歌] 🚫 \(name) 点歌已暂停，送礼值不足(\(giftValue)/\(thresholdCoins))")
                         self.postMarquee("🚫 \(name) 点歌已暂停，SC点歌仍可使用", type: .songFailure)
                     }
@@ -390,14 +391,16 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 }
             }
 
-            DispatchQueue.main.async {
-                self.debug.log("[点歌] 解析: query=\"\(query)\" original=\"\(originalQuery)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(self.songDatabase.songCount)")
+            let songCount = songDatabase.songCount
+            Task { @MainActor [weak self] in
+                self?.debug.log("[点歌] 解析: query=\"\(query)\" original=\"\(originalQuery)\" diff=\(diffInput ?? "nil") chart=\(chartTypePreference ?? "nil") db=\(songCount)")
             }
 
             guard !songCardManager.hasSongInQueue(name: name) else {
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "rejected_duplicate")
-                DispatchQueue.main.async {
-                    self.debug.log("[点歌] \(msg.authorName) 已有歌曲在队列中")
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.debug.log("[点歌] \(name) 已有歌曲在队列中")
                     self.postMarquee("❌ \(name) 已有歌曲在队列中", type: .songFailure)
                 }
                 return
@@ -416,7 +419,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
             if candidates.candidates.isEmpty {
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "rejected_not_found")
-                DispatchQueue.main.async {
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
                     self.debug.log("[点歌] 未找到歌曲: \"\(query)\"")
                     self.postMarquee("❌ \(name) 未找到\"\(query)\"", type: .songFailure)
                 }
@@ -429,8 +433,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 diffInput: resolvedDiffInput
             ) else {
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "rejected_no_match")
-                DispatchQueue.main.async {
-                    self.debug.log("[点歌] 候选\(candidates.candidates.count)首但无法选择")
+                let candidateCount = candidates.candidates.count
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.debug.log("[点歌] 候选\(candidateCount)首但无法选择")
                     self.postMarquee("❌ \(name) 无法匹配歌曲", type: .songFailure)
                 }
                 return
@@ -439,9 +445,11 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             let targetDiffNum = songDatabase.resolveDiffInput(resolvedDiffInput)
             guard let noteResult = songDatabase.findNote(song: song, targetDiffNum: targetDiffNum) else {
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "rejected_no_diff")
-                DispatchQueue.main.async {
-                    self.debug.log("[点歌] \(song.title) 没有可用难度")
-                    self.postMarquee("❌ \(name): \(song.title) 没有可用难度", type: .songFailure)
+                let songTitle = song.title
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.debug.log("[点歌] \(songTitle) 没有可用难度")
+                    self.postMarquee("❌ \(name): \(songTitle) 没有可用难度", type: .songFailure)
                 }
                 return
             }
@@ -469,14 +477,17 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 giftValue: giftVal
             )
 
-            DispatchQueue.main.async {
+            let songTitle = song.title
+            let matchKind = candidates.matchKind?.rawValue ?? "?"
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
                 self.addSongToQueue(cardData)
 
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: msg.id, status: "success")
 
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
-                self.debug.log("[点歌] ✅ \(msg.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr)) [\(candidates.matchKind?.rawValue ?? "?")]\(giftTag)")
-                self.postMarquee("🎵 \(name) 点歌 \(song.title) (\(ctDisplay) \(diffName) \(levelStr))", type: .songSuccess)
+                self.debug.log("[点歌] ✅ \(name) → \(songTitle) (\(ctDisplay) \(diffName) \(levelStr)) [\(matchKind)]\(giftTag)")
+                self.postMarquee("🎵 \(name) 点歌 \(songTitle) (\(ctDisplay) \(diffName) \(levelStr))", type: .songSuccess)
             }
 
         case .notACommand:
@@ -645,14 +656,16 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 giftValue: giftVal
             )
 
-            DispatchQueue.main.async {
+            let songTitle = song.title
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
                 self.addSongToQueue(cardData)
 
                 DanmakuBufferManager.shared.updateSongRequestStatus(originalDanmakuId: sc.id, status: "success")
 
                 let giftTag = giftVal > 0 ? " [🎁\(giftVal)]" : ""
-                self.debug.log("[SC点歌] ✅ \(sc.authorName) → \(song.title) (\(ctDisplay) \(diffName) \(levelStr))\(giftTag)")
-                self.postMarquee("💰 \(name) SC点歌 \(song.title) (\(ctDisplay) \(diffName) \(levelStr))", type: .superChat)
+                self.debug.log("[SC点歌] ✅ \(name) → \(songTitle) (\(ctDisplay) \(diffName) \(levelStr))\(giftTag)")
+                self.postMarquee("💰 \(name) SC点歌 \(songTitle) (\(ctDisplay) \(diffName) \(levelStr))", type: .superChat)
             }
 
         case .notACommand:
