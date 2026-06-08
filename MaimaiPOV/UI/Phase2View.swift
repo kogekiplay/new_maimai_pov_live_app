@@ -345,6 +345,7 @@ struct Phase2View: View {
         }
         .padding(.horizontal, 6)
         .padding(.top, 6)
+        .padding(.bottom, panelExpanded ? 0 : 6)
         .adaptiveGlassPanelBackground(cornerRadius: 14, tint: Color.black.opacity(0.18))
     }
 
