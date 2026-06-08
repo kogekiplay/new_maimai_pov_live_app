@@ -228,6 +228,11 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         )
     }
 
+    deinit {
+        songDatabaseLoadTask?.cancel()
+        NotificationCenter.default.removeObserver(self)
+    }
+
     @objc private func appDidEnterBackground() {
         songCardManager.forceSave()
     }
