@@ -53,6 +53,8 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
     private var streamKey: String = ""
     private var reconnectAttempt: Int = 0
     private var reconnectTask: Task<Void, Never>?
+    private var publishTask: Task<Void, Never>?
+    private var publishGeneration: Int = 0
 
     private var streamingStartTime: Date?
     private var durationUpdateTask: Task<Void, Never>?
@@ -130,7 +132,17 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
 
         let publishURL = rtmpUrl
         let publishKey = streamKey
-        Task { [weak self] in
+        publishTask?.cancel()
+        publishGeneration += 1
+        let generation = publishGeneration
+        publishTask = Task { [weak self] in
+            defer {
+                Task { [weak self] in
+                    await self?.clearPublishTask(generation: generation)
+                }
+            }
+
+            guard !Task.isCancelled else { return }
             var videoSettings = VideoCodecSettings(
                 videoSize: resolution.size,
                 bitRate: bitrateBps,
@@ -141,14 +153,21 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
             videoSettings.allowFrameReordering = false
             videoSettings.dataRateLimits = [Double(bitrateBps) / 8.0 * 2.0, 1.0]
             await stream.setVideoSettings(videoSettings)
+            guard !Task.isCancelled else { return }
             await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
-            guard let self, self.isStreaming else { return }
+            guard let self, !Task.isCancelled else { return }
+            guard await self.shouldContinuePublishing(generation: generation) else { return }
 
             do {
                 _ = try await connection.connect(publishURL)
+                guard !Task.isCancelled else { return }
+                guard await self.shouldContinuePublishing(generation: generation) else { return }
                 _ = try await stream.publish(publishKey)
-                await self.handlePublishStarted()
+                guard !Task.isCancelled else { return }
+                await self.handlePublishStarted(generation: generation)
             } catch {
+                guard !Task.isCancelled else { return }
+                guard await self.shouldContinuePublishing(generation: generation) else { return }
                 await self.attemptReconnect(reason: error.localizedDescription)
             }
         }
@@ -220,12 +239,23 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
     }
 
     @MainActor
-    private func handlePublishStarted() {
-        guard isStreaming else { return }
+    private func handlePublishStarted(generation: Int) {
+        guard isStreaming, publishGeneration == generation else { return }
         reconnectAttempt = 0
         streamStatus = "Publishing"
         DebugInfoManager.shared.rtmpStatus = "Publishing"
         DebugInfoManager.shared.log("RTMP: Publishing")
+    }
+
+    @MainActor
+    private func shouldContinuePublishing(generation: Int) -> Bool {
+        isStreaming && publishGeneration == generation
+    }
+
+    @MainActor
+    private func clearPublishTask(generation: Int) {
+        guard publishGeneration == generation else { return }
+        publishTask = nil
     }
 
     @MainActor
@@ -238,18 +268,6 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
         durationUpdateTask = nil
         streamingStartTime = nil
         DebugInfoManager.shared.streamingDuration = "--"
-
-        let stream: RTMPStream?
-        let connection: RTMPConnection?
-        lock.lock()
-        stream = self.stream
-        connection = self.connection
-        lock.unlock()
-
-        Task {
-            if let stream { _ = try? await stream.close() }
-            if let connection { try? await connection.close() }
-        }
 
         isStreaming = false
         streamStatus = "Idle"
@@ -527,9 +545,9 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
 
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            guard let self, self.isStreaming else { return }
-            self.resetStreams()
             await MainActor.run {
+                guard let self, self.isStreaming else { return }
+                self.resetStreams()
                 self.connectAndPublish()
             }
         }
@@ -692,6 +710,9 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
     private func cleanup() {
         reconnectTask?.cancel()
         reconnectTask = nil
+        publishTask?.cancel()
+        publishTask = nil
+        publishGeneration += 1
         resetStreams()
     }
 
