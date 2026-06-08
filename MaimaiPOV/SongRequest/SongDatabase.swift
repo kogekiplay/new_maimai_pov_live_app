@@ -130,6 +130,11 @@ enum MatchKind: String, Sendable {
     case fuzzyAlias = "fuzzy_alias"
 }
 
+enum ResolvedDifficulty: Equatable, Sendable {
+    case level(Int)
+    case utage
+}
+
 struct FindCandidatesResult: Sendable {
     let candidates: [Song]
     let matchKind: MatchKind?
@@ -168,13 +173,13 @@ class SongDatabase {
     private var byTitle: [String: [Song]] = [:]
     private var byAlias: [String: [Song]] = [:]
 
-    private let diffMap: [String: Any] = [
-        "绿": 0, "basic": 0,
-        "黄": 1, "advanced": 1,
-        "红": 2, "expert": 2,
-        "紫": 3, "master": 3,
-        "白": 4, "remaster": 4,
-        "宴": "utage", "utage": "utage"
+    private let diffMap: [String: ResolvedDifficulty] = [
+        "绿": .level(0), "basic": .level(0),
+        "黄": .level(1), "advanced": .level(1),
+        "红": .level(2), "expert": .level(2),
+        "紫": .level(3), "master": .level(3),
+        "白": .level(4), "remaster": .level(4), "re:master": .level(4),
+        "宴": .utage, "utage": .utage
     ]
 
     private let diffNumToName: [Int: String] = [
@@ -396,7 +401,7 @@ class SongDatabase {
     func pickByChartType(candidates: [Song], chartTypePreference: String?, diffInput: String?) -> Song? {
         guard !candidates.isEmpty else { return nil }
 
-        if diffInput == "utage" || diffInput == "宴" {
+        if resolveDiffInput(diffInput) == .utage {
             if let u = candidates.first(where: { $0.chartType == "utage" }) { return u }
         }
 
@@ -419,10 +424,10 @@ class SongDatabase {
             ?? candidates.first
     }
 
-    func findNote(song: Song, targetDiffNum: Any?) -> NoteResult? {
+    func findNote(song: Song, targetDiffNum: ResolvedDifficulty?) -> NoteResult? {
         guard !song.notes.isEmpty else { return nil }
 
-        if song.chartType == "utage" || (targetDiffNum as? String) == "utage" {
+        if song.chartType == "utage" || targetDiffNum == .utage {
             guard let idx = song.notes.firstIndex(where: { $0.isEnable && $0.difficulty.isUtage }) else {
                 guard let idx = song.notes.firstIndex(where: { $0.isEnable }) else { return nil }
                 let n = song.notes[idx]
@@ -447,7 +452,7 @@ class SongDatabase {
             return nil
         }
 
-        guard let diffNum = targetDiffNum as? Int, diffNum >= 0, diffNum <= 4 else { return nil }
+        guard case .level(let diffNum) = targetDiffNum, diffNum >= 0, diffNum <= 4 else { return nil }
 
         for i in stride(from: diffNum, through: 0, by: -1) {
             if let n = song.notes.first(where: { $0.difficulty.intVal == i && $0.isEnable }) {
@@ -463,10 +468,9 @@ class SongDatabase {
         return nil
     }
 
-    func resolveDiffInput(_ input: String?) -> Any? {
-        guard let input = input?.lowercased(), !input.isEmpty else { return nil }
-        if let val = diffMap[input] { return val }
-        return nil
+    func resolveDiffInput(_ input: String?) -> ResolvedDifficulty? {
+        guard let key = normalizedDifficultyInput(input) else { return nil }
+        return diffMap[key]
     }
 
     func difficultyDisplayName(_ diffName: String) -> String {
@@ -488,6 +492,15 @@ class SongDatabase {
         case "utage": return "UTAGE"
         default: return chartType?.uppercased() ?? ""
         }
+    }
+
+    private func normalizedDifficultyInput(_ input: String?) -> String? {
+        guard let input else { return nil }
+        let key = input
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "：", with: ":")
+        return key.isEmpty ? nil : key
     }
 }
 
