@@ -10,8 +10,10 @@ enum Config {
     static let defaultYoloPadding: Int = 40
     static var yoloPadding: Int {
         get {
-            let v = UserDefaults.standard.integer(forKey: yoloPaddingKey)
-            return v == 0 ? defaultYoloPadding : v
+            guard UserDefaults.standard.object(forKey: yoloPaddingKey) != nil else {
+                return defaultYoloPadding
+            }
+            return UserDefaults.standard.integer(forKey: yoloPaddingKey)
         }
         set { UserDefaults.standard.set(newValue, forKey: yoloPaddingKey) }
     }
