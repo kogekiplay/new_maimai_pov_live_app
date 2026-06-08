@@ -198,7 +198,6 @@ struct Phase2View: View {
                 phaseContent(for: .blivechat)
             }
         }
-        .tint(Color(red: 1.0, green: 0.25, blue: 0.42))
         .tabBarMinimizeBehavior(.never)
     }
 
@@ -228,7 +227,6 @@ struct Phase2View: View {
                 }
                 .tag(ControlTab.blivechat)
         }
-        .tint(Color(red: 1.0, green: 0.25, blue: 0.42))
     }
 
     private func phaseContent(for tab: ControlTab) -> some View {
