@@ -108,7 +108,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     @Published var webServerURL: String = ""
 
     let camera = CameraCaptureManager()
-    let debug = MainActor.assumeIsolated { DebugInfoManager.shared }
+    let debug: DebugInfoManager
     let device: MTLDevice = MTLCreateSystemDefaultDevice()!
     let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     let sharedCommandQueue: MTLCommandQueue
@@ -174,7 +174,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     private var yoloPreviewFrameCount: Int = 0
     private var lastStabOnlyMs: Double = 0
 
-    init() {
+    @MainActor init(debug: DebugInfoManager = .shared) {
+        self.debug = debug
         sharedCommandQueue = device.makeCommandQueue()!
 
         streamManager.audioMixer = audioMixer
