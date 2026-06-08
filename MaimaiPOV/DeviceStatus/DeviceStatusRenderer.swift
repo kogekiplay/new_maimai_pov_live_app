@@ -50,28 +50,32 @@ final class DeviceStatusRenderer: @unchecked Sendable {
         let textureWidth = Int(ceil(textSize.width + paddingH * 2))
         let textureHeight = barHeight
 
-        UIGraphicsBeginImageContextWithOptions(
-            CGSize(width: textureWidth, height: textureHeight), false, 1.0)
-
-        let bgRect = CGRect(x: 0, y: 0, width: CGFloat(textureWidth), height: CGFloat(textureHeight))
-        let bgPath = UIBezierPath(roundedRect: bgRect, cornerRadius: cornerRadius)
-        UIColor(red: 0, green: 0, blue: 0, alpha: 0.6).setFill()
-        bgPath.fill()
-
-        let textRect = CGRect(
-            x: paddingH,
-            y: (CGFloat(textureHeight) - textSize.height) / 2,
-            width: textSize.width,
-            height: textSize.height
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(
+            size: CGSize(width: textureWidth, height: textureHeight),
+            format: format
         )
-        attributedString.draw(in: textRect)
 
-        guard let image = UIGraphicsGetImageFromCurrentImageContext(),
-              let cgImage = image.cgImage else {
-            UIGraphicsEndImageContext()
+        let image = renderer.image { _ in
+            let bgRect = CGRect(x: 0, y: 0, width: CGFloat(textureWidth), height: CGFloat(textureHeight))
+            let bgPath = UIBezierPath(roundedRect: bgRect, cornerRadius: cornerRadius)
+            UIColor(red: 0, green: 0, blue: 0, alpha: 0.6).setFill()
+            bgPath.fill()
+
+            let textRect = CGRect(
+                x: paddingH,
+                y: (CGFloat(textureHeight) - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            attributedString.draw(in: textRect)
+        }
+
+        guard let cgImage = image.cgImage else {
             return (nil, 0)
         }
-        UIGraphicsEndImageContext()
 
         let texture = TextureHelper.shared.cgImageToTexture(cgImage, device: device)
         return (texture, textureWidth)
