@@ -96,7 +96,7 @@ struct DebugOverlayView: View {
             segments: DebugTab.allCases.map { .init(value: $0, title: $0.title) },
             accent: .cyan
         )
-        .frame(width: 188, height: 28)
+        .frame(width: 208, height: 30)
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
     }
@@ -370,7 +370,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
     @State private var dragCenterX: CGFloat?
     @Namespace private var glassNamespace
 
-    private let height: CGFloat = 28
+    private let height: CGFloat = 30
     private let horizontalInset: CGFloat = 4
     private let thumbInset: CGFloat = 3
 
@@ -450,37 +450,33 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
         thumbOffset: CGFloat,
         isDragging: Bool
     ) -> some View {
-        GlassEffectContainer(spacing: 6) {
-            ZStack(alignment: .leading) {
-                HStack(spacing: 0) {
-                    ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
-                        Button {
-                            selectSegment(at: index)
-                        } label: {
-                            nativeGlassSegment(
-                                title: segment.title,
-                                isSelected: selectedIndex == index
-                            )
-                            .frame(width: segmentWidth, height: height - 2)
-                            .glassEffect(.regular.interactive(), in: .capsule)
-                            .glassEffectUnion(id: "debug-segment-track", namespace: glassNamespace)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(segment.title)
-                        .accessibilityValue(selectedIndex == index ? L10n.string("Selected") : "")
-                    }
-                }
-                .padding(.horizontal, horizontalInset)
+        ZStack(alignment: .leading) {
+            GlassEffectContainer(spacing: 12) {
+                ZStack(alignment: .leading) {
+                    Color.clear
+                        .frame(height: height)
+                        .glassEffect(.regular.tint(Color.white.opacity(0.04)).interactive(), in: .capsule)
+                        .glassEffectUnion(id: "debug-segment-track", namespace: glassNamespace)
 
-                selectedGlassSegment(isDragging: isDragging)
-                    .frame(width: thumbWidth, height: thumbHeight)
-                    .offset(x: thumbOffset, y: (height - thumbHeight) / 2)
-                    .glassEffect(.regular.interactive(), in: .capsule)
-                    .glassEffectID("debug-segment-selection", in: glassNamespace)
-                    .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
-                    .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
-                    .allowsHitTesting(false)
+                    Color.clear
+                        .frame(width: thumbWidth, height: thumbHeight)
+                        .offset(x: thumbOffset, y: (height - thumbHeight) / 2)
+                        .glassEffect(.regular.tint(accent.opacity(isDragging ? 0.22 : 0.14)).interactive(), in: .capsule)
+                        .glassEffectID("debug-segment-selection", in: glassNamespace)
+                        .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
+                        .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
+                        .allowsHitTesting(false)
+                }
             }
+
+            segmentButtonsRow(segmentWidth: segmentWidth, selectedTextIsHidden: true)
+
+            selectedGlassSegment(isDragging: isDragging)
+                .frame(width: thumbWidth, height: thumbHeight)
+                .offset(x: thumbOffset, y: (height - thumbHeight) / 2)
+                .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
+                .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
+                .allowsHitTesting(false)
         }
     }
 
@@ -511,17 +507,6 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
         }
     }
 
-    @available(iOS 26.0, *)
-    private func nativeGlassSegment(title: String, isSelected: Bool) -> some View {
-        Text(title)
-            .font(.system(size: 9, weight: isSelected ? .bold : .semibold, design: .monospaced))
-            .foregroundColor(isSelected ? .clear : .white.opacity(0.58))
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Capsule())
-    }
-
     private func segmentButtonsRow(segmentWidth: CGFloat, selectedTextIsHidden: Bool) -> some View {
         HStack(spacing: 0) {
             ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
@@ -542,19 +527,20 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
 
     private func segmentText(_ title: String, isSelected: Bool, selectedTextIsHidden: Bool) -> some View {
         Text(title)
-            .font(.system(size: 9, weight: isSelected ? .bold : .semibold, design: .monospaced))
-            .foregroundColor(isSelected && selectedTextIsHidden ? .clear : .white.opacity(0.58))
+            .font(.system(size: 10, weight: isSelected ? .bold : .semibold, design: .monospaced))
+            .foregroundColor(isSelected && selectedTextIsHidden ? .clear : .white.opacity(0.72))
             .lineLimit(1)
             .minimumScaleFactor(0.72)
     }
 
     private func selectedGlassSegment(isDragging: Bool) -> some View {
         Text(selectedTitle)
-            .font(.system(size: 9, weight: .bold, design: .monospaced))
+            .font(.system(size: 10, weight: .bold, design: .monospaced))
             .foregroundColor(accent)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
             .scaleEffect(isDragging ? 1.03 : 1)
+            .shadow(color: Color.black.opacity(0.32), radius: 1, x: 0, y: 0.5)
             .animation(.easeOut(duration: 0.12), value: isDragging)
     }
 
