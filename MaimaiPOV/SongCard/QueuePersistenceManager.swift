@@ -8,6 +8,16 @@ struct QueueSnapshot: Codable {
     var userGiftPool: [String: Int]
 
     static let currentVersion = 2
+
+    func normalized() -> QueueSnapshot {
+        var snapshot = self
+        if snapshot.queue.isEmpty {
+            snapshot.currentIndex = -1
+        } else {
+            snapshot.currentIndex = min(max(snapshot.currentIndex, 0), snapshot.queue.count - 1)
+        }
+        return snapshot
+    }
 }
 
 final class QueuePersistenceManager: @unchecked Sendable {
@@ -74,12 +84,13 @@ final class QueuePersistenceManager: @unchecked Sendable {
         let fileManager = FileManager.default
         try? fileManager.removeItem(at: snapshotURL)
         try? fileManager.removeItem(at: backupURL)
+        try? fileManager.removeItem(at: tempURL)
     }
 
     private func loadFromURL(_ url: URL) -> QueueSnapshot? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         guard let snapshot = try? JSONDecoder().decode(QueueSnapshot.self, from: data) else { return nil }
         guard snapshot.version <= QueueSnapshot.currentVersion else { return nil }
-        return snapshot
+        return snapshot.normalized()
     }
 }
