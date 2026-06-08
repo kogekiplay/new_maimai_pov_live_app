@@ -29,6 +29,7 @@
 "Camera not authorized" = "未授权相机";
 "Advanced" = "高级设置";
 "Add Preset" = "添加预设";
+"Delete Preset" = "删除预设";
 "Name" = "名称";
 "Cancel" = "取消";
 "Save" = "保存";

@@ -425,28 +425,7 @@ struct Phase2View: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(presets) { preset in
-                            Button {
-                                rtmpUrl = preset.url
-                                streamKey = preset.streamKey
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Text(preset.name)
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                    Button {
-                                        presets.removeAll { $0.id == preset.id }
-                                        Config.streamPresets = presets
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .adaptiveGlassPanel(cornerRadius: 8, tint: Color.white.opacity(0.06), interactive: true)
-                            }
-                            .buttonStyle(.plain)
+                            presetChip(preset)
                         }
                     }
                     .adaptiveGlassGroup(spacing: 8)
@@ -506,6 +485,35 @@ struct Phase2View: View {
             streamButtonRow
         }
         .padding(12)
+    }
+
+    private func presetChip(_ preset: StreamPreset) -> some View {
+        HStack(spacing: 4) {
+            Button {
+                rtmpUrl = preset.url
+                streamKey = preset.streamKey
+            } label: {
+                Text(preset.name)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+            }
+            .adaptiveGlassButton()
+            .controlSize(.small)
+
+            Button {
+                presets.removeAll { $0.id == preset.id }
+                Config.streamPresets = presets
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 22, height: 22)
+            }
+            .adaptiveGlassButton()
+            .controlSize(.small)
+            .accessibilityLabel(L10n.string("Delete Preset"))
+        }
     }
 
     // MARK: - Blivechat Tab
