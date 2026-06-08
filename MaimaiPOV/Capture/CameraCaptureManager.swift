@@ -1,7 +1,9 @@
 import AVFoundation
+import OSLog
 import SwiftUI
 
 final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendable {
+    private static let logger = Logger(subsystem: "com.maimai.MaimaiPOV", category: "CameraCaptureManager")
 
     let session = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
@@ -43,7 +45,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
                     if videoGranted && audioGranted {
                         self?.setupAndStart()
                     } else {
-                        print("CameraCaptureManager: Permission denied")
+                        Self.logger.warning("Camera permission denied")
                     }
                 }
             }
@@ -103,14 +105,14 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
         }
 
         guard let device = AVCaptureDevice.default(lens.deviceType, for: .video, position: .back) else {
-            print("CameraCaptureManager: No \(lens.rawValue) camera")
+            Self.logger.warning("No \(lens.rawValue, privacy: .public) camera")
             return
         }
         currentDevice = device
 
         guard let input = try? AVCaptureDeviceInput(device: device),
               session.canAddInput(input) else {
-            print("CameraCaptureManager: Cannot add input for \(lens.rawValue)")
+            Self.logger.error("Cannot add input for \(lens.rawValue, privacy: .public)")
             return
         }
         session.addInput(input)
@@ -125,7 +127,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             videoOutput.alwaysDiscardsLateVideoFrames = true
 
             guard session.canAddOutput(videoOutput) else {
-                print("CameraCaptureManager: Cannot add video output")
+                Self.logger.error("Cannot add video output")
                 return
             }
             session.addOutput(videoOutput)
@@ -144,14 +146,14 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             guard let audioDevice = AVCaptureDevice.default(for: .audio),
                   let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
                   session.canAddInput(audioInput) else {
-                print("CameraCaptureManager: Cannot add audio input")
+                Self.logger.error("Cannot add audio input")
                 return
             }
             session.addInput(audioInput)
             currentAudioInput = audioInput
 
             guard session.canAddOutput(audioOutput) else {
-                print("CameraCaptureManager: Cannot add audio output")
+                Self.logger.error("Cannot add audio output")
                 return
             }
             session.addOutput(audioOutput)
@@ -221,7 +223,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
         guard let audioDevice = AVCaptureDevice.default(for: .audio),
               let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
               session.canAddInput(audioInput) else {
-            print("CameraCaptureManager: Cannot reconfigure audio input")
+            Self.logger.error("Cannot reconfigure audio input")
             session.commitConfiguration()
             return
         }
@@ -230,7 +232,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
 
         if !session.outputs.contains(where: { $0 is AVCaptureAudioDataOutput }) {
             guard session.canAddOutput(audioOutput) else {
-                print("CameraCaptureManager: Cannot add audio output")
+                Self.logger.error("Cannot add audio output")
                 session.commitConfiguration()
                 return
             }
@@ -257,7 +259,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
         }
 
         guard let format = bestFormat else {
-            print("CameraCaptureManager: No 4:3 60fps format found")
+            Self.logger.warning("No 4:3 60fps format found")
             return
         }
 
@@ -274,9 +276,9 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
 
             device.unlockForConfiguration()
             let d = format.formatDescription.dimensions
-            print("CameraCaptureManager: Format \(d.width)x\(d.height) @ 60fps")
+            Self.logger.info("Format \(d.width)x\(d.height) @ 60fps")
         } catch {
-            print("CameraCaptureManager: Format config failed: \(error)")
+            Self.logger.error("Format config failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -296,7 +298,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             device.unlockForConfiguration()
             Task { @MainActor in self.exposureMode = .custom }
         } catch {
-            print("CameraCaptureManager: Exposure config failed: \(error)")
+            Self.logger.error("Exposure config failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -311,7 +313,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             currentISO = clampedISO
             device.unlockForConfiguration()
         } catch {
-            print("CameraCaptureManager: Set exposure failed: \(error)")
+            Self.logger.error("Set exposure failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -350,7 +352,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             device.setFocusModeLocked(lensPosition: value, completionHandler: nil)
             device.unlockForConfiguration()
         } catch {
-            print("CameraCaptureManager: Focus failed: \(error)")
+            Self.logger.error("Focus failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -369,7 +371,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             }
             device.unlockForConfiguration()
         } catch {
-            print("CameraCaptureManager: Auto focus toggle failed: \(error)")
+            Self.logger.error("Auto focus toggle failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -381,7 +383,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             device.unlockForConfiguration()
             Task { @MainActor in self.awbLocked = true }
         } catch {
-            print("CameraCaptureManager: WB lock failed: \(error)")
+            Self.logger.error("WB lock failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -393,7 +395,7 @@ final class CameraCaptureManager: NSObject, ObservableObject, @unchecked Sendabl
             device.unlockForConfiguration()
             Task { @MainActor in self.awbLocked = false }
         } catch {
-            print("CameraCaptureManager: WB unlock failed: \(error)")
+            Self.logger.error("WB unlock failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }
