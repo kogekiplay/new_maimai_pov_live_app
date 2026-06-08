@@ -34,10 +34,13 @@ class OverlayCompositor {
         }
         self.pipelineState = ps
 
-        self.uniformsBuffer = device.makeBuffer(
+        guard let uniformsBuffer = device.makeBuffer(
             length: MemoryLayout<OverlayUniforms>.stride,
             options: .storageModeShared
-        )!
+        ) else {
+            return nil
+        }
+        self.uniformsBuffer = uniformsBuffer
 
         loadPersistedImage()
     }
@@ -121,7 +124,10 @@ class OverlayCompositor {
 
     private func persistImage(_ uiImage: UIImage) {
         guard let data = uiImage.pngData() else { return }
-        try? data.write(to: Self.overlayImageURL)
+        let url = Self.overlayImageURL
+        Task.detached(priority: .utility) {
+            try? data.write(to: url)
+        }
     }
 
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
