@@ -1208,8 +1208,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         songDatabaseLoadTask?.cancel()
         songDatabaseLoadTask = nil
         camera.onVideoFrame = nil
+        camera.onAudioSample = nil
         camera.stopRunning()
         MotionManager.shared.stopUpdates()
+        webServerManager.stop()
         stopFPSTimer()
         songCardManager.stopExpirationTimer()
         Task { @MainActor [weak self] in
