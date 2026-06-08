@@ -17,6 +17,7 @@
 		194C438A2EA769BF82D138F9 /* DeviceStatusCompositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BAF22F0529DA0F70D9BFCF /* DeviceStatusCompositor.swift */; };
 		1AFA276E78B685BB5FFC9DE3 /* MarqueeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234526FDF17F5B4CDE8507D5 /* MarqueeManager.swift */; };
 		1C30E0180EB90449DF966854 /* SongCardRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08FD90470A4B05202A2AB12F /* SongCardRenderer.swift */; };
+		24268EC5D1A85F7A44711195 /* SongCardManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE78717545E85E236A0081A5 /* SongCardManagerTests.swift */; };
 		2C952A1A0708D1A80F508F37 /* SongCardUniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9853B0536BA40FF4D8339699 /* SongCardUniforms.swift */; };
 		3368665641794D0D2A5B5356 /* MaimaiPOVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E170C132EDDA40A6A66D6314 /* MaimaiPOVApp.swift */; };
 		37B2C61A68290CC3BBA954DA /* YOLODetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D8E9D89EE53E66EC54880B /* YOLODetector.swift */; };
@@ -199,6 +200,7 @@
 		F8647E108476D7F423F530E5 /* OverlayCompositor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayCompositor.swift; sourceTree = "<group>"; };
 		F8F7EBD17B204010D7E9FE84 /* YOLOPreprocessUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YOLOPreprocessUniforms.swift; sourceTree = "<group>"; };
 		FAEC424FFD2918A1E13C9A03 /* CoverImageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageService.swift; sourceTree = "<group>"; };
+		FE78717545E85E236A0081A5 /* SongCardManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardManagerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -320,6 +322,7 @@
 				002EDDA1077BED0DD6D30F36 /* QueueDisplayWindowTests.swift */,
 				442D9005D3F238A4CD8EEED3 /* QueuePersistenceManagerTests.swift */,
 				CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */,
+				FE78717545E85E236A0081A5 /* SongCardManagerTests.swift */,
 			);
 			path = MaimaiPOVTests;
 			sourceTree = "<group>";
@@ -688,6 +691,7 @@
 				755A428E97682E8B48E6659E /* QueueDisplayWindowTests.swift in Sources */,
 				D133F7799703D7D7ADD6B8D9 /* QueuePersistenceManagerTests.swift in Sources */,
 				4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */,
+				24268EC5D1A85F7A44711195 /* SongCardManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

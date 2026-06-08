@@ -29,6 +29,11 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
     private var expirationTimer: Timer?
     private let expirationCheckInterval: TimeInterval = 30
     var expirationTimeout: TimeInterval = 15 * 60
+    private let persistenceManager: QueuePersistenceManager
+
+    init(persistenceManager: QueuePersistenceManager = .shared) {
+        self.persistenceManager = persistenceManager
+    }
 
     deinit {
         stopExpirationTimer()
@@ -147,7 +152,7 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
         delegate?.onCurrentSongChanged(nil)
         delegate?.onQueueUpdated([], change: .fullRefresh)
         cancelPendingSave()
-        QueuePersistenceManager.shared.clearSnapshot()
+        persistenceManager.clearSnapshot()
     }
 
     func findSongIndex(byName name: String) -> Int? {
@@ -307,7 +312,6 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
     }
 
     private func performSave() {
-        guard !queue.isEmpty || !userGiftPool.isEmpty else { return }
         let snapshot = QueueSnapshot(
             version: QueueSnapshot.currentVersion,
             savedAt: Date(),
@@ -315,6 +319,6 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
             currentIndex: currentIndex,
             userGiftPool: userGiftPool
         )
-        QueuePersistenceManager.shared.save(snapshot: snapshot)
+        persistenceManager.save(snapshot: snapshot)
     }
 }
