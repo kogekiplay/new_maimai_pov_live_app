@@ -138,6 +138,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     var deviceStatusCompositor: DeviceStatusCompositor?
     private var rightPanelGeneration: Int = 0
     private var refreshLeftPanelWorkItem: DispatchWorkItem?
+    private var resetLeftPanelWorkItem: DispatchWorkItem?
+    private var refreshRightPanelWorkItem: DispatchWorkItem?
     private var reorderRightPanelWorkItem: DispatchWorkItem?
     private var isSwitchingSong: Bool = false
     let songCardManager = SongCardManager()
@@ -908,16 +910,12 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             self.leftPanelRenderer = LeftPanelRenderer(device: device)
             self.leftPanelCompositor = LeftPanelCompositor(device: device)
             renderLeftPanelAnnouncement()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.refreshLeftPanel()
-            }
+            scheduleRefreshLeftPanel(delay: 0.5)
         }
 
         self.rightPanelRenderer = RightPanelRenderer(device: device)
         self.rightPanelCompositor = RightPanelCompositor(device: device)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.refreshRightPanel()
-        }
+        scheduleRefreshRightPanel(delay: 0.5)
 
         let marqueeManager = MarqueeManager()
         let marqueeRenderer = MarqueeRenderer(device: device)
@@ -1236,6 +1234,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     private func cancelPendingPanelWork() {
         refreshLeftPanelWorkItem?.cancel()
         refreshLeftPanelWorkItem = nil
+        resetLeftPanelWorkItem?.cancel()
+        resetLeftPanelWorkItem = nil
+        refreshRightPanelWorkItem?.cancel()
+        refreshRightPanelWorkItem = nil
         reorderRightPanelWorkItem?.cancel()
         reorderRightPanelWorkItem = nil
         rightPanelGeneration += 1
@@ -1570,10 +1572,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         }
         songCardManager.clearQueue()
         if leftPanelCompositor != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-                self?.leftPanelCompositor?.resetToEmpty()
-                self?.refreshLeftPanel()
-            }
+            scheduleResetLeftPanel(delay: 0.6)
         }
     }
 
@@ -1631,6 +1630,25 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             self?.refreshLeftPanel()
         }
         refreshLeftPanelWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func scheduleResetLeftPanel(delay: TimeInterval) {
+        resetLeftPanelWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.leftPanelCompositor?.resetToEmpty()
+            self?.refreshLeftPanel()
+        }
+        resetLeftPanelWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func scheduleRefreshRightPanel(delay: TimeInterval) {
+        refreshRightPanelWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.refreshRightPanel()
+        }
+        refreshRightPanelWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
     }
 
