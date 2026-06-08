@@ -859,14 +859,18 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             self?.refreshRightPanel()
         }
 
-        self.marqueeManager = MarqueeManager()
-        self.marqueeRenderer = MarqueeRenderer(device: device)
-        self.marqueeCompositor = MarqueeCompositor(device: device, manager: marqueeManager!, renderer: marqueeRenderer!)
+        let marqueeManager = MarqueeManager()
+        let marqueeRenderer = MarqueeRenderer(device: device)
+        self.marqueeManager = marqueeManager
+        self.marqueeRenderer = marqueeRenderer
+        self.marqueeCompositor = MarqueeCompositor(device: device, manager: marqueeManager, renderer: marqueeRenderer)
 
-        self.deviceStatusManager = DeviceStatusManager()
-        self.deviceStatusRenderer = DeviceStatusRenderer(device: device)
-        self.deviceStatusCompositor = DeviceStatusCompositor(device: device, manager: deviceStatusManager!, renderer: deviceStatusRenderer!)
-        self.deviceStatusManager?.startMonitoring()
+        let deviceStatusManager = DeviceStatusManager()
+        let deviceStatusRenderer = DeviceStatusRenderer(device: device)
+        self.deviceStatusManager = deviceStatusManager
+        self.deviceStatusRenderer = deviceStatusRenderer
+        self.deviceStatusCompositor = DeviceStatusCompositor(device: device, manager: deviceStatusManager, renderer: deviceStatusRenderer)
+        deviceStatusManager.startMonitoring()
 
         ioSurfacePool = IOSurfaceOutputPool(
             device: device,
