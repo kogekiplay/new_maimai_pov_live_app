@@ -10,18 +10,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         configureAudioSession()
-        Task { @MainActor in
-            replaceRootViewController()
-        }
         return true
-    }
-
-    @MainActor
-    private func replaceRootViewController() {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first else { return }
-        let hostingController = HomeIndicatorHostingController(rootView: Phase2View())
-        window.rootViewController = hostingController
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {

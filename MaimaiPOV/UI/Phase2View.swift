@@ -37,6 +37,8 @@ struct Phase2View: View {
     @State private var isAntiTouchMode: Bool = false
     @State private var antiTouchTimer: Timer?
     @State private var volumeObservation: NSKeyValueObservation?
+    @State private var startupTask: Task<Void, Never>?
+    @State private var pipelineStarted: Bool = false
     @State private var previewOverride: Bool = false
     @State private var advancedExpanded: Bool = false
     @State private var presets: [StreamPreset] = Config.streamPresets
@@ -60,23 +62,8 @@ struct Phase2View: View {
         .background(Color.black)
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
-            pipeline.start()
-
-            if pipeline.hasRestorableSnapshot {
-                showRestoreAlert = true
-            }
-
-            let session = AVAudioSession.sharedInstance()
-            volumeObservation = session.observe(\.outputVolume) { [weak session] _, _ in
-                guard session != nil else { return }
-                Task { @MainActor in
-                    if isAntiTouchMode {
-                        antiTouchTimer?.invalidate()
-                        antiTouchTimer = nil
-                        isAntiTouchMode = false
-                    }
-                }
-            }
+            schedulePipelineStartup()
+            startVolumeObservation()
         }
         .alert("Restore Song Queue", isPresented: $showRestoreAlert) {
             Button("Restore Queue") {
@@ -112,7 +99,44 @@ struct Phase2View: View {
             antiTouchTimer = nil
             volumeObservation?.invalidate()
             volumeObservation = nil
-            pipeline.stop()
+            startupTask?.cancel()
+            startupTask = nil
+            if pipelineStarted {
+                pipeline.stop()
+                pipelineStarted = false
+            }
+        }
+    }
+
+    private func schedulePipelineStartup() {
+        guard startupTask == nil, !pipelineStarted else { return }
+
+        startupTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled else { return }
+
+            pipelineStarted = true
+            pipeline.start()
+
+            if pipeline.hasRestorableSnapshot {
+                showRestoreAlert = true
+            }
+        }
+    }
+
+    private func startVolumeObservation() {
+        guard volumeObservation == nil else { return }
+
+        let session = AVAudioSession.sharedInstance()
+        volumeObservation = session.observe(\.outputVolume) { [weak session] _, _ in
+            guard session != nil else { return }
+            Task { @MainActor in
+                if isAntiTouchMode {
+                    antiTouchTimer?.invalidate()
+                    antiTouchTimer = nil
+                    isAntiTouchMode = false
+                }
+            }
         }
     }
 
