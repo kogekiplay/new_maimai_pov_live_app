@@ -77,6 +77,7 @@
 		C66ACA99DC23D6592ACEAA55 /* CameraConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F56015B2ECD013CC5CACEA /* CameraConfig.swift */; };
 		CCB081BB993B28491A6F125C /* DeviceStatus.metal in Sources */ = {isa = PBXBuildFile; fileRef = A8535ED03F951F2649B0B3B8 /* DeviceStatus.metal */; };
 		CD4A67892366A0ED0FC0DA98 /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = EEF894464672A62D643FACB1 /* HaishinKit */; };
+		D133F7799703D7D7ADD6B8D9 /* QueuePersistenceManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442D9005D3F238A4CD8EEED3 /* QueuePersistenceManagerTests.swift */; };
 		D5FC4C67FB2A16950F987B7A /* RightPanelCompositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8393774F58078078F1BCA987 /* RightPanelCompositor.swift */; };
 		DA3C087311DA9A28A8B8E21D /* LeftPanelTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC060CD8279C903B645AFE9A /* LeftPanelTemplate.swift */; };
 		DA4F5216377F449B53C69B2A /* SongRequest in Resources */ = {isa = PBXBuildFile; fileRef = C0FC22CE1AFAA8DC5D0CCCAC /* SongRequest */; };
@@ -137,6 +138,7 @@
 		3EF91FF33B5979A440E9387D /* MarqueeUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeUniforms.swift; sourceTree = "<group>"; };
 		41217B676FC8DD8A2AFF5BA3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		43EA31DEED25EEBEAA443CE9 /* LivePipelineManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePipelineManager.swift; sourceTree = "<group>"; };
+		442D9005D3F238A4CD8EEED3 /* QueuePersistenceManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuePersistenceManagerTests.swift; sourceTree = "<group>"; };
 		47F1B8D9ACBA18C8111F6308 /* RightPanelRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightPanelRenderer.swift; sourceTree = "<group>"; };
 		4C6A80BF985D9AFDA72C2246 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		4DE005BEA625FAB3ACD3C113 /* DeviceStatusUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusUniforms.swift; sourceTree = "<group>"; };
@@ -316,6 +318,7 @@
 			children = (
 				98DD04CA5A77FD7823A3C309 /* CoverImageServiceTests.swift */,
 				002EDDA1077BED0DD6D30F36 /* QueueDisplayWindowTests.swift */,
+				442D9005D3F238A4CD8EEED3 /* QueuePersistenceManagerTests.swift */,
 				CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */,
 			);
 			path = MaimaiPOVTests;
@@ -683,6 +686,7 @@
 			files = (
 				815589585B4463666ECE4440 /* CoverImageServiceTests.swift in Sources */,
 				755A428E97682E8B48E6659E /* QueueDisplayWindowTests.swift in Sources */,
+				D133F7799703D7D7ADD6B8D9 /* QueuePersistenceManagerTests.swift in Sources */,
 				4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

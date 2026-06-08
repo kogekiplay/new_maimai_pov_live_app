@@ -29,16 +29,23 @@ final class QueuePersistenceManager: @unchecked Sendable {
 
     static let shared = QueuePersistenceManager()
 
-    init() {
+    convenience init() {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        snapshotDirectory = documents.appendingPathComponent("QueueSnapshot", isDirectory: true)
+        self.init(snapshotDirectory: documents.appendingPathComponent("QueueSnapshot", isDirectory: true))
+    }
+
+    init(snapshotDirectory: URL) {
+        self.snapshotDirectory = snapshotDirectory
         snapshotURL = snapshotDirectory.appendingPathComponent("queue_snapshot.json")
         backupURL = snapshotDirectory.appendingPathComponent("queue_snapshot.bak")
         tempURL = snapshotDirectory.appendingPathComponent("queue_snapshot.tmp")
     }
 
     func save(snapshot: QueueSnapshot) {
-        guard !snapshot.queue.isEmpty || !snapshot.userGiftPool.isEmpty else { return }
+        guard !snapshot.queue.isEmpty || !snapshot.userGiftPool.isEmpty else {
+            clearSnapshot()
+            return
+        }
 
         lock.lock()
         defer { lock.unlock() }
