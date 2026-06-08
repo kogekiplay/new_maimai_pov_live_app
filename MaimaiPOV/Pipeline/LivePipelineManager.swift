@@ -230,6 +230,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
     deinit {
         songDatabaseLoadTask?.cancel()
+        cancelPendingPanelWork()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -1217,6 +1218,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     func stop() {
         songDatabaseLoadTask?.cancel()
         songDatabaseLoadTask = nil
+        cancelPendingPanelWork()
         camera.onVideoFrame = nil
         camera.onAudioSample = nil
         camera.onDeviceReady = nil
@@ -1229,6 +1231,14 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
             self?.deviceStatusManager?.stopMonitoring()
             self?.debug.stopFlushTimer()
         }
+    }
+
+    private func cancelPendingPanelWork() {
+        refreshLeftPanelWorkItem?.cancel()
+        refreshLeftPanelWorkItem = nil
+        reorderRightPanelWorkItem?.cancel()
+        reorderRightPanelWorkItem = nil
+        rightPanelGeneration += 1
     }
 
     private func startFPSTimer() {
