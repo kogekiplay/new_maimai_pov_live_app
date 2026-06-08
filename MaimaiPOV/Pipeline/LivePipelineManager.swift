@@ -862,6 +862,11 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         await task.value
     }
 
+    @MainActor func findSongCandidates(query: String) async -> FindCandidatesResult {
+        await ensureSongDatabaseLoaded()
+        return songDatabase.findCandidates(query: query)
+    }
+
     @MainActor func start() {
         let lensCfg = LensCalibration.config(for: selectedLens, inputWidth: Config.inputWidth)
         let stab = MetalStabilizer(device: device, commandQueue: sharedCommandQueue, lensConfig: lensCfg)

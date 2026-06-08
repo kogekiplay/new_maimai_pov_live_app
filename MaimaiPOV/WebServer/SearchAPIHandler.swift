@@ -20,13 +20,13 @@ final class SearchAPIHandler: @unchecked Sendable {
         let response = LockedValue<[String: Any]>([:])
 
         Task { @MainActor [weak self] in
+            defer { sem.signal() }
             guard let self = self, let pipeline = self.pipeline else {
-                sem.signal()
                 return
             }
 
+            let candidates = await pipeline.findSongCandidates(query: query)
             let db = pipeline.songDatabase
-            let candidates = db.findCandidates(query: query)
 
             var results: [[String: Any]] = []
             for song in candidates.candidates {
@@ -67,7 +67,6 @@ final class SearchAPIHandler: @unchecked Sendable {
                 "query": query,
                 "results": results
             ])
-            sem.signal()
         }
 
         sem.wait()
