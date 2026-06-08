@@ -15,9 +15,7 @@ final class DeviceStatusRenderer: @unchecked Sendable {
 
     func render(text: String) -> (MTLTexture?, Int) {
         if Thread.isMainThread {
-            return MainActor.assumeIsolated {
-                renderOnMainThread(text: text)
-            }
+            return renderOnMainThread(text: text)
         }
 
         let sem = DispatchSemaphore(value: 0)
@@ -32,8 +30,9 @@ final class DeviceStatusRenderer: @unchecked Sendable {
         return result.get()
     }
 
-    @MainActor
     private func renderOnMainThread(text: String) -> (MTLTexture?, Int) {
+        precondition(Thread.isMainThread, "DeviceStatusRenderer must render UIKit content on the main thread")
+
         let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,

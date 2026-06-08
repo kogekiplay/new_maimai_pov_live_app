@@ -16,9 +16,7 @@ final class MarqueeRenderer: @unchecked Sendable {
 
     func render(text: String, type: MarqueeItem.MarqueeItemType) -> (MTLTexture?, Int) {
         if Thread.isMainThread {
-            return MainActor.assumeIsolated {
-                renderOnMainThread(text: text, type: type)
-            }
+            return renderOnMainThread(text: text, type: type)
         }
 
         let sem = DispatchSemaphore(value: 0)
@@ -33,8 +31,9 @@ final class MarqueeRenderer: @unchecked Sendable {
         return result.get()
     }
 
-    @MainActor
     private func renderOnMainThread(text: String, type: MarqueeItem.MarqueeItemType) -> (MTLTexture?, Int) {
+        precondition(Thread.isMainThread, "MarqueeRenderer must render UIKit content on the main thread")
+
         let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
