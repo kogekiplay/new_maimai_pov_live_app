@@ -69,7 +69,7 @@ struct DebugOverlayView: View {
                 }
 
                 if isCollapsed && debug.isStreaming {
-                    Text(debug.rtmpStatus == "Publishing" ? "PUB" : L10n.streamStatus(debug.rtmpStatus))
+                    Text(debug.rtmpStatus == "Publishing" ? L10n.string("PUB") : L10n.streamStatus(debug.rtmpStatus))
                         .foregroundColor(rtmpStatusColor(debug.rtmpStatus))
                         .font(.system(size: 8, weight: .bold))
                 }
@@ -84,7 +84,7 @@ struct DebugOverlayView: View {
         .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityIdentifier("debug-toggle")
-        .accessibilityLabel("Debug")
+        .accessibilityLabel(L10n.string("Debug"))
         .accessibilityHint(L10n.string(isCollapsed ? "Expand debug details" : "Collapse debug details"))
     }
 

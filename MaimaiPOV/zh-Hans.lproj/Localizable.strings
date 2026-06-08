@@ -110,6 +110,7 @@
 "Idle" = "空闲";
 "Connecting" = "连接中";
 "Publishing" = "推流中";
+"PUB" = "推流";
 "Rejected" = "被拒绝";
 "BadName" = "流名错误";
 "Reconnecting" = "重连中";
