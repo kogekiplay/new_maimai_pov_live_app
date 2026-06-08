@@ -12,13 +12,13 @@ final class QueueAPIHandler: @unchecked Sendable {
     private func buildQueueResponse() -> [String: Any] {
         guard let pipeline = pipeline else { return [:] }
         let manager = pipeline.songCardManager
-        let ci = max(0, manager.currentIndex)
+        let window = QueueDisplayWindow(queueCount: manager.queue.count, currentIndex: manager.currentIndex)
         var queueItems: [[String: Any]] = []
 
-        for i in ci..<manager.queue.count {
+        for i in window.visibleRange {
             let song = manager.queue[i]
             var item: [String: Any] = [
-                "index": i - ci,
+                "index": window.displayIndex(forRealIndex: i),
                 "songName": song.songName,
                 "artist": song.artist,
                 "isPriority": song.isPriority
@@ -37,19 +37,18 @@ final class QueueAPIHandler: @unchecked Sendable {
             queueItems.append(item)
         }
 
-        let remaining = max(0, manager.queue.count - ci - 1)
-
         return [
             "currentIndex": 0,
-            "remaining": remaining,
+            "remaining": window.remaining,
             "queue": queueItems
         ]
     }
 
     private func realIndex(_ displayIndex: Int) -> Int {
         guard let pipeline = pipeline else { return displayIndex }
-        let ci = max(0, pipeline.songCardManager.currentIndex)
-        return ci + displayIndex
+        let manager = pipeline.songCardManager
+        let window = QueueDisplayWindow(queueCount: manager.queue.count, currentIndex: manager.currentIndex)
+        return window.realIndex(forDisplayIndex: displayIndex)
     }
 
     func getQueue() -> HttpResponse {
