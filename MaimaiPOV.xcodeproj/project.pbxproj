@@ -47,6 +47,7 @@
 		7DB1B7870DCB7DADBFFA35F0 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DC9DBF549FCD41DA96D579 /* MotionManager.swift */; };
 		7EF5C76438961F5DB1AD264A /* AdaptiveGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E58A83BD1A0869DEB491F7E /* AdaptiveGlass.swift */; };
 		7FAC7FB862F7407302F619D1 /* LensCalibration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65BEAE1C55494423CE1F151 /* LensCalibration.swift */; };
+		815589585B4463666ECE4440 /* CoverImageServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98DD04CA5A77FD7823A3C309 /* CoverImageServiceTests.swift */; };
 		81578B61CAB7EE2AF6E53847 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41217B676FC8DD8A2AFF5BA3 /* AppDelegate.swift */; };
 		818427BCB8DFFF770AC80ECD /* Canvas.metal in Sources */ = {isa = PBXBuildFile; fileRef = D6BE78835FA6529BF275DC17 /* Canvas.metal */; };
 		837196FDED6C6ACA9559898B /* AudioMixer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F53E7B3900216855DDB149D3 /* AudioMixer.swift */; };
@@ -71,6 +72,7 @@
 		BBF1A866AE73530E5F1FC687 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2853B1A01EFD58A2EAFC9EF6 /* Assets.xcassets */; };
 		BD0D89596DFB2AA009246685 /* RightPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47F1B8D9ACBA18C8111F6308 /* RightPanelRenderer.swift */; };
 		BE8809D12E3783E35B893B0A /* DebugAPIHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A81F719441FC7FFE9B8916F /* DebugAPIHandler.swift */; };
+		C02A9EF4709D378833B6FB17 /* CoverImageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAEC424FFD2918A1E13C9A03 /* CoverImageService.swift */; };
 		C66ACA99DC23D6592ACEAA55 /* CameraConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F56015B2ECD013CC5CACEA /* CameraConfig.swift */; };
 		CCB081BB993B28491A6F125C /* DeviceStatus.metal in Sources */ = {isa = PBXBuildFile; fileRef = A8535ED03F951F2649B0B3B8 /* DeviceStatus.metal */; };
 		CD4A67892366A0ED0FC0DA98 /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = EEF894464672A62D643FACB1 /* HaishinKit */; };
@@ -157,6 +159,7 @@
 		86094BCB48C5EF5521F92827 /* SongCardTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardTemplate.swift; sourceTree = "<group>"; };
 		882633726D5A459E5FC3C5CD /* MetalStabilizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalStabilizer.swift; sourceTree = "<group>"; };
 		9853B0536BA40FF4D8339699 /* SongCardUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardUniforms.swift; sourceTree = "<group>"; };
+		98DD04CA5A77FD7823A3C309 /* CoverImageServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageServiceTests.swift; sourceTree = "<group>"; };
 		99A583BDDF4E4F1121159357 /* DebugInfoManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugInfoManager.swift; sourceTree = "<group>"; };
 		9B9DA41FAF1F7106A4198AB0 /* MaimaiPOV.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MaimaiPOV.entitlements; sourceTree = "<group>"; };
 		9BBE8DDE579A7717A6971C50 /* BlivechatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlivechatMessage.swift; sourceTree = "<group>"; };
@@ -189,6 +192,7 @@
 		F65BEAE1C55494423CE1F151 /* LensCalibration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensCalibration.swift; sourceTree = "<group>"; };
 		F8647E108476D7F423F530E5 /* OverlayCompositor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayCompositor.swift; sourceTree = "<group>"; };
 		F8F7EBD17B204010D7E9FE84 /* YOLOPreprocessUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YOLOPreprocessUniforms.swift; sourceTree = "<group>"; };
+		FAEC424FFD2918A1E13C9A03 /* CoverImageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -306,6 +310,7 @@
 		45E23CD36CDDE574D23E6328 /* MaimaiPOVTests */ = {
 			isa = PBXGroup;
 			children = (
+				98DD04CA5A77FD7823A3C309 /* CoverImageServiceTests.swift */,
 				CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */,
 			);
 			path = MaimaiPOVTests;
@@ -471,6 +476,7 @@
 			isa = PBXGroup;
 			children = (
 				5F1BD65E0BD5E33DCC72F850 /* control.html */,
+				FAEC424FFD2918A1E13C9A03 /* CoverImageService.swift */,
 				611AE9FF40934D9D13A4A3DE /* DanmakuBufferManager.swift */,
 				3A81F719441FC7FFE9B8916F /* DebugAPIHandler.swift */,
 				339EF47C06E70715103F6083 /* QueueAPIHandler.swift */,
@@ -669,6 +675,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				815589585B4463666ECE4440 /* CoverImageServiceTests.swift in Sources */,
 				4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -692,6 +699,7 @@
 				00F189F6543C246C828ADB93 /* CanvasUniforms.swift in Sources */,
 				AE25D35491071B326398D773 /* Config.swift in Sources */,
 				E9B57BA96FAC3A223303BF7E /* CoverImageLoader.swift in Sources */,
+				C02A9EF4709D378833B6FB17 /* CoverImageService.swift in Sources */,
 				E2F9A1E63EEDEE4B9ABE878C /* Crop.metal in Sources */,
 				96FDE9FC4EDDF2B65273F2F5 /* CropUniforms.swift in Sources */,
 				8FB603A1F116F108B6C813E3 /* DanmakuBufferManager.swift in Sources */,

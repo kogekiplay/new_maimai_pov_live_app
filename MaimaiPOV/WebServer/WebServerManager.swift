@@ -3,11 +3,6 @@ import Swifter
 import CoreImage
 import UIKit
 
-private struct CoverFetchResult: Sendable {
-    let data: Data
-    let contentType: String
-}
-
 final class WebServerManager: @unchecked Sendable {
     private let server = HttpServer()
     private(set) var isRunning: Bool = false
@@ -18,6 +13,9 @@ final class WebServerManager: @unchecked Sendable {
     private let searchHandler = SearchAPIHandler()
     private let debugHandler = DebugAPIHandler()
     private let danmakuBuffer = DanmakuBufferManager.shared
+    private let coverResolver = CoverResourceResolver()
+    private let coverCache = CoverImageCache()
+    private let coverFetchTimeout: TimeInterval = 4
     private static let maxSSEConnections = 5
 
     func start() {
@@ -735,59 +733,56 @@ final class WebServerManager: @unchecked Sendable {
         }
     }
 
-    private let cdnBase = "https://munet-res-1251600285.cos.ap-shanghai.myqcloud.com/gameRes/mai2"
-    private let coverFormats = ["webp", "png", "avif"]
-
-    private func baseCoverId(from musicId: Int) -> Int {
-        if musicId >= 100000 { return musicId - 100000 }
-        if musicId >= 10000 { return musicId - 10000 }
-        return musicId
-    }
-
     private func serveCover(request: HttpRequest) -> HttpResponse {
         guard let musicIdStr = request.params[":musicId"],
-              let musicId = Int(musicIdStr) else {
+              let musicId = Int(musicIdStr),
+              let cacheKey = coverResolver.cacheKey(for: musicId) else {
             return .badRequest(.text("Invalid musicId"))
         }
 
-        let baseId = baseCoverId(from: musicId)
-        let idPart = String(format: "%06d", baseId)
+        if let cached = coverCache.value(forKey: cacheKey) {
+            return coverResponse(cached)
+        }
 
-        var imageData: Data?
-        var contentType: String?
-
-        for format in coverFormats {
-            let urlString = "\(cdnBase)/\(idPart).\(format)"
-            guard let url = URL(string: urlString) else { continue }
-
-            let requestSem = DispatchSemaphore(value: 0)
-            let foundResult = LockedValue<CoverFetchResult?>(nil)
-
-            let task = URLSession.shared.dataTask(with: url) { data, response, _ in
-                if let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    foundResult.set(CoverFetchResult(
-                        data: data,
-                        contentType: httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "image/\(format)"
-                    ))
-                }
-                requestSem.signal()
-            }
-            task.resume()
-            requestSem.wait()
-
-            if let result = foundResult.get() {
-                imageData = result.data
-                contentType = result.contentType
-                break
+        for candidate in coverResolver.remoteCandidates(for: musicId) {
+            if let result = fetchCover(candidate) {
+                coverCache.store(result, forKey: cacheKey)
+                return coverResponse(result)
             }
         }
 
-        guard let data = imageData, let ct = contentType else {
-            return .notFound
-        }
+        return .notFound
+    }
 
-        return .raw(200, "OK", ["Content-Type": ct, "Cache-Control": "public, max-age=86400"]) { writer in
-            try writer.write(data)
+    private func fetchCover(_ candidate: CoverResourceCandidate) -> CoverFetchResult? {
+        let requestSem = DispatchSemaphore(value: 0)
+        let foundResult = LockedValue<CoverFetchResult?>(nil)
+        var request = URLRequest(url: candidate.url)
+        request.timeoutInterval = coverFetchTimeout
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, _ in
+            defer { requestSem.signal() }
+            guard let data,
+                  let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else { return }
+
+            foundResult.set(CoverFetchResult(
+                data: data,
+                contentType: httpResponse.value(forHTTPHeaderField: "Content-Type") ?? candidate.fallbackContentType
+            ))
+        }
+        task.resume()
+
+        if requestSem.wait(timeout: .now() + coverFetchTimeout + 1) == .timedOut {
+            task.cancel()
+            return nil
+        }
+        return foundResult.get()
+    }
+
+    private func coverResponse(_ result: CoverFetchResult) -> HttpResponse {
+        .raw(200, "OK", ["Content-Type": result.contentType, "Cache-Control": "public, max-age=86400"]) { writer in
+            try writer.write(result.data)
         }
     }
 
