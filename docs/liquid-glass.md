@@ -54,4 +54,3 @@
 
 - iOS 26+ 使用系统 `Picker("", selection:)` + `.pickerStyle(.segmented)`，让系统提供原生 Liquid Glass 分段外观和交互。
 - iOS 17 使用旧的自定义 fallback，保留可拖动选择体验和 material 背景。
-
