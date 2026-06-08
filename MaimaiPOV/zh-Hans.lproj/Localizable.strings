@@ -129,6 +129,7 @@
 "blivechat.reconnect.attempt" = "[重连] 第%d次尝试，%d秒后重连";
 
 "Status" = "状态";
+"RTMP" = "RTMP";
 "Duration" = "时长";
 "FPS" = "帧率";
 "VIDEO" = "视频";
@@ -158,16 +159,20 @@
 "Boxes" = "框";
 "Top3" = "前三";
 "Rank" = "排名";
+"YFPS" = "YOLO帧率";
 "Pad" = "边距";
+"U" = "参数";
 "COORDS" = "坐标";
 "Raw" = "原始";
 "Stab" = "稳定";
 "TRACKING" = "跟踪";
 "State" = "状态";
 "Crop" = "裁切";
+"AR" = "宽高比";
 "Trust" = "可信度";
 "Ratio" = "比例";
 "HOff" = "水平偏移";
+"STABILIZER" = "稳定器";
 "Frame" = "帧";
 "MAGNETOMETER" = "磁力计";
 "Accuracy" = "精度";
