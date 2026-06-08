@@ -4,7 +4,7 @@ import CoreAudio
 import CoreMedia
 import Foundation
 
-final class AudioRingBuffer {
+final class AudioRingBuffer: @unchecked Sendable {
     private static let bufferCounts: UInt32 = 16
     private static let numSamples: UInt32 = 1024
 

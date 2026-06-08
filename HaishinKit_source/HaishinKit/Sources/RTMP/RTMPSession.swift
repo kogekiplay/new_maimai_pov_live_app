@@ -22,7 +22,7 @@ actor RTMPSession: Session {
     }
 
     func connect(_ method: SessionMethod) async throws {
-        let response = try await connection.connect(uri.command)
+        _ = try await connection.connect(uri.command)
         switch method {
         case .ingest:
             _ = try await _stream.publish(uri.streamName)

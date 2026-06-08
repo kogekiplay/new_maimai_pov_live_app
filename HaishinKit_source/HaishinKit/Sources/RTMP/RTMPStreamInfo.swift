@@ -1,7 +1,7 @@
 import Foundation
 
 /// A structor that provides the statistics related to the RTMPStream.
-public struct RTMPStreamInfo {
+public struct RTMPStreamInfo: Sendable {
     /// The number of bytes received by the RTMPStream.
     public internal(set) var byteCount = 0
     /// The resource name of a stream.
