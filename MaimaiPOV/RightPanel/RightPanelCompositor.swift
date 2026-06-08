@@ -614,8 +614,8 @@ final class RightPanelCompositor: @unchecked Sendable {
 
         rows.removeAll { $0.texture == nil && !$0.isAnimating }
 
-        if pendingScrollOffset != nil && rows.allSatisfy({ !$0.isAnimating }) {
-            scrollOffset = pendingScrollOffset!
+        if let scrollTargetOffset = pendingScrollOffset, rows.allSatisfy({ !$0.isAnimating }) {
+            scrollOffset = scrollTargetOffset
             pendingScrollOffset = nil
             updateRowPositionsForScroll()
         }
