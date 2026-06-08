@@ -368,77 +368,18 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
 
     @State private var pressedIndex: Int?
     @State private var dragCenterX: CGFloat?
-    @Namespace private var glassNamespace
 
     private let height: CGFloat = 34
-    private let horizontalInset: CGFloat = 0
+    private let horizontalInset: CGFloat = 4
     private let segmentSpacing: CGFloat = 6
-    private let thumbInset: CGFloat = 0
+    private let thumbInset: CGFloat = 3
 
     var body: some View {
         if #available(iOS 26.0, *) {
-            nativeGlassSegmentedControl
+            nativeSegmentedPicker()
         } else {
             fallbackSegmentedControl
         }
-    }
-
-    @available(iOS 26.0, *)
-    private var nativeGlassSegmentedControl: some View {
-        GeometryReader { proxy in
-            let width = proxy.size.width
-            let segmentWidth = SegmentedDragMetrics.segmentWidth(
-                totalWidth: width,
-                horizontalInset: horizontalInset,
-                spacing: segmentSpacing,
-                count: segments.count
-            )
-            let isDragging = dragCenterX != nil
-            let currentIndex = pressedIndex ?? selectedIndex
-            let thumbWidth = SegmentedDragMetrics.thumbWidth(
-                segmentWidth: segmentWidth,
-                thumbInset: thumbInset,
-                isDragging: isDragging
-            )
-            let thumbCenterX = dragCenterX ?? SegmentedDragMetrics.centerX(
-                for: currentIndex,
-                totalWidth: width,
-                horizontalInset: horizontalInset,
-                spacing: segmentSpacing,
-                count: segments.count
-            )
-            let thumbOffset = SegmentedDragMetrics.offset(
-                forCenterX: thumbCenterX,
-                totalWidth: width,
-                thumbWidth: thumbWidth
-            )
-
-            GlassEffectContainer(spacing: segmentSpacing) {
-                ZStack(alignment: .leading) {
-                    Color.clear
-                        .frame(height: height)
-                        .glassEffect(.regular.tint(Color.black.opacity(0.24)), in: .rect(cornerRadius: height / 2))
-                        .glassEffectID("debug-segment-track", in: glassNamespace)
-
-                    selectedGlassSegment(isDragging: isDragging)
-                        .frame(width: thumbWidth, height: height)
-                        .glassEffect(
-                            .regular.tint(accent.opacity(isDragging ? 0.24 : 0.16)).interactive(),
-                            in: .rect(cornerRadius: height / 2)
-                        )
-                        .glassEffectID("debug-segment-thumb", in: glassNamespace)
-                        .offset(x: thumbOffset)
-                        .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
-                        .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
-                        .allowsHitTesting(false)
-
-                    segmentButtonsRow(segmentWidth: segmentWidth, selectedTextIsHidden: true)
-                }
-            }
-            .contentShape(Capsule())
-            .simultaneousGesture(dragGesture(width: width))
-        }
-        .frame(height: height)
     }
 
     private var fallbackSegmentedControl: some View {
@@ -457,7 +398,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
                 thumbInset: thumbInset,
                 isDragging: isDragging
             )
-            let thumbHeight = height
+            let thumbHeight = isDragging ? height : height - 2
             let thumbCenterX = dragCenterX ?? SegmentedDragMetrics.centerX(
                 for: currentIndex,
                 totalWidth: width,
@@ -482,6 +423,20 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
             .simultaneousGesture(dragGesture(width: width))
         }
         .frame(height: height)
+    }
+
+    @available(iOS 26.0, *)
+    private func nativeSegmentedPicker() -> some View {
+        Picker("", selection: $selection) {
+            ForEach(segments) { segment in
+                Text(segment.title)
+                    .tag(segment.value)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .tint(accent)
+        .controlSize(.small)
     }
 
     private func fallbackBody(
@@ -531,15 +486,15 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
 
     private func segmentText(_ title: String, isSelected: Bool, selectedTextIsHidden: Bool) -> some View {
         Text(title)
-            .font(.system(size: 10.5, weight: isSelected ? .bold : .semibold, design: .monospaced))
-            .foregroundColor(isSelected && selectedTextIsHidden ? .clear : .white.opacity(0.86))
+            .font(.system(size: 10, weight: isSelected ? .bold : .semibold, design: .monospaced))
+            .foregroundColor(isSelected && selectedTextIsHidden ? .clear : .white.opacity(0.72))
             .lineLimit(1)
             .minimumScaleFactor(0.72)
     }
 
     private func selectedGlassSegment(isDragging: Bool) -> some View {
         Text(selectedTitle)
-            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+            .font(.system(size: 10, weight: .bold, design: .monospaced))
             .foregroundColor(accent)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
