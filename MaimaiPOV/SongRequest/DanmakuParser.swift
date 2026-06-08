@@ -10,19 +10,33 @@ struct ParseResult {
     let originalQuery: String
 }
 
-class DanmakuParser {
-    private let commandPrefixPattern: NSRegularExpression
+final class DanmakuParser {
+    private let commandPrefixPattern: NSRegularExpression?
+    private let cancelPattern: NSRegularExpression?
+    private let matchPattern: NSRegularExpression?
+    private let difficultyTailPattern: NSRegularExpression?
+    private let chartTailPattern: NSRegularExpression?
+    private let difficultyHeadPattern: NSRegularExpression?
+    private let chartHeadPattern: NSRegularExpression?
 
     init() {
-        commandPrefixPattern = try! NSRegularExpression(pattern: "^!?(?:点歌)", options: [])
+        commandPrefixPattern = Self.makeRegex("^!?(?:点歌)")
+        cancelPattern = Self.makeRegex("^!?取消$")
+        matchPattern = Self.makeRegex("^!?点歌\\s*(.+)$", options: [.caseInsensitive])
+        difficultyTailPattern = Self.makeRegex("(绿|basic|黄|advanced|红|expert|紫|master|白|remaster|宴|utage)\\s*$", options: [.caseInsensitive])
+        chartTailPattern = Self.makeRegex("(dx|标准|std|标)(?:谱)?\\s*$", options: [.caseInsensitive])
+        difficultyHeadPattern = Self.makeRegex("^(绿|basic|黄|advanced|红|expert|紫|master|白|remaster|宴|utage)\\s*", options: [.caseInsensitive])
+        chartHeadPattern = Self.makeRegex("^(dx|标准|std|标)(?:谱)?\\s*", options: [.caseInsensitive])
     }
 
     func parse(_ text: String) -> ParseResult {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
 
-        let cancelPattern = "^!?取消$"
-        if let cancelRegex = try? NSRegularExpression(pattern: cancelPattern, options: []),
-           let _ = cancelRegex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) {
+        guard let commandPrefixPattern, let cancelPattern, let matchPattern else {
+            return ParseResult(type: .notACommand, originalQuery: "")
+        }
+
+        if cancelPattern.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) != nil {
             return ParseResult(type: .cancelRequest, originalQuery: trimmed)
         }
 
@@ -31,9 +45,7 @@ class DanmakuParser {
             return ParseResult(type: .notACommand, originalQuery: "")
         }
 
-        let matchPattern = "^!?点歌\\s*(.+)$"
-        guard let matchRegex = try? NSRegularExpression(pattern: matchPattern, options: [.caseInsensitive]),
-              let match = matchRegex.firstMatch(in: trimmed, range: nsRange),
+        guard let match = matchPattern.firstMatch(in: trimmed, range: nsRange),
               match.numberOfRanges > 1,
               let queryRange = Range(match.range(at: 1), in: trimmed) else {
             return ParseResult(type: .notACommand, originalQuery: "")
@@ -50,7 +62,7 @@ class DanmakuParser {
         while changed {
             changed = false
 
-            if let (captured, fullRange) = matchFromTail(rawQuery, pattern: "(绿|basic|黄|advanced|红|expert|紫|master|白|remaster|宴|utage)\\s*$") {
+            if let (captured, fullRange) = matchFromTail(rawQuery, regex: difficultyTailPattern) {
                 diffInput = captured.lowercased()
                 rawQuery.removeSubrange(fullRange)
                 rawQuery = rawQuery.trimmingCharacters(in: .whitespaces)
@@ -58,7 +70,7 @@ class DanmakuParser {
                 continue
             }
 
-            if let (captured, fullRange) = matchFromTail(rawQuery, pattern: "(dx|标准|std|标)(?:谱)?\\s*$") {
+            if let (captured, fullRange) = matchFromTail(rawQuery, regex: chartTailPattern) {
                 let token = captured.lowercased()
                 chartTypePreference = (token == "dx") ? "dx" : "standard"
                 rawQuery.removeSubrange(fullRange)
@@ -67,7 +79,7 @@ class DanmakuParser {
                 continue
             }
 
-            if let (captured, fullRange) = matchFromHead(rawQuery, pattern: "^(绿|basic|黄|advanced|红|expert|紫|master|白|remaster|宴|utage)\\s*") {
+            if let (captured, fullRange) = matchFromHead(rawQuery, regex: difficultyHeadPattern) {
                 diffInput = captured.lowercased()
                 rawQuery.removeSubrange(fullRange)
                 rawQuery = rawQuery.trimmingCharacters(in: .whitespaces)
@@ -75,7 +87,7 @@ class DanmakuParser {
                 continue
             }
 
-            if let (captured, fullRange) = matchFromHead(rawQuery, pattern: "^(dx|标准|std|标)(?:谱)?\\s*") {
+            if let (captured, fullRange) = matchFromHead(rawQuery, regex: chartHeadPattern) {
                 let token = captured.lowercased()
                 chartTypePreference = (token == "dx") ? "dx" : "standard"
                 rawQuery.removeSubrange(fullRange)
@@ -93,8 +105,17 @@ class DanmakuParser {
         return ParseResult(type: .songRequest(query: queryName, diffInput: diffInput, chartTypePreference: chartTypePreference), originalQuery: originalQuery)
     }
 
-    private func matchFromTail(_ text: String, pattern: String) -> (captured: String, fullRange: Range<String.Index>)? {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
+    private static func makeRegex(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
+        do {
+            return try NSRegularExpression(pattern: pattern, options: options)
+        } catch {
+            DebugInfoManager.logAsync("DanmakuParser: invalid regex \(pattern): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func matchFromTail(_ text: String, regex: NSRegularExpression?) -> (captured: String, fullRange: Range<String.Index>)? {
+        guard let regex else { return nil }
         let nsRange = NSRange(text.startIndex..., in: text)
         guard let match = regex.firstMatch(in: text, range: nsRange),
               match.numberOfRanges > 1,
@@ -103,8 +124,8 @@ class DanmakuParser {
         return (captured: String(text[capturedRange]), fullRange: fullRange)
     }
 
-    private func matchFromHead(_ text: String, pattern: String) -> (captured: String, fullRange: Range<String.Index>)? {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
+    private func matchFromHead(_ text: String, regex: NSRegularExpression?) -> (captured: String, fullRange: Range<String.Index>)? {
+        guard let regex else { return nil }
         let nsRange = NSRange(text.startIndex..., in: text)
         guard let match = regex.firstMatch(in: text, range: nsRange),
               match.numberOfRanges > 1,
