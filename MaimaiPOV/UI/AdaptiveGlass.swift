@@ -4,14 +4,22 @@ extension View {
     @ViewBuilder
     func adaptiveGlassPanel(
         cornerRadius: CGFloat = 12,
-        tint: Color = .clear,
+        tint: Color? = nil,
         interactive: Bool = false
     ) -> some View {
         if #available(iOS 26.0, *) {
             if interactive {
-                self.glassEffect(.regular.tint(tint).interactive(), in: .rect(cornerRadius: cornerRadius))
+                if let tint {
+                    self.glassEffect(.regular.tint(tint).interactive(), in: .rect(cornerRadius: cornerRadius))
+                } else {
+                    self.glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
+                }
             } else {
-                self.glassEffect(.regular.tint(tint), in: .rect(cornerRadius: cornerRadius))
+                if let tint {
+                    self.glassEffect(.regular.tint(tint), in: .rect(cornerRadius: cornerRadius))
+                } else {
+                    self.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+                }
             }
         } else {
             self
@@ -26,13 +34,19 @@ extension View {
     @ViewBuilder
     func adaptiveGlassPanelBackground(
         cornerRadius: CGFloat = 12,
-        tint: Color = .clear
+        tint: Color? = nil
     ) -> some View {
         if #available(iOS 26.0, *) {
             self.background {
-                Color.clear
-                    .glassEffect(.regular.tint(tint), in: .rect(cornerRadius: cornerRadius))
-                    .allowsHitTesting(false)
+                if let tint {
+                    Color.clear
+                        .glassEffect(.regular.tint(tint), in: .rect(cornerRadius: cornerRadius))
+                        .allowsHitTesting(false)
+                } else {
+                    Color.clear
+                        .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+                        .allowsHitTesting(false)
+                }
             }
         } else {
             self

@@ -49,6 +49,7 @@
 - `glassEffectID` 用于 view hierarchy 里 glass effect 出现、消失、互相 morph 的场景；不要为了普通拖动或普通状态切换滥用。
 - `glassEffectUnion` 用于把多个 view 的 Liquid Glass effects 关联到同一个 union；只有确实需要合并几何时才用。
 - 控件颜色要克制，优先系统色。不要为了让玻璃“明显”而加入粉色、紫色、渐变、光晕、bokeh 或额外背景图层。
+- 无强调色时使用系统默认 `.regular` glass，不要用 `.tint(.clear)` 代表默认效果。只有状态色、危险操作、连接状态等确实需要强调时才传 tint。
 - 需要测试不同系统设置，包括降低透明度、减少动态效果和高对比。标准控件会更自然地跟随系统设置，自定义控件必须额外验证。
 
 ## 参考项目结论
@@ -90,6 +91,7 @@
 - iOS 26+：如果标准控件已满足视觉和交互，不要为了“源码里能看到 glassEffect”而强行自绘。
 - iOS 26+：只有标准控件不能满足交互时，才做自定义 Liquid Glass。自定义实现必须能在源码里直接看到 `glassEffect`、`GlassEffectContainer` 或 glass button style。
 - iOS 26+：自定义 glass 分支禁止用 `.background(.ultraThinMaterial)`、半透明 `Color`、blur、stroke/overlay 组合冒充 Liquid Glass。
+- iOS 26+：自定义 glass helper 的默认态必须走 `.regular`，不要把 `.clear` 当作默认 tint 传进系统 glass。
 - iOS 17 fallback：可以使用 `.ultraThinMaterial`、半透明色、stroke 等旧 material 写法，但必须通过 `#available(iOS 26.0, *)` 与 iOS 26 分支分开。
 - 不要在没有用户确认的情况下把系统 segmented `Picker` 改成自绘 segmented control；反过来也一样，不要在用户明确需要按住拖动 glass thumb 时偷换成普通 Picker。
 - 任何 Liquid Glass UI 修改前，先用 codegraph 查看当前项目相关控件，再查看 Apple Landmarks 示例。不要凭截图或记忆改。
