@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-struct Song: Codable {
+struct Song: Codable, Sendable {
     let id: Int
     let title: String
     let titleSort: String?
@@ -34,7 +34,7 @@ struct Song: Codable {
     }
 }
 
-enum DifficultyValue: Codable, Equatable {
+enum DifficultyValue: Codable, Equatable, Sendable {
     case intValue(Int)
     case stringValue(String)
 
@@ -68,7 +68,7 @@ enum DifficultyValue: Codable, Equatable {
     }
 }
 
-struct SongNote: Codable {
+struct SongNote: Codable, Sendable {
     let difficulty: DifficultyValue
     let level: String
     let levelValue: Double
@@ -85,7 +85,7 @@ struct SongNote: Codable {
     }
 }
 
-struct SongListData: Codable {
+struct SongListData: Codable, Sendable {
     let schemaVersion: Int?
     let generatedAt: String?
     let songCount: Int?
@@ -101,7 +101,7 @@ struct SongListData: Codable {
     }
 }
 
-struct AliasEntry: Codable {
+struct AliasEntry: Codable, Sendable {
     let songId: String
     let aliases: [String]
 
@@ -111,18 +111,18 @@ struct AliasEntry: Codable {
     }
 }
 
-struct AliasListData: Codable {
+struct AliasListData: Codable, Sendable {
     let aliases: [AliasEntry]
 }
 
-struct NoteResult {
+struct NoteResult: Sendable {
     let diffName: String
     let level: Double
     let levelValue: Double
     let noteIndex: Int
 }
 
-enum MatchKind: String {
+enum MatchKind: String, Sendable {
     case id
     case title
     case alias
@@ -130,13 +130,36 @@ enum MatchKind: String {
     case fuzzyAlias = "fuzzy_alias"
 }
 
-struct FindCandidatesResult {
+struct FindCandidatesResult: Sendable {
     let candidates: [Song]
     let matchKind: MatchKind?
 }
 
 class SongDatabase {
     private static let logger = Logger(subsystem: "com.maimai.MaimaiPOV", category: "SongDatabase")
+
+    struct LoadSummary: Sendable {
+        let loadedCount: Int
+        let standardCount: Int
+        let dxCount: Int
+        let utageCount: Int
+        let titleIndexCount: Int
+        let aliasIndexCount: Int
+    }
+
+    struct BundleSnapshot: Sendable {
+        let songList: [Song]
+        let aliasMap: [String: [String]]
+        let byId: [Int: Song]
+        let byTitle: [String: [Song]]
+        let byAlias: [String: [Song]]
+        let summary: LoadSummary
+    }
+
+    enum BundleLoadResult: Sendable {
+        case success(BundleSnapshot)
+        case failure(String)
+    }
 
     private var songList: [Song] = []
     private var aliasMap: [String: [String]] = [:]
@@ -161,7 +184,7 @@ class SongDatabase {
     var songCount: Int { songList.count }
     var lastError: String?
 
-    func loadFromBundle() {
+    static func makeBundleSnapshot() -> BundleLoadResult {
         var songURL: URL?
         var aliasURL: URL?
 
@@ -187,44 +210,82 @@ class SongDatabase {
                 }
             }
             let bundlePath = Bundle.main.bundlePath
-            lastError = "JSON not found (song=\(songURL != nil), alias=\(aliasURL != nil)) jsons=[\(allJsonFiles.joined(separator: ","))] bundle=\(bundlePath)"
-            let errorMessage = lastError ?? "JSON not found"
-            Self.logger.error("\(errorMessage, privacy: .public)")
-            return
+            let errorMessage = "JSON not found (song=\(songURL != nil), alias=\(aliasURL != nil)) jsons=[\(allJsonFiles.joined(separator: ","))] bundle=\(bundlePath)"
+            return .failure(errorMessage)
         }
 
-        guard let songURL = songURL, let aliasURL = aliasURL else { return }
+        guard let songURL = songURL, let aliasURL = aliasURL else {
+            return .failure("JSON URL resolution failed")
+        }
 
         do {
             let songData = try Data(contentsOf: songURL)
             let songListData = try JSONDecoder().decode(SongListData.self, from: songData)
-            songList = songListData.songs
+            let songList = songListData.songs
 
             let aliasData = try Data(contentsOf: aliasURL)
             let aliasListData = try JSONDecoder().decode(AliasListData.self, from: aliasData)
+            var aliasMap: [String: [String]] = [:]
             for entry in aliasListData.aliases {
                 aliasMap[entry.songId] = entry.aliases
             }
 
-            buildIndexes()
+            let indexes = makeIndexes(songList: songList, aliasMap: aliasMap)
 
             let stdCount = songList.filter { $0.chartType == "standard" }.count
             let dxCount = songList.filter { $0.chartType == "dx" }.count
             let utageCount = songList.filter { $0.chartType == "utage" }.count
-            let loadedCount = songList.count
-            let titleIndexCount = byTitle.count
-            let aliasIndexCount = byAlias.count
-            Self.logger.info("Loaded \(loadedCount) songs (std=\(stdCount) dx=\(dxCount) utage=\(utageCount)) byTitle=\(titleIndexCount) byAlias=\(aliasIndexCount)")
+            let summary = LoadSummary(
+                loadedCount: songList.count,
+                standardCount: stdCount,
+                dxCount: dxCount,
+                utageCount: utageCount,
+                titleIndexCount: indexes.byTitle.count,
+                aliasIndexCount: indexes.byAlias.count
+            )
+            return .success(BundleSnapshot(
+                songList: songList,
+                aliasMap: aliasMap,
+                byId: indexes.byId,
+                byTitle: indexes.byTitle,
+                byAlias: indexes.byAlias,
+                summary: summary
+            ))
         } catch {
-            lastError = "JSON decode error: \(error.localizedDescription)"
-            Self.logger.error("JSON load failed: \(error.localizedDescription, privacy: .public)")
+            return .failure("JSON decode error: \(error.localizedDescription)")
         }
     }
 
-    private func buildIndexes() {
-        byId.removeAll()
-        byTitle.removeAll()
-        byAlias.removeAll()
+    @discardableResult
+    func install(_ result: BundleLoadResult) -> Bool {
+        switch result {
+        case .success(let snapshot):
+            songList = snapshot.songList
+            aliasMap = snapshot.aliasMap
+            byId = snapshot.byId
+            byTitle = snapshot.byTitle
+            byAlias = snapshot.byAlias
+            lastError = nil
+            logLoaded(summary: snapshot.summary)
+            return true
+        case .failure(let message):
+            lastError = message
+            Self.logger.error("\(message, privacy: .public)")
+            return false
+        }
+    }
+
+    func loadFromBundle() {
+        install(Self.makeBundleSnapshot())
+    }
+
+    private static func makeIndexes(
+        songList: [Song],
+        aliasMap: [String: [String]]
+    ) -> (byId: [Int: Song], byTitle: [String: [Song]], byAlias: [String: [Song]]) {
+        var byId: [Int: Song] = [:]
+        var byTitle: [String: [Song]] = [:]
+        var byAlias: [String: [Song]] = [:]
 
         for song in songList {
             byId[song.id] = song
@@ -261,6 +322,19 @@ class SongDatabase {
                 }
             }
         }
+
+        return (byId, byTitle, byAlias)
+    }
+
+    private func buildIndexes() {
+        let indexes = Self.makeIndexes(songList: songList, aliasMap: aliasMap)
+        byId = indexes.byId
+        byTitle = indexes.byTitle
+        byAlias = indexes.byAlias
+    }
+
+    private func logLoaded(summary: LoadSummary) {
+        Self.logger.info("Loaded \(summary.loadedCount) songs (std=\(summary.standardCount) dx=\(summary.dxCount) utage=\(summary.utageCount)) byTitle=\(summary.titleIndexCount) byAlias=\(summary.aliasIndexCount)")
     }
 
     func findCandidates(query: String) -> FindCandidatesResult {

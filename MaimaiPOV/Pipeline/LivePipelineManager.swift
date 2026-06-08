@@ -177,6 +177,9 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     private var streamFrameCount: Int = 0
     private var fpsTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
+    private var songDatabaseLoadTask: Task<Void, Never>?
+    private var isObservingBlivechatState = false
+    private var blivechatConnectGeneration = 0
     private var yoloPreviewFrameCount: Int = 0
     private var lastStabOnlyMs: Double = 0
 
@@ -706,28 +709,28 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     @MainActor func connectBlivechat() {
         Config.blivechatServer = blivechatServer.rawValue
         Config.blivechatIdentityCode = blivechatIdentityCode
+        blivechatConnectGeneration += 1
+        let connectGeneration = blivechatConnectGeneration
 
-        if songDatabase.songCount == 0 {
-            songDatabase.loadFromBundle()
-            if songDatabase.songCount == 0 {
-                debug.log("[曲库] ❌ 加载失败: \(songDatabase.lastError ?? "unknown")")
-            } else {
-                debug.log("[曲库] 加载完成: \(songDatabase.songCount) 首歌曲")
-            }
-        } else {
-            debug.log("[曲库] 已加载: \(songDatabase.songCount) 首歌曲")
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.ensureSongDatabaseLoaded()
+            guard self.blivechatConnectGeneration == connectGeneration else { return }
+            guard self.songDatabase.songCount > 0 else { return }
+
+            self.debug.log("[曲库] 已加载: \(self.songDatabase.songCount) 首歌曲")
+            self.blivechatClient.connect(
+                server: self.blivechatServer,
+                roomKeyType: .authCode,
+                roomKeyValue: self.blivechatIdentityCode
+            )
+
+            self.observeBlivechatState()
         }
-
-        blivechatClient.connect(
-            server: blivechatServer,
-            roomKeyType: .authCode,
-            roomKeyValue: blivechatIdentityCode
-        )
-
-        observeBlivechatState()
     }
 
     @MainActor func disconnectBlivechat() {
+        blivechatConnectGeneration += 1
         blivechatClient.disconnect()
         blivechatConnectionState = .disconnected
     }
@@ -802,6 +805,9 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     }
 
     private func observeBlivechatState() {
+        guard !isObservingBlivechatState else { return }
+        isObservingBlivechatState = true
+
         blivechatClient.$connectionState
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
@@ -812,6 +818,43 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                 }
             }
             .store(in: &cancellables)
+    }
+
+    @MainActor private func preloadSongDatabaseIfNeeded() {
+        guard songDatabase.songCount == 0, songDatabaseLoadTask == nil else { return }
+
+        Task { @MainActor [weak self] in
+            await self?.ensureSongDatabaseLoaded()
+        }
+    }
+
+    @MainActor private func ensureSongDatabaseLoaded() async {
+        if songDatabase.songCount > 0 { return }
+
+        if let task = songDatabaseLoadTask {
+            await task.value
+            return
+        }
+
+        debug.log("[曲库] 后台加载中...")
+        let task = Task { [weak self] in
+            let result = await Task.detached(priority: .utility) {
+                SongDatabase.makeBundleSnapshot()
+            }.value
+
+            await MainActor.run {
+                guard let self else { return }
+                self.songDatabase.install(result)
+                if self.songDatabase.songCount == 0 {
+                    self.debug.log("[曲库] ❌ 加载失败: \(self.songDatabase.lastError ?? "unknown")")
+                } else {
+                    self.debug.log("[曲库] 加载完成: \(self.songDatabase.songCount) 首歌曲")
+                }
+                self.songDatabaseLoadTask = nil
+            }
+        }
+        songDatabaseLoadTask = task
+        await task.value
     }
 
     @MainActor func start() {
@@ -914,14 +957,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         MotionManager.shared.startUpdates()
         webServerManager.start()
 
-        if songDatabase.songCount == 0 {
-            songDatabase.loadFromBundle()
-            if songDatabase.songCount == 0 {
-                debug.log("[曲库] ❌ 加载失败: \(songDatabase.lastError ?? "unknown")")
-            } else {
-                debug.log("[曲库] 加载完成: \(songDatabase.songCount) 首歌曲")
-            }
-        }
+        preloadSongDatabaseIfNeeded()
 
         camera.onVideoFrame = { [weak self] pixelBuffer, alignedTime in
             let pipelineEnterTime = CACurrentMediaTime()
