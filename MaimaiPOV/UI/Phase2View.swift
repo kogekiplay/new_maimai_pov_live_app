@@ -74,6 +74,7 @@ struct Phase2View: View {
     @AppStorage("streamKey") private var streamKey: String = ""
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showRestoreAlert = false
+    @State private var restoreSnapshotInfo: QueueSnapshotRestoreInfo?
 
     var body: some View {
         rootTabs
@@ -87,23 +88,29 @@ struct Phase2View: View {
         .alert("Restore Song Queue", isPresented: $showRestoreAlert) {
             Button("Restore Queue") {
                 pipeline.restoreQueueFromSnapshot()
+                restoreSnapshotInfo = nil
             }
             Button("Keep Unplayed Gift Values") {
                 pipeline.restoreGiftValuesOnlyFromSnapshot()
+                restoreSnapshotInfo = nil
             }
             Button("Keep All Gift Values") {
                 pipeline.restoreAllGiftValuesFromSnapshot()
+                restoreSnapshotInfo = nil
             }
             Button("Do Not Restore", role: .destructive) {
                 pipeline.discardSnapshot()
+                restoreSnapshotInfo = nil
             }
         } message: {
-            let songGiftCount = pipeline.preservableGiftValueUserCount
-            let allGiftCount = pipeline.allPreservableGiftValueUserCount
-            if allGiftCount > 0 {
-                Text(L10n.string("restore.queue.message.withGifts", pipeline.snapshotAgeString, songGiftCount, allGiftCount))
+            if let info = restoreSnapshotInfo {
+                if info.allGiftUserCount > 0 {
+                    Text(L10n.string("restore.queue.message.withGifts", info.ageText, info.pendingGiftUserCount, info.allGiftUserCount))
+                } else {
+                    Text(L10n.string("restore.queue.message", info.ageText))
+                }
             } else {
-                Text(L10n.string("restore.queue.message", pipeline.snapshotAgeString))
+                Text("")
             }
         }
         .phase2ChangeHandlers(
@@ -137,9 +144,13 @@ struct Phase2View: View {
             pipelineStarted = true
             pipeline.start()
 
-            if pipeline.hasRestorableSnapshot {
-                showRestoreAlert = true
-            }
+            let info = await Task.detached(priority: .utility) {
+                LivePipelineManager.makeRestoreSnapshotInfo()
+            }.value
+            guard !Task.isCancelled else { return }
+
+            restoreSnapshotInfo = info
+            showRestoreAlert = info != nil
         }
     }
 

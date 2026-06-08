@@ -67,14 +67,6 @@ final class QueuePersistenceManager: @unchecked Sendable {
         return nil
     }
 
-    func hasSnapshot() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-
-        let fileManager = FileManager.default
-        return fileManager.fileExists(atPath: snapshotURL.path) || fileManager.fileExists(atPath: backupURL.path)
-    }
-
     func clearSnapshot() {
         lock.lock()
         defer { lock.unlock() }
@@ -82,21 +74,6 @@ final class QueuePersistenceManager: @unchecked Sendable {
         let fileManager = FileManager.default
         try? fileManager.removeItem(at: snapshotURL)
         try? fileManager.removeItem(at: backupURL)
-    }
-
-    func snapshotAge() -> TimeInterval? {
-        lock.lock()
-        defer { lock.unlock() }
-
-        guard let attrs = try? FileManager.default.attributesOfItem(atPath: snapshotURL.path),
-              let modDate = attrs[.modificationDate] as? Date else {
-            if let attrs = try? FileManager.default.attributesOfItem(atPath: backupURL.path),
-               let modDate = attrs[.modificationDate] as? Date {
-                return Date().timeIntervalSince(modDate)
-            }
-            return nil
-        }
-        return Date().timeIntervalSince(modDate)
     }
 
     private func loadFromURL(_ url: URL) -> QueueSnapshot? {

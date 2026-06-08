@@ -20,6 +20,12 @@ private struct SendablePixelBuffer: @unchecked Sendable {
     let value: CVPixelBuffer
 }
 
+struct QueueSnapshotRestoreInfo: Sendable {
+    let ageText: String
+    let pendingGiftUserCount: Int
+    let allGiftUserCount: Int
+}
+
 private final class LockedTextureMap: @unchecked Sendable {
     private let lock = NSLock()
     private var values: [Int: MTLTexture] = [:]
@@ -737,7 +743,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         guard let snapshot = QueuePersistenceManager.shared.load() else { return }
         songCardManager.restoreGiftValuesOnly(from: snapshot)
         discardSnapshot()
-        let count = preservableGiftValueCount(from: snapshot)
+        let count = Self.preservableGiftValueCount(from: snapshot)
         debug.log("[持久化] 已继承\(count)位用户的礼物值")
     }
 
@@ -745,7 +751,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         guard let snapshot = QueuePersistenceManager.shared.load() else { return }
         songCardManager.restoreAllGiftValues(from: snapshot)
         discardSnapshot()
-        let count = allPreservableGiftValueCount(from: snapshot)
+        let count = Self.allPreservableGiftValueCount(from: snapshot)
         debug.log("[持久化] 已继承全部\(count)位用户的礼物值")
     }
 
@@ -753,21 +759,16 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         QueuePersistenceManager.shared.clearSnapshot()
     }
 
-    var hasRestorableSnapshot: Bool {
-        QueuePersistenceManager.shared.hasSnapshot()
+    static func makeRestoreSnapshotInfo() -> QueueSnapshotRestoreInfo? {
+        guard let snapshot = QueuePersistenceManager.shared.load() else { return nil }
+        return QueueSnapshotRestoreInfo(
+            ageText: snapshotAgeString(savedAt: snapshot.savedAt),
+            pendingGiftUserCount: preservableGiftValueCount(from: snapshot),
+            allGiftUserCount: allPreservableGiftValueCount(from: snapshot)
+        )
     }
 
-    var preservableGiftValueUserCount: Int {
-        guard let snapshot = QueuePersistenceManager.shared.load() else { return 0 }
-        return preservableGiftValueCount(from: snapshot)
-    }
-
-    var allPreservableGiftValueUserCount: Int {
-        guard let snapshot = QueuePersistenceManager.shared.load() else { return 0 }
-        return allPreservableGiftValueCount(from: snapshot)
-    }
-
-    private func preservableGiftValueCount(from snapshot: QueueSnapshot) -> Int {
+    private static func preservableGiftValueCount(from snapshot: QueueSnapshot) -> Int {
         let startIndex = snapshot.currentIndex + 1
         guard startIndex < snapshot.queue.count else { return 0 }
         var names = Set<String>()
@@ -780,7 +781,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         return names.count
     }
 
-    private func allPreservableGiftValueCount(from snapshot: QueueSnapshot) -> Int {
+    private static func allPreservableGiftValueCount(from snapshot: QueueSnapshot) -> Int {
         var playedNames = Set<String>()
         if snapshot.currentIndex >= 0 {
             for i in 0...snapshot.currentIndex where i < snapshot.queue.count {
@@ -792,8 +793,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         return snapshot.userGiftPool.filter { $0.value > 0 && !playedNames.contains($0.key) }.count
     }
 
-    var snapshotAgeString: String {
-        guard let age = QueuePersistenceManager.shared.snapshotAge() else { return "" }
+    private static func snapshotAgeString(savedAt: Date) -> String {
+        let age = max(0, Date().timeIntervalSince(savedAt))
         if age < 60 { return L10n.string("time.seconds.ago", Int(age)) }
         if age < 3600 { return L10n.string("time.minutes.ago", Int(age / 60)) }
         if age < 86400 { return L10n.string("time.hours.ago", Int(age / 3600)) }
