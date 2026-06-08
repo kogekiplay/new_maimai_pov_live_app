@@ -30,7 +30,15 @@ private enum ControlTab: CaseIterable, Hashable {
 }
 
 private enum ControlPanelLayout {
-    static let expandedContentHeight: CGFloat = 240
+    static let maxExpandedContentHeight: CGFloat = 240
+}
+
+private struct ControlPanelContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
 }
 
 struct Phase2View: View {
@@ -38,6 +46,7 @@ struct Phase2View: View {
     @State private var selectedTab: ControlTab = .camera
     @State private var selectedDebugTab: DebugOverlayView.DebugTab = .stream
     @State private var panelExpanded: Bool = true
+    @State private var controlPanelContentHeights: [ControlTab: CGFloat] = [:]
     @State private var isAntiTouchMode: Bool = false
     @State private var antiTouchTimer: Timer?
     @State private var volumeObservation: NSKeyValueObservation?
@@ -364,12 +373,20 @@ struct Phase2View: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     controlPanelContent(for: tab)
                         .frame(maxWidth: .infinity)
-                        .frame(
-                            minHeight: ControlPanelLayout.expandedContentHeight,
-                            alignment: .center
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: ControlPanelContentHeightKey.self,
+                                    value: proxy.size.height
+                                )
+                            }
                         )
                 }
-                .frame(maxHeight: ControlPanelLayout.expandedContentHeight)
+                .frame(height: controlPanelContentViewportHeight(for: tab))
+                .animation(.easeInOut(duration: 0.18), value: controlPanelContentViewportHeight(for: tab))
+                .onPreferenceChange(ControlPanelContentHeightKey.self) { height in
+                    controlPanelContentHeights[tab] = height
+                }
             }
         }
         .padding(.horizontal, 6)
@@ -386,6 +403,11 @@ struct Phase2View: View {
         case .stream: streamTabContent
         case .blivechat: blivechatTabContent
         }
+    }
+
+    private func controlPanelContentViewportHeight(for tab: ControlTab) -> CGFloat {
+        let measuredHeight = controlPanelContentHeights[tab] ?? ControlPanelLayout.maxExpandedContentHeight
+        return min(measuredHeight, ControlPanelLayout.maxExpandedContentHeight)
     }
 
     // MARK: - Camera Tab
@@ -559,120 +581,231 @@ struct Phase2View: View {
     // MARK: - Blivechat Tab
 
     private var blivechatTabContent: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("Server").font(.caption).frame(width: 55, alignment: .leading)
-                Picker("", selection: $pipeline.blivechatServer) {
-                    ForEach(BlivechatServer.allCases) { server in
-                        Text(server.displayName).tag(server)
-                    }
-                }
-                .pickerStyle(.menu)
-                .disabled(isBlivechatConnected)
-            }
-
-            HStack {
-                Text("Identity").font(.caption).frame(width: 55, alignment: .leading)
-                TextField("Enter identity code", text: $pipeline.blivechatIdentityCode)
-                    .font(.system(size: 11, design: .monospaced))
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .disabled(isBlivechatConnected)
-            }
-
-            HStack {
-                if isBlivechatConnected {
-                    Button {
-                        pipeline.disconnectBlivechat()
-                    } label: {
-                        HStack {
-                            Circle().fill(Color.red).frame(width: 8, height: 8)
-                            Text("Disconnect").font(.caption).fontWeight(.medium)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .adaptiveGlassButton(prominent: true)
-                    .tint(.red)
-                    .controlSize(.small)
-                } else if isBlivechatReconnecting {
-                    Button {
-                        pipeline.disconnectBlivechat()
-                    } label: {
-                        HStack {
-                            ProgressView().scaleEffect(0.6)
-                            Text("Force Disconnect").font(.caption).fontWeight(.medium)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .adaptiveGlassButton(prominent: true)
-                    .tint(.red)
-                    .controlSize(.small)
-                } else {
-                    Button {
-                        pipeline.connectBlivechat()
-                    } label: {
-                        HStack {
-                            Image(systemName: "link").font(.caption)
-                            Text("Connect").font(.caption).fontWeight(.medium)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .adaptiveGlassButton(prominent: true)
-                    .tint(.green)
-                    .controlSize(.small)
-                    .disabled(pipeline.blivechatIdentityCode.isEmpty)
-                }
-
-                Text(blivechatStateText)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(blivechatStateColor)
-                    .lineLimit(1)
-            }
+        VStack(spacing: 10) {
+            blivechatServerRow
+            blivechatIdentityRow
+            blivechatConnectionRow
 
             if isBlivechatConnected {
-                Divider().background(Color.gray.opacity(0.3))
-
-                if !pipeline.webServerURL.isEmpty {
-                    HStack {
-                        Text("LAN").font(.caption).frame(width: 55, alignment: .leading)
-                        Text(pipeline.webServerURL)
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.cyan)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .onTapGesture {
-                                UIPasteboard.general.string = pipeline.webServerURL
-                            }
-                        Spacer()
-                        Image(systemName: "doc.on.doc")
-                            .font(.system(size: 10))
-                            .foregroundColor(.gray)
-                            .onTapGesture {
-                                UIPasteboard.general.string = pipeline.webServerURL
-                            }
-                    }
-                }
-
-                Divider().background(Color.gray.opacity(0.3))
-
-                HStack {
-                    Text("Danmaku").font(.caption).frame(width: 55, alignment: .leading)
-                    Text(pipeline.latestDanmaku)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.cyan)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    Spacer()
-                    Text("\(pipeline.danmakuCount)")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-
-                Divider().background(Color.gray.opacity(0.3))
+                blivechatConnectedDetails
             }
         }
         .padding(12)
+    }
+
+    private var blivechatServerRow: some View {
+        HStack(spacing: 10) {
+            blivechatRowLabel("Server")
+            blivechatServerMenu
+        }
+    }
+
+    private var blivechatServerMenu: some View {
+        Menu {
+            ForEach(BlivechatServer.allCases) { server in
+                Button {
+                    pipeline.blivechatServer = server
+                } label: {
+                    HStack {
+                        Text(server.displayName)
+                        if server == pipeline.blivechatServer {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(pipeline.blivechatServer.displayName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                    Text(pipeline.blivechatServer.rawValue)
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.46))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.58))
+            }
+            .foregroundColor(isBlivechatConnected ? .gray : Color(red: 1.0, green: 0.25, blue: 0.42))
+            .padding(.horizontal, 12)
+            .frame(height: 42)
+            .frame(maxWidth: .infinity)
+            .contentShape(Capsule())
+        }
+        .adaptiveGlassPanel(cornerRadius: 18, tint: Color.white.opacity(0.05), interactive: true)
+        .disabled(isBlivechatConnected)
+        .accessibilityLabel(L10n.string("Server"))
+        .accessibilityValue(pipeline.blivechatServer.displayName)
+    }
+
+    private var blivechatIdentityRow: some View {
+        HStack(spacing: 10) {
+            blivechatRowLabel("Identity")
+            TextField("Enter identity code", text: $pipeline.blivechatIdentityCode)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.white)
+                .textFieldStyle(.plain)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .disabled(isBlivechatConnected)
+                .padding(.horizontal, 12)
+                .frame(height: 38)
+                .background(Color.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                }
+        }
+    }
+
+    private var blivechatConnectionRow: some View {
+        HStack(spacing: 8) {
+            blivechatActionButton
+                .frame(maxWidth: .infinity)
+                .frame(height: 42)
+            blivechatStatusPill
+        }
+    }
+
+    @ViewBuilder
+    private var blivechatActionButton: some View {
+        if isBlivechatConnected {
+            Button {
+                pipeline.disconnectBlivechat()
+            } label: {
+                blivechatActionLabel(icon: "xmark.circle", title: "Disconnect")
+            }
+            .adaptiveGlassButton(prominent: true)
+            .tint(.red)
+            .controlSize(.small)
+        } else if isBlivechatReconnecting {
+            Button {
+                pipeline.disconnectBlivechat()
+            } label: {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .scaleEffect(0.62)
+                    Text("Force Disconnect")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity, minHeight: 34)
+            }
+            .adaptiveGlassButton(prominent: true)
+            .tint(.red)
+            .controlSize(.small)
+        } else {
+            Button {
+                pipeline.connectBlivechat()
+            } label: {
+                blivechatActionLabel(icon: "link", title: "Connect")
+            }
+            .adaptiveGlassButton(prominent: true)
+            .tint(.green)
+            .controlSize(.small)
+            .disabled(pipeline.blivechatIdentityCode.isEmpty)
+        }
+    }
+
+    private func blivechatActionLabel(icon: String, title: LocalizedStringKey) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.caption)
+            Text(title)
+                .font(.caption)
+                .fontWeight(.semibold)
+        }
+        .frame(maxWidth: .infinity, minHeight: 34)
+    }
+
+    private var blivechatStatusPill: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(blivechatStateColor)
+                .frame(width: 6, height: 6)
+            Text(blivechatStateText)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.74)
+        }
+        .foregroundColor(blivechatStateColor)
+        .padding(.horizontal, 8)
+        .frame(width: 104, height: 42)
+        .adaptiveGlassPanel(cornerRadius: 21, tint: blivechatStateColor.opacity(0.08))
+    }
+
+    private var blivechatConnectedDetails: some View {
+        VStack(spacing: 8) {
+            Divider().background(Color.gray.opacity(0.3))
+
+            if !pipeline.webServerURL.isEmpty {
+                blivechatInfoRow(
+                    label: "LAN",
+                    value: pipeline.webServerURL,
+                    trailingText: nil,
+                    copyValue: pipeline.webServerURL
+                )
+            }
+
+            blivechatInfoRow(
+                label: "Danmaku",
+                value: pipeline.latestDanmaku,
+                trailingText: "\(pipeline.danmakuCount)",
+                copyValue: nil
+            )
+        }
+    }
+
+    private func blivechatInfoRow(
+        label: LocalizedStringKey,
+        value: String,
+        trailingText: String?,
+        copyValue: String?
+    ) -> some View {
+        HStack(spacing: 8) {
+            blivechatRowLabel(label)
+            Text(value)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.cyan)
+                .lineLimit(1)
+                .truncationMode(copyValue == nil ? .tail : .middle)
+            Spacer(minLength: 4)
+            if let trailingText {
+                Text(trailingText)
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+            }
+            if let copyValue {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 10))
+                    .foregroundColor(.gray)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIPasteboard.general.string = copyValue
+                    }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let copyValue {
+                UIPasteboard.general.string = copyValue
+            }
+        }
+    }
+
+    private func blivechatRowLabel(_ key: LocalizedStringKey) -> some View {
+        Text(key)
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundColor(.white.opacity(0.78))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(width: 58, alignment: .leading)
     }
 
     private var isBlivechatConnected: Bool {
