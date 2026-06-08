@@ -49,6 +49,7 @@
 "Lens" = "镜头";
 "Main (1x)" = "主摄 (1x)";
 "Ultra-Wide (0.5x)" = "超广角 (0.5x)";
+"ISO" = "感光度";
 "Focus" = "对焦";
 "Focus Mode" = "对焦模式";
 "Manual Focus" = "手动焦距";
@@ -63,6 +64,8 @@
 "YOLOPad" = "YOLO边距";
 "YOLOOverlay" = "YOLO叠层";
 "Overlay" = "叠层";
+"OX" = "叠层X";
+"OY" = "叠层Y";
 "OScale" = "叠层缩放";
 "OAlpha" = "叠层透明";
 "ORot" = "叠层旋转";
