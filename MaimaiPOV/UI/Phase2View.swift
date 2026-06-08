@@ -58,6 +58,7 @@ struct Phase2View: View {
     @State private var volumeObservation: NSKeyValueObservation?
     @State private var startupTask: Task<Void, Never>?
     @State private var pipelineStarted: Bool = false
+    @State private var previewPreference: Bool = Config.previewEnabled
     @State private var advancedExpanded: Bool = false
     @State private var presets: [StreamPreset] = Config.streamPresets
     @State private var showAddPresetSheet = false
@@ -345,9 +346,10 @@ struct Phase2View: View {
                 antiTouchTimer?.invalidate()
                 antiTouchTimer = nil
                 isAntiTouchMode = false
+                let nextPanelExpanded = !panelExpanded
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    panelExpanded.toggle()
-                    pipeline.previewEnabled = panelExpanded
+                    panelExpanded = nextPanelExpanded
+                    pipeline.previewEnabled = nextPanelExpanded ? previewPreference : false
                 }
             } label: {
                 HStack {
@@ -931,6 +933,8 @@ struct Phase2View: View {
             Toggle("", isOn: Binding(
                 get: { pipeline.previewEnabled },
                 set: { newValue in
+                    previewPreference = newValue
+                    Config.previewEnabled = newValue
                     pipeline.previewEnabled = newValue
                 }
             )).labelsHidden().controlSize(.small)
@@ -1543,9 +1547,6 @@ private struct YoloPreviewChangeHandlers: ViewModifier {
             }
             .onChange(of: pipeline.yoloEnabled) { _, newValue in
                 Config.yoloEnabled = newValue
-            }
-            .onChange(of: pipeline.previewEnabled) { _, newValue in
-                Config.previewEnabled = newValue
             }
     }
 }
