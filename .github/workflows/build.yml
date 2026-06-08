@@ -3,9 +3,9 @@ name: Build iOS App
 # Trigger on pushes, pull requests, or manual dispatch
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main]
   push:
-    branches: [main, master, feature/rollback-main]
+    branches: [main, feature/rollback-main]
   workflow_dispatch:
 
 concurrency:
