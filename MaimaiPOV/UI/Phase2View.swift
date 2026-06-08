@@ -30,13 +30,13 @@ private enum ControlTab: CaseIterable, Hashable {
 }
 
 private enum ControlPanelLayout {
-    static let maxExpandedContentHeight: CGFloat = 240
+    static let maxExpandedContentHeight: CGFloat = 220
     static let heightUpdateTolerance: CGFloat = 0.5
     static let compactControlHeight: CGFloat = 40
     static let compactCornerRadius: CGFloat = 20
     static let compactFontSize: CGFloat = 11
     static let compactLabelWidth: CGFloat = 58
-    static let blivechatStatusWidth: CGFloat = 108
+    static let compactStatusWidth: CGFloat = 108
 }
 
 private struct ControlPanelContentHeightKey: PreferenceKey {
@@ -389,6 +389,7 @@ struct Phase2View: View {
                         )
                 }
                 .frame(height: controlPanelContentViewportHeight(for: tab))
+                .clipped()
                 .animation(.easeInOut(duration: 0.18), value: controlPanelContentViewportHeight(for: tab))
                 .onPreferenceChange(ControlPanelContentHeightKey.self) { height in
                     updateControlPanelContentHeight(for: tab, height: height)
@@ -398,6 +399,7 @@ struct Phase2View: View {
         .padding(.horizontal, 6)
         .padding(.top, 6)
         .padding(.bottom, panelExpanded ? 0 : 6)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .adaptiveGlassPanelBackground(cornerRadius: 14, tint: Color.black.opacity(0.18))
     }
 
@@ -572,12 +574,12 @@ struct Phase2View: View {
 
             rtmpUrlRow
             streamKeyRow
+            streamButtonRow
             resolutionRow
             bitrateRow
             audioSourceRow
             audioMixerSection
             audioMeterRow
-            streamButtonRow
         }
         .padding(12)
     }
@@ -628,7 +630,7 @@ struct Phase2View: View {
 
     private var blivechatServerRow: some View {
         HStack(spacing: 10) {
-            blivechatRowLabel("Server")
+            compactRowLabel("Server")
             blivechatServerMenu
         }
     }
@@ -678,7 +680,7 @@ struct Phase2View: View {
 
     private var blivechatIdentityRow: some View {
         HStack(spacing: 10) {
-            blivechatRowLabel("Identity")
+            compactRowLabel("Identity")
             TextField("Enter identity code", text: $pipeline.blivechatIdentityCode)
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundColor(.white)
@@ -713,7 +715,7 @@ struct Phase2View: View {
             } label: {
                 blivechatActionLabel(icon: "xmark.circle", title: "Disconnect")
             }
-            .blivechatActionGlass(tint: .red)
+            .compactActionGlass(tint: .red)
         } else if isBlivechatReconnecting {
             Button {
                 pipeline.disconnectBlivechat()
@@ -726,14 +728,14 @@ struct Phase2View: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: ControlPanelLayout.compactControlHeight)
             }
-            .blivechatActionGlass(tint: .red)
+            .compactActionGlass(tint: .red)
         } else {
             Button {
                 pipeline.connectBlivechat()
             } label: {
                 blivechatActionLabel(icon: "link", title: "Connect")
             }
-            .blivechatActionGlass(tint: .green)
+            .compactActionGlass(tint: .green)
             .disabled(pipeline.blivechatIdentityCode.isEmpty)
         }
     }
@@ -761,7 +763,7 @@ struct Phase2View: View {
         }
         .foregroundColor(blivechatStateColor)
         .padding(.horizontal, 8)
-        .frame(width: ControlPanelLayout.blivechatStatusWidth, height: ControlPanelLayout.compactControlHeight)
+        .frame(width: ControlPanelLayout.compactStatusWidth, height: ControlPanelLayout.compactControlHeight)
         .adaptiveGlassPanel(
             cornerRadius: ControlPanelLayout.compactCornerRadius,
             tint: blivechatStateColor.opacity(0.08)
@@ -797,7 +799,7 @@ struct Phase2View: View {
         copyValue: String?
     ) -> some View {
         HStack(spacing: 8) {
-            blivechatRowLabel(label)
+            compactRowLabel(label)
             Text(value)
                 .font(.system(size: ControlPanelLayout.compactFontSize, design: .monospaced))
                 .foregroundColor(.cyan)
@@ -825,15 +827,6 @@ struct Phase2View: View {
                 UIPasteboard.general.string = copyValue
             }
         }
-    }
-
-    private func blivechatRowLabel(_ key: LocalizedStringKey) -> some View {
-        Text(key)
-            .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
-            .foregroundColor(.white.opacity(0.78))
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
-            .frame(width: ControlPanelLayout.compactLabelWidth, alignment: .leading)
     }
 
     private var isBlivechatConnected: Bool {
@@ -1192,25 +1185,41 @@ struct Phase2View: View {
     }
 
     private var rtmpUrlRow: some View {
-        HStack {
-            Text("URL").font(.caption).frame(width: 55, alignment: .leading)
+        HStack(spacing: 10) {
+            compactRowLabel("URL")
             TextField("rtmp://...", text: $rtmpUrl)
                 .font(.system(size: 11, design: .monospaced))
-                .textFieldStyle(.roundedBorder)
+                .foregroundColor(.white)
+                .textFieldStyle(.plain)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
+                .padding(.horizontal, 12)
+                .frame(height: ControlPanelLayout.compactControlHeight)
+                .adaptiveGlassPanel(
+                    cornerRadius: ControlPanelLayout.compactCornerRadius,
+                    tint: Color.white.opacity(0.03),
+                    interactive: !pipeline.streamManager.isStreaming
+                )
                 .disabled(pipeline.streamManager.isStreaming)
         }
     }
 
     private var streamKeyRow: some View {
-        HStack {
-            Text("Key").font(.caption).frame(width: 55, alignment: .leading)
+        HStack(spacing: 10) {
+            compactRowLabel("Key")
             SecureField("stream-key", text: $streamKey)
                 .font(.system(size: 11, design: .monospaced))
-                .textFieldStyle(.roundedBorder)
+                .foregroundColor(.white)
+                .textFieldStyle(.plain)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
+                .padding(.horizontal, 12)
+                .frame(height: ControlPanelLayout.compactControlHeight)
+                .adaptiveGlassPanel(
+                    cornerRadius: ControlPanelLayout.compactCornerRadius,
+                    tint: Color.white.opacity(0.03),
+                    interactive: !pipeline.streamManager.isStreaming
+                )
                 .disabled(pipeline.streamManager.isStreaming)
         }
     }
@@ -1247,7 +1256,9 @@ struct Phase2View: View {
             Text("\(pipeline.streamManager.videoBitrate)kbps")
                 .font(.caption)
                 .foregroundColor(.gray)
-                .frame(width: 60, alignment: .trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(width: 76, alignment: .trailing)
         }
     }
 
@@ -1323,47 +1334,41 @@ struct Phase2View: View {
     }
 
     private var streamButtonRow: some View {
-        HStack {
+        HStack(spacing: 8) {
             if pipeline.streamManager.isStreaming {
                 Button {
                     pipeline.streamManager.stopPublish()
                 } label: {
-                    HStack {
+                    HStack(spacing: 6) {
                         Circle()
                             .fill(Color.red)
                             .frame(width: 8, height: 8)
                         Text("Stop Streaming")
-                            .font(.caption)
-                            .fontWeight(.medium)
+                            .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: ControlPanelLayout.compactControlHeight)
                 }
-                .adaptiveGlassButton(prominent: true)
-                .tint(.red)
-                .controlSize(.small)
+                .compactActionGlass(tint: .red)
             } else {
                 Button {
                     pipeline.streamManager.startPublish(url: rtmpUrl, streamKey: streamKey)
                 } label: {
-                    HStack {
+                    HStack(spacing: 6) {
                         Image(systemName: "arrow.up.circle")
-                            .font(.caption)
+                            .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
                         Text("Start Streaming")
-                            .font(.caption)
-                            .fontWeight(.medium)
+                            .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: ControlPanelLayout.compactControlHeight)
                 }
-                .adaptiveGlassButton(prominent: true)
-                .tint(.green)
-                .controlSize(.small)
+                .compactActionGlass(tint: .green)
                 .disabled(rtmpUrl.isEmpty || streamKey.isEmpty)
             }
 
-            Text(L10n.streamStatus(pipeline.streamManager.streamStatus))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(statusColor(pipeline.streamManager.streamStatus))
-                .lineLimit(1)
+            compactStatusPill(
+                L10n.streamStatus(pipeline.streamManager.streamStatus),
+                color: statusColor(pipeline.streamManager.streamStatus)
+            )
         }
     }
 
@@ -1400,6 +1405,38 @@ struct Phase2View: View {
             content()
             valueLabel()
         }
+    }
+
+    private func compactRowLabel(_ key: LocalizedStringKey) -> some View {
+        Text(key)
+            .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold))
+            .foregroundColor(.white.opacity(0.78))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(width: ControlPanelLayout.compactLabelWidth, alignment: .leading)
+    }
+
+    private func compactStatusPill(
+        _ text: String,
+        color: Color,
+        width: CGFloat = ControlPanelLayout.compactStatusWidth
+    ) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(text)
+                .font(.system(size: ControlPanelLayout.compactFontSize, weight: .semibold, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.74)
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 8)
+        .frame(width: width, height: ControlPanelLayout.compactControlHeight)
+        .adaptiveGlassPanel(
+            cornerRadius: ControlPanelLayout.compactCornerRadius,
+            tint: color.opacity(0.08)
+        )
     }
 }
 
@@ -1599,7 +1636,7 @@ private struct SessionChangeHandlers: ViewModifier {
 }
 
 private extension View {
-    func blivechatActionGlass(tint: Color) -> some View {
+    func compactActionGlass(tint: Color) -> some View {
         self
             .buttonStyle(.plain)
             .foregroundStyle(.white)
