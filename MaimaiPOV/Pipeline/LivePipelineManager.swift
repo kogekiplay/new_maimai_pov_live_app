@@ -141,6 +141,7 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     private var resetLeftPanelWorkItem: DispatchWorkItem?
     private var refreshRightPanelWorkItem: DispatchWorkItem?
     private var reorderRightPanelWorkItem: DispatchWorkItem?
+    private var preScrollReorderWorkItem: DispatchWorkItem?
     private var isSwitchingSong: Bool = false
     let songCardManager = SongCardManager()
     let blivechatClient = BlivechatClient()
@@ -1240,6 +1241,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         refreshRightPanelWorkItem = nil
         reorderRightPanelWorkItem?.cancel()
         reorderRightPanelWorkItem = nil
+        preScrollReorderWorkItem?.cancel()
+        preScrollReorderWorkItem = nil
         rightPanelGeneration += 1
     }
 
@@ -1655,6 +1658,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
     func scheduleReorderRightPanel() {
         rightPanelCompositor?.cancelPreScroll()
         reorderRightPanelWorkItem?.cancel()
+        preScrollReorderWorkItem?.cancel()
+        preScrollReorderWorkItem = nil
         rightPanelGeneration += 1
         let currentGeneration = rightPanelGeneration
         let workItem = DispatchWorkItem { [weak self] in
@@ -1817,8 +1822,10 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                     guard let self = self else { return }
                     guard self.rightPanelGeneration == gen else { return }
 
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                    self.preScrollReorderWorkItem?.cancel()
+                    let workItem = DispatchWorkItem { [weak self] in
                         guard let self = self else { return }
+                        defer { self.preScrollReorderWorkItem = nil }
                         guard self.rightPanelGeneration == gen else { return }
 
                         let currentAfterPreScroll = self.rightPanelCompositor?.currentScrollOffset ?? currentOffset
@@ -1831,6 +1838,8 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
                             targetScrollOffset: targetScrollOffset
                         )
                     }
+                    self.preScrollReorderWorkItem = workItem
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: workItem)
                 }
                 return
             }
