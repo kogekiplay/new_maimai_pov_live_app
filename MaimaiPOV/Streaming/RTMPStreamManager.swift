@@ -116,6 +116,7 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
 
         let attempt = reconnectAttempt
         Task { @MainActor in
+            guard self.isStreaming else { return }
             if attempt > 0 {
                 self.streamStatus = "Reconnecting(\(attempt)/\(Config.maxReconnectAttempts))..."
             } else {
@@ -141,13 +142,14 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
             videoSettings.dataRateLimits = [Double(bitrateBps) / 8.0 * 2.0, 1.0]
             await stream.setVideoSettings(videoSettings)
             await stream.setAudioSettings(AudioCodecSettings(bitRate: Config.audioBitrate))
+            guard let self, self.isStreaming else { return }
 
             do {
                 _ = try await connection.connect(publishURL)
                 _ = try await stream.publish(publishKey)
-                await self?.handlePublishStarted()
+                await self.handlePublishStarted()
             } catch {
-                await self?.attemptReconnect(reason: error.localizedDescription)
+                await self.attemptReconnect(reason: error.localizedDescription)
             }
         }
     }
@@ -219,6 +221,7 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
 
     @MainActor
     private func handlePublishStarted() {
+        guard isStreaming else { return }
         reconnectAttempt = 0
         streamStatus = "Publishing"
         DebugInfoManager.shared.rtmpStatus = "Publishing"
@@ -506,6 +509,7 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
 
     @MainActor
     private func attemptReconnect(reason: String? = nil) {
+        guard isStreaming else { return }
         reconnectAttempt += 1
         if reconnectAttempt > Config.maxReconnectAttempts {
             streamStatus = "Reconnect failed, retry manually"
@@ -533,6 +537,7 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
 
     @MainActor
     private func handleConnectionStatus(_ code: String) {
+        guard isStreaming else { return }
         switch code {
         case "NetConnection.Connect.Success":
             streamStatus = "Connected"
@@ -554,6 +559,7 @@ final class RTMPStreamManager: ObservableObject, @unchecked Sendable {
 
     @MainActor
     private func handleStreamStatus(_ code: String) {
+        guard isStreaming else { return }
         switch code {
         case "NetStream.Publish.Start":
             if reconnectAttempt == 0 {
