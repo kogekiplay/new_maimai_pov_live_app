@@ -898,12 +898,14 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
         self.canvasComposer = CanvasComposer(device: device)
 
         self.overlayCompositor = OverlayCompositor(device: device)
-        self.overlayCompositor?.enabled = overlayEnabled
-        self.overlayCompositor?.posX = overlayPosX
-        self.overlayCompositor?.posY = overlayPosY
-        self.overlayCompositor?.scale = overlayScale
-        self.overlayCompositor?.opacity = overlayOpacity
-        self.overlayCompositor?.rotation = overlayRotation * .pi / 180.0
+        self.overlayCompositor?.setEnabled(overlayEnabled)
+        self.overlayCompositor?.updateSettings(
+            posX: overlayPosX,
+            posY: overlayPosY,
+            scale: overlayScale,
+            opacity: overlayOpacity,
+            rotation: overlayRotation * .pi / 180.0
+        )
 
         songCardManager.delegate = self
 
@@ -1430,29 +1432,38 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
     @MainActor func updateOverlayEnabled() {
         Config.overlayEnabled = overlayEnabled
-        overlayCompositor?.enabled = overlayEnabled
+        overlayCompositor?.setEnabled(overlayEnabled)
     }
 
     @MainActor func updateOverlayPosition() {
         Config.overlayPosX = overlayPosX
         Config.overlayPosY = overlayPosY
-        overlayCompositor?.posX = overlayPosX
-        overlayCompositor?.posY = overlayPosY
+        updateOverlayCompositorSettings()
     }
 
     @MainActor func updateOverlayScale() {
         Config.overlayScale = overlayScale
-        overlayCompositor?.scale = overlayScale
+        updateOverlayCompositorSettings()
     }
 
     @MainActor func updateOverlayOpacity() {
         Config.overlayOpacity = overlayOpacity
-        overlayCompositor?.opacity = overlayOpacity
+        updateOverlayCompositorSettings()
     }
 
     @MainActor func updateOverlayRotation() {
         Config.overlayRotation = overlayRotation
-        overlayCompositor?.rotation = overlayRotation * .pi / 180.0
+        updateOverlayCompositorSettings()
+    }
+
+    @MainActor private func updateOverlayCompositorSettings() {
+        overlayCompositor?.updateSettings(
+            posX: overlayPosX,
+            posY: overlayPosY,
+            scale: overlayScale,
+            opacity: overlayOpacity,
+            rotation: overlayRotation * .pi / 180.0
+        )
     }
 
     @MainActor func updateCropHorizontalOffset() {

@@ -7,12 +7,12 @@ final class OverlayCompositor: @unchecked Sendable {
     private let uniformsBuffer: MTLBuffer
 
     private(set) var overlayTexture: MTLTexture?
-    var enabled: Bool = false
-    var posX: Float = 0.5
-    var posY: Float = 0.5
-    var scale: Float = 0.2
-    var opacity: Float = 1.0
-    var rotation: Float = 0.0
+    private var enabled: Bool = false
+    private var posX: Float = 0.5
+    private var posY: Float = 0.5
+    private var scale: Float = 0.2
+    private var opacity: Float = 1.0
+    private var rotation: Float = 0.0
 
     private var stateLock = os_unfair_lock_s()
     private var persistedImageLoadTask: Task<Void, Never>?
@@ -129,6 +129,22 @@ final class OverlayCompositor: @unchecked Sendable {
         persistImage(uiImage)
     }
 
+    func setEnabled(_ enabled: Bool) {
+        os_unfair_lock_lock(&stateLock)
+        self.enabled = enabled
+        os_unfair_lock_unlock(&stateLock)
+    }
+
+    func updateSettings(posX: Float, posY: Float, scale: Float, opacity: Float, rotation: Float) {
+        os_unfair_lock_lock(&stateLock)
+        self.posX = posX
+        self.posY = posY
+        self.scale = scale
+        self.opacity = opacity
+        self.rotation = rotation
+        os_unfair_lock_unlock(&stateLock)
+    }
+
     private func loadImageToTexture(_ uiImage: UIImage) {
         guard let texture = TextureHelper.shared.imageToTexture(uiImage, device: device) else { return }
         setOverlayTexture(texture)
@@ -151,6 +167,7 @@ final class OverlayCompositor: @unchecked Sendable {
     func encode(into encoder: MTLComputeCommandEncoder, outputTexture: MTLTexture) {
         os_unfair_lock_lock(&stateLock)
         let localOverlayTexture = overlayTexture
+        let localEnabled = enabled
         let localPosX = posX
         let localPosY = posY
         let localScale = scale
@@ -158,7 +175,7 @@ final class OverlayCompositor: @unchecked Sendable {
         let localRotation = rotation
         os_unfair_lock_unlock(&stateLock)
 
-        guard let overlayTex = localOverlayTexture else { return }
+        guard localEnabled, let overlayTex = localOverlayTexture else { return }
 
         var uniforms = OverlayUniforms()
         uniforms.posX = localPosX
