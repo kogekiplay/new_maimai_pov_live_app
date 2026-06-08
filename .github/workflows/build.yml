@@ -1,7 +1,9 @@
 name: Build iOS App
 
-# Trigger on push to main branch or manual dispatch
+# Trigger on pushes, pull requests, or manual dispatch
 on:
+  pull_request:
+    branches: [main, master]
   push:
     branches: [main, master, feature/rollback-main]
   workflow_dispatch:
