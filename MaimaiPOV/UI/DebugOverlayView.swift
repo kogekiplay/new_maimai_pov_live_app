@@ -96,7 +96,7 @@ struct DebugOverlayView: View {
             segments: DebugTab.allCases.map { .init(value: $0, title: $0.title) },
             accent: .cyan
         )
-        .frame(width: 208, height: 30)
+        .frame(width: 228, height: 34)
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
     }
@@ -368,18 +368,27 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
 
     @State private var pressedIndex: Int?
     @State private var dragCenterX: CGFloat?
-    @Namespace private var glassNamespace
 
-    private let height: CGFloat = 30
+    private let height: CGFloat = 34
     private let horizontalInset: CGFloat = 4
+    private let segmentSpacing: CGFloat = 6
     private let thumbInset: CGFloat = 3
 
     var body: some View {
+        if #available(iOS 26.0, *) {
+            nativeSegmentedPicker()
+        } else {
+            fallbackSegmentedControl
+        }
+    }
+
+    private var fallbackSegmentedControl: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
             let segmentWidth = SegmentedDragMetrics.segmentWidth(
                 totalWidth: width,
                 horizontalInset: horizontalInset,
+                spacing: segmentSpacing,
                 count: segments.count
             )
             let isDragging = dragCenterX != nil
@@ -394,6 +403,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
                 for: currentIndex,
                 totalWidth: width,
                 horizontalInset: horizontalInset,
+                spacing: segmentSpacing,
                 count: segments.count
             )
             let thumbOffset = SegmentedDragMetrics.offset(
@@ -402,7 +412,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
                 thumbWidth: thumbWidth
             )
 
-            controlBody(
+            fallbackBody(
                 segmentWidth: segmentWidth,
                 thumbWidth: thumbWidth,
                 thumbHeight: thumbHeight,
@@ -415,69 +425,18 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
         .frame(height: height)
     }
 
-    @ViewBuilder
-    private func controlBody(
-        segmentWidth: CGFloat,
-        thumbWidth: CGFloat,
-        thumbHeight: CGFloat,
-        thumbOffset: CGFloat,
-        isDragging: Bool
-    ) -> some View {
-        if #available(iOS 26.0, *) {
-            nativeGlassBody(
-                segmentWidth: segmentWidth,
-                thumbWidth: thumbWidth,
-                thumbHeight: thumbHeight,
-                thumbOffset: thumbOffset,
-                isDragging: isDragging
-            )
-        } else {
-            fallbackBody(
-                segmentWidth: segmentWidth,
-                thumbWidth: thumbWidth,
-                thumbHeight: thumbHeight,
-                thumbOffset: thumbOffset,
-                isDragging: isDragging
-            )
-        }
-    }
-
     @available(iOS 26.0, *)
-    private func nativeGlassBody(
-        segmentWidth: CGFloat,
-        thumbWidth: CGFloat,
-        thumbHeight: CGFloat,
-        thumbOffset: CGFloat,
-        isDragging: Bool
-    ) -> some View {
-        ZStack(alignment: .leading) {
-            GlassEffectContainer(spacing: 12) {
-                ZStack(alignment: .leading) {
-                    Color.clear
-                        .frame(height: height)
-                        .glassEffect(.regular.tint(Color.white.opacity(0.04)).interactive(), in: .capsule)
-                        .glassEffectUnion(id: "debug-segment-track", namespace: glassNamespace)
-
-                    Color.clear
-                        .frame(width: thumbWidth, height: thumbHeight)
-                        .offset(x: thumbOffset, y: (height - thumbHeight) / 2)
-                        .glassEffect(.regular.tint(accent.opacity(isDragging ? 0.22 : 0.14)).interactive(), in: .capsule)
-                        .glassEffectID("debug-segment-selection", in: glassNamespace)
-                        .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
-                        .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
-                        .allowsHitTesting(false)
-                }
+    private func nativeSegmentedPicker() -> some View {
+        Picker("", selection: $selection) {
+            ForEach(segments) { segment in
+                Text(segment.title)
+                    .tag(segment.value)
             }
-
-            segmentButtonsRow(segmentWidth: segmentWidth, selectedTextIsHidden: true)
-
-            selectedGlassSegment(isDragging: isDragging)
-                .frame(width: thumbWidth, height: thumbHeight)
-                .offset(x: thumbOffset, y: (height - thumbHeight) / 2)
-                .animation(dragCenterX == nil ? .interactiveSpring(response: 0.26, dampingFraction: 0.82) : nil, value: thumbOffset)
-                .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.78), value: isDragging)
-                .allowsHitTesting(false)
         }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .tint(accent)
+        .controlSize(.small)
     }
 
     private func fallbackBody(
@@ -508,7 +467,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
     }
 
     private func segmentButtonsRow(segmentWidth: CGFloat, selectedTextIsHidden: Bool) -> some View {
-        HStack(spacing: 0) {
+        HStack(spacing: segmentSpacing) {
             ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
                 Button {
                     selectSegment(at: index)
@@ -571,6 +530,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
                 let segmentWidth = SegmentedDragMetrics.segmentWidth(
                     totalWidth: width,
                     horizontalInset: horizontalInset,
+                    spacing: segmentSpacing,
                     count: segments.count
                 )
                 let thumbWidth = SegmentedDragMetrics.thumbWidth(
@@ -588,6 +548,7 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
                     at: value.location.x,
                     totalWidth: width,
                     horizontalInset: horizontalInset,
+                    spacing: segmentSpacing,
                     count: segments.count
                 )
                 pressedIndex = nextIndex
@@ -607,7 +568,12 @@ private struct DraggableGlassSegmentedControl<Selection: Hashable>: View {
 
 private enum SegmentedDragMetrics {
     static func segmentWidth(totalWidth: CGFloat, horizontalInset: CGFloat, count: Int) -> CGFloat {
-        let availableWidth = max(totalWidth - horizontalInset * 2, 1)
+        segmentWidth(totalWidth: totalWidth, horizontalInset: horizontalInset, spacing: 0, count: count)
+    }
+
+    static func segmentWidth(totalWidth: CGFloat, horizontalInset: CGFloat, spacing: CGFloat, count: Int) -> CGFloat {
+        let totalSpacing = spacing * CGFloat(max(count - 1, 0))
+        let availableWidth = max(totalWidth - horizontalInset * 2 - totalSpacing, 1)
         return availableWidth / CGFloat(max(count, 1))
     }
 
@@ -619,15 +585,17 @@ private enum SegmentedDragMetrics {
         for index: Int,
         totalWidth: CGFloat,
         horizontalInset: CGFloat,
+        spacing: CGFloat = 0,
         count: Int
     ) -> CGFloat {
         let segmentWidth = segmentWidth(
             totalWidth: totalWidth,
             horizontalInset: horizontalInset,
+            spacing: spacing,
             count: count
         )
         let clampedIndex = min(max(index, 0), max(count - 1, 0))
-        return horizontalInset + segmentWidth * (CGFloat(clampedIndex) + 0.5)
+        return horizontalInset + CGFloat(clampedIndex) * (segmentWidth + spacing) + segmentWidth / 2
     }
 
     static func offset(forCenterX centerX: CGFloat, totalWidth: CGFloat, thumbWidth: CGFloat) -> CGFloat {
@@ -641,16 +609,18 @@ private enum SegmentedDragMetrics {
         return min(max(centerX, minCenter), maxCenter)
     }
 
-    static func index(at locationX: CGFloat, totalWidth: CGFloat, horizontalInset: CGFloat, count: Int) -> Int {
+    static func index(at locationX: CGFloat, totalWidth: CGFloat, horizontalInset: CGFloat, spacing: CGFloat = 0, count: Int) -> Int {
         guard count > 0 else { return 0 }
 
         let segmentWidth = segmentWidth(
             totalWidth: totalWidth,
             horizontalInset: horizontalInset,
+            spacing: spacing,
             count: count
         )
-        let maxInnerX = segmentWidth * CGFloat(count) - 0.01
+        let stride = segmentWidth + spacing
+        let maxInnerX = stride * CGFloat(count) - spacing - 0.01
         let clampedX = min(max(locationX - horizontalInset, 0), maxInnerX)
-        return min(max(Int(clampedX / segmentWidth), 0), count - 1)
+        return min(max(Int(clampedX / stride), 0), count - 1)
     }
 }
