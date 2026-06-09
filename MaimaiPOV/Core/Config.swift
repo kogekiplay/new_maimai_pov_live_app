@@ -314,23 +314,29 @@ enum Config {
     }
 
     // IMU sync (runtime-adjustable, persisted)
+    static let syncOffsetRange = -50.0...50.0
     static var syncOffsetMs: Double {
         get {
             guard UserDefaults.standard.object(forKey: syncOffsetKey) != nil else {
                 return defaultSyncOffsetMs
             }
-            return UserDefaults.standard.double(forKey: syncOffsetKey)
+            return clampDouble(UserDefaults.standard.double(forKey: syncOffsetKey), to: syncOffsetRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: syncOffsetKey) }
+        set {
+            UserDefaults.standard.set(clampDouble(newValue, to: syncOffsetRange), forKey: syncOffsetKey)
+        }
     }
+    static let readoutTimeRange = 5.0...15.0
     static var readoutTimeMs: Double {
         get {
             guard UserDefaults.standard.object(forKey: readoutTimeKey) != nil else {
                 return defaultReadoutTimeMs
             }
-            return UserDefaults.standard.double(forKey: readoutTimeKey)
+            return clampDouble(UserDefaults.standard.double(forKey: readoutTimeKey), to: readoutTimeRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: readoutTimeKey) }
+        set {
+            UserDefaults.standard.set(clampDouble(newValue, to: readoutTimeRange), forKey: readoutTimeKey)
+        }
     }
     static let defaultSyncOffsetMs: Double = -25.0
     static let defaultReadoutTimeMs: Double = 9.18
@@ -612,6 +618,10 @@ enum Config {
     }
 
     private static func clampFloat(_ value: Float, to range: ClosedRange<Float>) -> Float {
+        min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    private static func clampDouble(_ value: Double, to range: ClosedRange<Double>) -> Double {
         min(max(value, range.lowerBound), range.upperBound)
     }
 }

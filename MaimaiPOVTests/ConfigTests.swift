@@ -2,17 +2,39 @@ import XCTest
 @testable import MaimaiPOV
 
 final class ConfigTests: XCTestCase {
+    private let syncOffsetKey = "com.maimai.syncOffsetMs"
+    private let readoutTimeKey = "com.maimai.readoutTimeMs"
     private let fovKey = "com.maimai.fov"
     private let distRatioKey = "com.maimai.distRatio"
     private let yoloPaddingKey = "com.maimai.yoloPadding"
     private let streamBitrateKey = "com.maimai.streamBitrate"
 
     override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: syncOffsetKey)
+        UserDefaults.standard.removeObject(forKey: readoutTimeKey)
         UserDefaults.standard.removeObject(forKey: fovKey)
         UserDefaults.standard.removeObject(forKey: distRatioKey)
         UserDefaults.standard.removeObject(forKey: yoloPaddingKey)
         UserDefaults.standard.removeObject(forKey: streamBitrateKey)
         super.tearDown()
+    }
+
+    func testImuTimingClampsPersistedValuesToControlRanges() {
+        UserDefaults.standard.set(-250.0, forKey: syncOffsetKey)
+
+        XCTAssertEqual(Config.syncOffsetMs, -50)
+
+        UserDefaults.standard.set(250.0, forKey: syncOffsetKey)
+
+        XCTAssertEqual(Config.syncOffsetMs, 50)
+
+        UserDefaults.standard.set(1.0, forKey: readoutTimeKey)
+
+        XCTAssertEqual(Config.readoutTimeMs, 5)
+
+        UserDefaults.standard.set(40.0, forKey: readoutTimeKey)
+
+        XCTAssertEqual(Config.readoutTimeMs, 15)
     }
 
     func testStabilizerGeometryClampsPersistedValuesToControlRanges() {

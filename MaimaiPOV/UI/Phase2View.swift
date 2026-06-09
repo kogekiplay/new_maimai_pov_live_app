@@ -985,12 +985,12 @@ struct Phase2View: View {
     private var syncRow: some View {
         Group {
             labeledRow("Sync") {
-                Slider(value: $pipeline.syncOffsetMs, in: -50...50)
+                Slider(value: $pipeline.syncOffsetMs, in: Config.syncOffsetRange)
             } valueLabel: {
                 Text(String(format: "%.0f", pipeline.syncOffsetMs)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
             labeledRow("Readout") {
-                Slider(value: $pipeline.readoutTimeMs, in: 5...15)
+                Slider(value: $pipeline.readoutTimeMs, in: Config.readoutTimeRange)
             } valueLabel: {
                 Text(String(format: "%.1f", pipeline.readoutTimeMs)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
