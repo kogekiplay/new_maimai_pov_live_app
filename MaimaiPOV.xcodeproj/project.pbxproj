@@ -32,6 +32,7 @@
 		4CE678CFEBFC4A1963693E35 /* RTMPStreamManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8E46D40CF64FBA81EFC6BA /* RTMPStreamManager.swift */; };
 		4D0941CC730BD57BBB07F8D2 /* MarqueeCompositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E6AD18BADBC0BB8B8EDD2F /* MarqueeCompositor.swift */; };
 		4E47A9A4A5EEBF681EC898A3 /* LivePipelineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EA31DEED25EEBEAA443CE9 /* LivePipelineManager.swift */; };
+		4EEECD152E4AC25086400119 /* AntiTouchGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F08C8975F592EFBD3C5E5F44 /* AntiTouchGate.swift */; };
 		4EFAF8678F1C841FA9296BAB /* DeviceStatusRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DC50D8FD92C6255BC29FE34 /* DeviceStatusRenderer.swift */; };
 		5BD05D887D8C306492C8851B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2822F11F9EC300388A415280 /* Localizable.strings */; };
 		5E581FF67E38238455039F42 /* SearchAPIHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F2D4C48566FAB764DB15B4 /* SearchAPIHandler.swift */; };
@@ -79,6 +80,7 @@
 		BD0D89596DFB2AA009246685 /* RightPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47F1B8D9ACBA18C8111F6308 /* RightPanelRenderer.swift */; };
 		BE8809D12E3783E35B893B0A /* DebugAPIHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A81F719441FC7FFE9B8916F /* DebugAPIHandler.swift */; };
 		C02A9EF4709D378833B6FB17 /* CoverImageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAEC424FFD2918A1E13C9A03 /* CoverImageService.swift */; };
+		C39E13E6D452F92ECB68F2CD /* AntiTouchGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3150F3000B7DE619E98660C4 /* AntiTouchGateTests.swift */; };
 		C66ACA99DC23D6592ACEAA55 /* CameraConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F56015B2ECD013CC5CACEA /* CameraConfig.swift */; };
 		CCB081BB993B28491A6F125C /* DeviceStatus.metal in Sources */ = {isa = PBXBuildFile; fileRef = A8535ED03F951F2649B0B3B8 /* DeviceStatus.metal */; };
 		CD4A67892366A0ED0FC0DA98 /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = EEF894464672A62D643FACB1 /* HaishinKit */; };
@@ -137,6 +139,7 @@
 		2853B1A01EFD58A2EAFC9EF6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A33673687D074D5BD061425 /* DeviceStatusManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusManager.swift; sourceTree = "<group>"; };
 		2E58A83BD1A0869DEB491F7E /* AdaptiveGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveGlass.swift; sourceTree = "<group>"; };
+		3150F3000B7DE619E98660C4 /* AntiTouchGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiTouchGateTests.swift; sourceTree = "<group>"; };
 		339EF47C06E70715103F6083 /* QueueAPIHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueAPIHandler.swift; sourceTree = "<group>"; };
 		399687749510E66D6FAFE990 /* Marquee.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Marquee.metal; sourceTree = "<group>"; };
 		3A81F719441FC7FFE9B8916F /* DebugAPIHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugAPIHandler.swift; sourceTree = "<group>"; };
@@ -202,6 +205,7 @@
 		E6BCB832B20659F88660D898 /* MetalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalView.swift; sourceTree = "<group>"; };
 		E90263C310668EFD3042439A /* CanvasComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasComposer.swift; sourceTree = "<group>"; };
 		EF25DCF7B1AD031CB73442A3 /* IOSurfaceOutputPool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSurfaceOutputPool.swift; sourceTree = "<group>"; };
+		F08C8975F592EFBD3C5E5F44 /* AntiTouchGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiTouchGate.swift; sourceTree = "<group>"; };
 		F0F56015B2ECD013CC5CACEA /* CameraConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraConfig.swift; sourceTree = "<group>"; };
 		F53E7B3900216855DDB149D3 /* AudioMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMixer.swift; sourceTree = "<group>"; };
 		F65BEAE1C55494423CE1F151 /* LensCalibration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensCalibration.swift; sourceTree = "<group>"; };
@@ -326,6 +330,7 @@
 		45E23CD36CDDE574D23E6328 /* MaimaiPOVTests */ = {
 			isa = PBXGroup;
 			children = (
+				3150F3000B7DE619E98660C4 /* AntiTouchGateTests.swift */,
 				98DD04CA5A77FD7823A3C309 /* CoverImageServiceTests.swift */,
 				89186D3369D0EF438A62CB70 /* DanmakuParserTests.swift */,
 				002EDDA1077BED0DD6D30F36 /* QueueDisplayWindowTests.swift */,
@@ -567,6 +572,7 @@
 			isa = PBXGroup;
 			children = (
 				2E58A83BD1A0869DEB491F7E /* AdaptiveGlass.swift */,
+				F08C8975F592EFBD3C5E5F44 /* AntiTouchGate.swift */,
 				4EDF1351FE018822E54EA583 /* DebugOverlayView.swift */,
 				601C17EDF83A4FEA8B86970F /* HomeIndicatorHider.swift */,
 				666CD3279AED00AF4535230E /* Phase2View.swift */,
@@ -699,6 +705,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C39E13E6D452F92ECB68F2CD /* AntiTouchGateTests.swift in Sources */,
 				815589585B4463666ECE4440 /* CoverImageServiceTests.swift in Sources */,
 				772ECDA60B9B65D0D60BE683 /* DanmakuParserTests.swift in Sources */,
 				755A428E97682E8B48E6659E /* QueueDisplayWindowTests.swift in Sources */,
@@ -715,6 +722,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7EF5C76438961F5DB1AD264A /* AdaptiveGlass.swift in Sources */,
+				4EEECD152E4AC25086400119 /* AntiTouchGate.swift in Sources */,
 				81578B61CAB7EE2AF6E53847 /* AppDelegate.swift in Sources */,
 				426419F3952EA618098C1063 /* AudioDeviceManager.swift in Sources */,
 				837196FDED6C6ACA9559898B /* AudioMixer.swift in Sources */,

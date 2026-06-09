@@ -343,6 +343,10 @@ struct Phase2View: View {
     private func controlPanel(for tab: ControlTab) -> some View {
         VStack(spacing: 0) {
             Button {
+                guard AntiTouchGate.allowsToggle(isExpanded: panelExpanded, isAntiTouchMode: isAntiTouchMode) else {
+                    return
+                }
+
                 antiTouchTimer?.invalidate()
                 antiTouchTimer = nil
                 isAntiTouchMode = false
@@ -1632,7 +1636,7 @@ private struct SessionChangeHandlers: ViewModifier {
                     isAntiTouchMode = false
                 } else {
                     antiTouchTimer?.invalidate()
-                    antiTouchTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+                    antiTouchTimer = Timer.scheduledTimer(withTimeInterval: AntiTouchGate.lockDelay, repeats: false) { _ in
                         Task { @MainActor in
                             isAntiTouchMode = true
                         }

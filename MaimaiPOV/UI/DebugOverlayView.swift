@@ -345,11 +345,24 @@ struct DebugOverlayView: View {
     }
 
     private func toggleDetailVisibility() {
+        guard AntiTouchGate.allowsToggle(isExpanded: !isCollapsed, isAntiTouchMode: isAntiTouchMode) else {
+            return
+        }
+
         antiTouchTimer?.invalidate()
         antiTouchTimer = nil
         isAntiTouchMode = false
+        let nextDetailVisible = isCollapsed
         withAnimation(.easeInOut(duration: 0.15)) {
-            debug.isDetailVisible.toggle()
+            debug.isDetailVisible = nextDetailVisible
+        }
+
+        if !nextDetailVisible {
+            antiTouchTimer = Timer.scheduledTimer(withTimeInterval: AntiTouchGate.lockDelay, repeats: false) { _ in
+                Task { @MainActor in
+                    isAntiTouchMode = true
+                }
+            }
         }
     }
 }
