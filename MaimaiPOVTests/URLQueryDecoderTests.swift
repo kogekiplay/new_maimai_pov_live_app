@@ -144,6 +144,11 @@ final class WebControlInputTests: XCTestCase {
         XCTAssertEqual(WebControlInput.clampedInt(in: ["threshold": 30], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange), 30)
         XCTAssertEqual(WebControlInput.clampedInt(in: ["threshold": 10_000], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange), 9_999)
     }
+
+    func testClampedIntAcceptsIntegralDoubleJSONValues() {
+        XCTAssertEqual(WebControlInput.clampedInt(in: ["threshold": 30.0], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange), 30)
+        XCTAssertNil(WebControlInput.clampedInt(in: ["threshold": 30.5], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange))
+    }
 }
 
 final class QueueAPIHandlerTests: XCTestCase {

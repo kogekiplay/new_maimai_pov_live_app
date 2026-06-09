@@ -893,7 +893,16 @@ enum WebControlInput {
     }
 
     static func clampedInt(in body: [String: Any], key: String, range: ClosedRange<Int>) -> Int? {
-        guard let value = body[key] as? Int else {
+        let value: Int
+        if let intValue = body[key] as? Int {
+            value = intValue
+        } else if let doubleValue = body[key] as? Double,
+                  doubleValue.isFinite,
+                  doubleValue.rounded(.towardZero) == doubleValue,
+                  doubleValue >= Double(Int.min),
+                  doubleValue <= Double(Int.max) {
+            value = Int(doubleValue)
+        } else {
             return nil
         }
         return min(max(value, range.lowerBound), range.upperBound)
