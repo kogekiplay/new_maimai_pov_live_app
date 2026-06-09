@@ -234,7 +234,7 @@ final class DebugAPIHandler: @unchecked Sendable {
     func simulateDanmaku(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
               let authorName = Self.requiredNonBlankString(in: body, key: "authorName"),
-              let content = body["content"] as? String else {
+              let content = Self.requiredNonBlankString(in: body, key: "content") else {
             return .badRequest(.text("Missing 'authorName' or 'content'"))
         }
 
@@ -316,7 +316,7 @@ final class DebugAPIHandler: @unchecked Sendable {
 
     func simulateMarquee(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let text = body["text"] as? String else {
+              let text = Self.requiredNonBlankString(in: body, key: "text") else {
             return .badRequest(.text("Missing 'text'"))
         }
 

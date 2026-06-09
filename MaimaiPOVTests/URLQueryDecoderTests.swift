@@ -1,4 +1,5 @@
 import XCTest
+import Swifter
 @testable import MaimaiPOV
 
 final class URLQueryDecoderTests: XCTestCase {
@@ -24,6 +25,10 @@ final class URLQueryDecoderTests: XCTestCase {
 }
 
 final class DebugAPIHandlerTests: XCTestCase {
+    private func jsonData(_ body: [String: Any]) throws -> Data {
+        try JSONSerialization.data(withJSONObject: body)
+    }
+
     func testRequiredNonBlankStringRejectsBlankValue() {
         XCTAssertNil(
             DebugAPIHandler.requiredNonBlankString(
@@ -80,6 +85,30 @@ final class DebugAPIHandlerTests: XCTestCase {
         XCTAssertNil(DebugAPIHandler.optionalPositiveInt(in: ["mergeCount": 0], key: "mergeCount", defaultValue: 1))
         XCTAssertNil(DebugAPIHandler.optionalPositiveInt(in: ["mergeCount": -1], key: "mergeCount", defaultValue: 1))
         XCTAssertNil(DebugAPIHandler.optionalPositiveInt(in: ["mergeCount": "1"], key: "mergeCount", defaultValue: 1))
+    }
+
+    func testSimulateDanmakuRejectsBlankContent() async throws {
+        let body = try jsonData(["authorName": "Alice", "content": " \n "])
+
+        let statusCode = await Task.detached {
+            let request = HttpRequest()
+            request.body = Array(body)
+            return DebugAPIHandler().simulateDanmaku(request: request).statusCode
+        }.value
+
+        XCTAssertEqual(statusCode, 400)
+    }
+
+    func testSimulateMarqueeRejectsBlankText() async throws {
+        let body = try jsonData(["text": " \n "])
+
+        let statusCode = await Task.detached {
+            let request = HttpRequest()
+            request.body = Array(body)
+            return DebugAPIHandler().simulateMarquee(request: request).statusCode
+        }.value
+
+        XCTAssertEqual(statusCode, 400)
     }
 }
 
