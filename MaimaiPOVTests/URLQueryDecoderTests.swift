@@ -200,4 +200,9 @@ final class QueueAPIHandlerTests: XCTestCase {
         XCTAssertEqual(QueueAPIHandler.requiredPositiveMusicId(in: ["musicId": 123.0]), 123)
         XCTAssertNil(QueueAPIHandler.requiredPositiveMusicId(in: ["musicId": 123.5]))
     }
+
+    func testRequiredDisplayIndexAcceptsIntegralDoubleValue() {
+        XCTAssertEqual(QueueAPIHandler.requiredDisplayIndex(in: ["index": 1.0]), 1)
+        XCTAssertNil(QueueAPIHandler.requiredDisplayIndex(in: ["index": 1.5]))
+    }
 }

@@ -25,20 +25,32 @@ final class QueueAPIHandler: @unchecked Sendable {
         return musicId
     }
 
-    private static func positiveIntValue(_ rawValue: Any?) -> Int? {
-        let value: Int
+    static func requiredDisplayIndex(in body: [String: Any]) -> Int? {
+        guard let displayIndex = intValue(body["index"]), displayIndex >= 0 else {
+            return nil
+        }
+        return displayIndex
+    }
+
+    private static func intValue(_ rawValue: Any?) -> Int? {
         if let intValue = rawValue as? Int {
-            value = intValue
+            return intValue
         } else if let doubleValue = rawValue as? Double,
                   doubleValue.isFinite,
                   doubleValue.rounded(.towardZero) == doubleValue,
                   doubleValue >= Double(Int.min),
                   doubleValue <= Double(Int.max) {
-            value = Int(doubleValue)
+            return Int(doubleValue)
         } else {
             return nil
         }
-        return value > 0 ? value : nil
+    }
+
+    private static func positiveIntValue(_ rawValue: Any?) -> Int? {
+        guard let value = intValue(rawValue), value > 0 else {
+            return nil
+        }
+        return value
     }
 
     private static func nonBlankString(_ value: String) -> String? {
@@ -131,7 +143,7 @@ final class QueueAPIHandler: @unchecked Sendable {
 
     func remove(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let displayIndex = body["index"] as? Int else {
+              let displayIndex = Self.requiredDisplayIndex(in: body) else {
             return .badRequest(.text("Missing or invalid 'index'"))
         }
 
