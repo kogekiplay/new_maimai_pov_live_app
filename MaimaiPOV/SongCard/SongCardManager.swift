@@ -80,7 +80,7 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
             delegate?.onCurrentSongChanged(song)
             delegate?.onQueueUpdated(queue, change: .added(index: 0))
         } else {
-            var insertIndex = currentIndex + 1
+            var insertIndex = min(currentIndex + 1, queue.count)
             while insertIndex < queue.count && queue[insertIndex].isPriority {
                 insertIndex += 1
             }

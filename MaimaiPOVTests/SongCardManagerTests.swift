@@ -142,6 +142,19 @@ final class SongCardManagerTests: XCTestCase {
         XCTAssertNil(manager.thirdSong)
     }
 
+    func testAddSongAtNextAppendsWhenCurrentIndexIsPastQueueEnd() {
+        let manager = SongCardManager(persistenceManager: QueuePersistenceManager(snapshotDirectory: temporaryDirectory))
+        manager.updateQueue([
+            Self.song(named: "First Song", requesterName: "alice"),
+            Self.song(named: "Second Song", requesterName: "bob")
+        ])
+        manager.currentIndex = 10
+
+        manager.addSongAtNext(Self.song(named: "Recovered Song", requesterName: "carol"))
+
+        XCTAssertEqual(manager.queue.map(\.songName), ["First Song", "Second Song", "Recovered Song"])
+    }
+
     private static func song(
         named name: String,
         requesterName: String = "alice",
