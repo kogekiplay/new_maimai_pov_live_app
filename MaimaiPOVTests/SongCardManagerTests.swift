@@ -109,6 +109,39 @@ final class SongCardManagerTests: XCTestCase {
         XCTAssertEqual(manager.userGiftPool["bob"], 200)
     }
 
+    func testFindSongIndexReturnsNilWhenCurrentIndexIsPastQueueEnd() {
+        let manager = SongCardManager(persistenceManager: QueuePersistenceManager(snapshotDirectory: temporaryDirectory))
+        manager.updateQueue([
+            Self.song(named: "First Song", requesterName: "alice"),
+            Self.song(named: "Second Song", requesterName: "bob")
+        ])
+        manager.currentIndex = 10
+
+        XCTAssertNil(manager.findSongIndex(byName: "bob"))
+    }
+
+    func testNextSongReturnsNilWhenCurrentIndexIsBelowIdleSentinel() {
+        let manager = SongCardManager(persistenceManager: QueuePersistenceManager(snapshotDirectory: temporaryDirectory))
+        manager.updateQueue([
+            Self.song(named: "First Song", requesterName: "alice"),
+            Self.song(named: "Second Song", requesterName: "bob")
+        ])
+        manager.currentIndex = -2
+
+        XCTAssertNil(manager.nextSong)
+    }
+
+    func testThirdSongReturnsNilWhenCurrentIndexIsBelowIdleSentinel() {
+        let manager = SongCardManager(persistenceManager: QueuePersistenceManager(snapshotDirectory: temporaryDirectory))
+        manager.updateQueue([
+            Self.song(named: "First Song", requesterName: "alice"),
+            Self.song(named: "Second Song", requesterName: "bob")
+        ])
+        manager.currentIndex = -3
+
+        XCTAssertNil(manager.thirdSong)
+    }
+
     private static func song(
         named name: String,
         requesterName: String = "alice",

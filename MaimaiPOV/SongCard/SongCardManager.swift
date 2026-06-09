@@ -52,13 +52,13 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
 
     var nextSong: SongCardData? {
         let nextIndex = currentIndex + 1
-        guard nextIndex < queue.count else { return nil }
+        guard nextIndex >= 0, nextIndex < queue.count else { return nil }
         return queue[nextIndex]
     }
 
     var thirdSong: SongCardData? {
         let thirdIndex = currentIndex + 2
-        guard thirdIndex < queue.count else { return nil }
+        guard thirdIndex >= 0, thirdIndex < queue.count else { return nil }
         return queue[thirdIndex]
     }
 
@@ -156,7 +156,7 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
     }
 
     func findSongIndex(byName name: String) -> Int? {
-        guard currentIndex >= 0 else { return nil }
+        guard currentIndex >= 0, currentIndex < queue.count else { return nil }
         for i in currentIndex..<queue.count {
             if queue[i].requesterName == name {
                 return i
