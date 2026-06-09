@@ -15,6 +15,10 @@ final class ConfigTests: XCTestCase {
     private let streamBitrateKey = "com.maimai.streamBitrate"
     private let activitySmoothFactorKey = "com.maimai.activitySmoothFactor"
     private let songRequestPauseThresholdKey = "com.maimai.songRequestPauseThreshold"
+    private let trackTargetRatioKey = "com.maimai.trackTargetRatio"
+    private let trackRecenterSpeedKey = "com.maimai.trackRecenterSpeed"
+    private let recenterGraceMsKey = "com.maimai.recenterGraceMs"
+    private let acquireSpeedKey = "com.maimai.acquireSpeed"
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: focusValueKey)
@@ -30,6 +34,10 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: streamBitrateKey)
         UserDefaults.standard.removeObject(forKey: activitySmoothFactorKey)
         UserDefaults.standard.removeObject(forKey: songRequestPauseThresholdKey)
+        UserDefaults.standard.removeObject(forKey: trackTargetRatioKey)
+        UserDefaults.standard.removeObject(forKey: trackRecenterSpeedKey)
+        UserDefaults.standard.removeObject(forKey: recenterGraceMsKey)
+        UserDefaults.standard.removeObject(forKey: acquireSpeedKey)
         super.tearDown()
     }
 
@@ -151,5 +159,39 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(20_000, forKey: songRequestPauseThresholdKey)
 
         XCTAssertEqual(Config.songRequestPauseThreshold, 9_999)
+    }
+
+    func testTrackingControlValuesClampPersistedValuesToControlRanges() {
+        UserDefaults.standard.set(0.01, forKey: trackTargetRatioKey)
+
+        XCTAssertEqual(Config.trackTargetRatio, 0.1, accuracy: 0.0001)
+
+        UserDefaults.standard.set(2.0, forKey: trackTargetRatioKey)
+
+        XCTAssertEqual(Config.trackTargetRatio, 1.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.01, forKey: trackRecenterSpeedKey)
+
+        XCTAssertEqual(Config.trackRecenterSpeed, 0.05, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.8, forKey: trackRecenterSpeedKey)
+
+        XCTAssertEqual(Config.trackRecenterSpeed, 0.5, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-10.0, forKey: recenterGraceMsKey)
+
+        XCTAssertEqual(Config.recenterGraceMs, 0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(3_000.0, forKey: recenterGraceMsKey)
+
+        XCTAssertEqual(Config.recenterGraceMs, 2_000, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.01, forKey: acquireSpeedKey)
+
+        XCTAssertEqual(Config.acquireSpeed, 0.05, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.8, forKey: acquireSpeedKey)
+
+        XCTAssertEqual(Config.acquireSpeed, 0.5, accuracy: 0.0001)
     }
 }

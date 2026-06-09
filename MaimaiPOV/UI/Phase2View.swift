@@ -1126,7 +1126,7 @@ struct Phase2View: View {
 
     private var trackTargetRatioRow: some View {
         labeledRow("TargetRatio") {
-            Slider(value: $pipeline.trackTargetRatio, in: 0.1...1.0, step: 0.05)
+            Slider(value: $pipeline.trackTargetRatio, in: Config.trackTargetRatioRange, step: 0.05)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.trackTargetRatio)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -1134,7 +1134,7 @@ struct Phase2View: View {
 
     private var trackRecenterSpeedRow: some View {
         labeledRow("Recenter") {
-            Slider(value: $pipeline.trackRecenterSpeed, in: 0.05...0.5, step: 0.01)
+            Slider(value: $pipeline.trackRecenterSpeed, in: Config.trackRecenterSpeedRange, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.trackRecenterSpeed)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -1142,7 +1142,7 @@ struct Phase2View: View {
 
     private var recenterGraceMsRow: some View {
         labeledRow("Grace") {
-            Slider(value: $pipeline.recenterGraceMs, in: 0...2000, step: 50)
+            Slider(value: $pipeline.recenterGraceMs, in: Config.recenterGraceMsRange, step: 50)
         } valueLabel: {
             Text("\(Int(pipeline.recenterGraceMs))ms").font(.caption).foregroundColor(.gray).frame(width: 50, alignment: .trailing)
         }
@@ -1150,7 +1150,7 @@ struct Phase2View: View {
 
     private var acquireSpeedRow: some View {
         labeledRow("Acquire") {
-            Slider(value: $pipeline.acquireSpeed, in: 0.05...0.5, step: 0.01)
+            Slider(value: $pipeline.acquireSpeed, in: Config.acquireSpeedRange, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.acquireSpeed)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }

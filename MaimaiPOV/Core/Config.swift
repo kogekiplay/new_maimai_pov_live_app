@@ -138,44 +138,48 @@ enum Config {
 
     // Tracking defaults
     static let defaultTargetRatio: Float = 0.35
+    static let trackTargetRatioRange = 0.1...1.0
     static var trackTargetRatio: Double {
         get {
             guard UserDefaults.standard.object(forKey: trackTargetRatioKey) != nil else {
                 return Double(defaultTargetRatio)
             }
-            return UserDefaults.standard.double(forKey: trackTargetRatioKey)
+            return clampDouble(UserDefaults.standard.double(forKey: trackTargetRatioKey), to: trackTargetRatioRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: trackTargetRatioKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: trackTargetRatioRange), forKey: trackTargetRatioKey) }
     }
     static let defaultRecenterSpeed: Float = 0.15
+    static let trackRecenterSpeedRange = 0.05...0.5
     static var trackRecenterSpeed: Double {
         get {
             guard UserDefaults.standard.object(forKey: trackRecenterSpeedKey) != nil else {
                 return Double(defaultRecenterSpeed)
             }
-            return UserDefaults.standard.double(forKey: trackRecenterSpeedKey)
+            return clampDouble(UserDefaults.standard.double(forKey: trackRecenterSpeedKey), to: trackRecenterSpeedRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: trackRecenterSpeedKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: trackRecenterSpeedRange), forKey: trackRecenterSpeedKey) }
     }
     static let defaultRecenterGraceMs: Double = 500.0
+    static let recenterGraceMsRange = 0.0...2000.0
     static var recenterGraceMs: Double {
         get {
             guard UserDefaults.standard.object(forKey: recenterGraceMsKey) != nil else {
                 return defaultRecenterGraceMs
             }
-            return UserDefaults.standard.double(forKey: recenterGraceMsKey)
+            return clampDouble(UserDefaults.standard.double(forKey: recenterGraceMsKey), to: recenterGraceMsRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: recenterGraceMsKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: recenterGraceMsRange), forKey: recenterGraceMsKey) }
     }
     static let defaultAcquireSpeed: Float = 0.15
+    static let acquireSpeedRange = 0.05...0.5
     static var acquireSpeed: Double {
         get {
             guard UserDefaults.standard.object(forKey: acquireSpeedKey) != nil else {
                 return Double(defaultAcquireSpeed)
             }
-            return UserDefaults.standard.double(forKey: acquireSpeedKey)
+            return clampDouble(UserDefaults.standard.double(forKey: acquireSpeedKey), to: acquireSpeedRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: acquireSpeedKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: acquireSpeedRange), forKey: acquireSpeedKey) }
     }
     static let defaultConfidenceThreshold: Float = 0.75
 
