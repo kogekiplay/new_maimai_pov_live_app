@@ -913,7 +913,7 @@ struct Phase2View: View {
 
     private var focusRow: some View {
         labeledRow("Manual Focus") {
-            Slider(value: $pipeline.focusValue, in: 0...1)
+            Slider(value: $pipeline.focusValue, in: Config.focusValueRange)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.focusValue)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }

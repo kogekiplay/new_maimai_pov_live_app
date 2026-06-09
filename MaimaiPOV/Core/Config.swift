@@ -79,14 +79,17 @@ enum Config {
 
     // Camera settings
     static let defaultFocusValue: Double = 0.5
+    static let focusValueRange = 0.0...1.0
     static var focusValue: Double {
         get {
             guard UserDefaults.standard.object(forKey: focusValueKey) != nil else {
                 return defaultFocusValue
             }
-            return UserDefaults.standard.double(forKey: focusValueKey)
+            return clampDouble(UserDefaults.standard.double(forKey: focusValueKey), to: focusValueRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: focusValueKey) }
+        set {
+            UserDefaults.standard.set(clampDouble(newValue, to: focusValueRange), forKey: focusValueKey)
+        }
     }
     static let defaultAutoFocusEnabled: Bool = false
     static var autoFocusEnabled: Bool {
@@ -99,14 +102,17 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: autoFocusEnabledKey) }
     }
     static let defaultShutterTimescale: Double = 244.0
+    static let shutterTimescaleRange = 30.0...1000.0
     static var shutterTimescale: Double {
         get {
             guard UserDefaults.standard.object(forKey: shutterTimescaleKey) != nil else {
                 return defaultShutterTimescale
             }
-            return UserDefaults.standard.double(forKey: shutterTimescaleKey)
+            return clampDouble(UserDefaults.standard.double(forKey: shutterTimescaleKey), to: shutterTimescaleRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: shutterTimescaleKey) }
+        set {
+            UserDefaults.standard.set(clampDouble(newValue, to: shutterTimescaleRange), forKey: shutterTimescaleKey)
+        }
     }
     static let defaultIsoValue: Double = 2000.0
     static var isoValue: Double {

@@ -2,6 +2,8 @@ import XCTest
 @testable import MaimaiPOV
 
 final class ConfigTests: XCTestCase {
+    private let focusValueKey = "com.maimai.focusValue"
+    private let shutterTimescaleKey = "com.maimai.shutterTimescale"
     private let syncOffsetKey = "com.maimai.syncOffsetMs"
     private let readoutTimeKey = "com.maimai.readoutTimeMs"
     private let fovKey = "com.maimai.fov"
@@ -12,6 +14,8 @@ final class ConfigTests: XCTestCase {
     private let songRequestPauseThresholdKey = "com.maimai.songRequestPauseThreshold"
 
     override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: focusValueKey)
+        UserDefaults.standard.removeObject(forKey: shutterTimescaleKey)
         UserDefaults.standard.removeObject(forKey: syncOffsetKey)
         UserDefaults.standard.removeObject(forKey: readoutTimeKey)
         UserDefaults.standard.removeObject(forKey: fovKey)
@@ -21,6 +25,24 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: activitySmoothFactorKey)
         UserDefaults.standard.removeObject(forKey: songRequestPauseThresholdKey)
         super.tearDown()
+    }
+
+    func testCameraControlValuesClampPersistedValuesToControlRanges() {
+        UserDefaults.standard.set(-0.5, forKey: focusValueKey)
+
+        XCTAssertEqual(Config.focusValue, 0.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(1.5, forKey: focusValueKey)
+
+        XCTAssertEqual(Config.focusValue, 1.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(1.0, forKey: shutterTimescaleKey)
+
+        XCTAssertEqual(Config.shutterTimescale, 30.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(2_000.0, forKey: shutterTimescaleKey)
+
+        XCTAssertEqual(Config.shutterTimescale, 1_000.0, accuracy: 0.0001)
     }
 
     func testImuTimingClampsPersistedValuesToControlRanges() {

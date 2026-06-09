@@ -869,8 +869,8 @@ final class WebServerManager: @unchecked Sendable {
 }
 
 enum WebControlInput {
-    static let focusValueRange = 0.0...1.0
-    static let shutterTimescaleRange = 30.0...1000.0
+    static let focusValueRange = Config.focusValueRange
+    static let shutterTimescaleRange = Config.shutterTimescaleRange
     static let yawRange = -90.0...90.0
     static let rollRange = -45.0...45.0
     static let fovRange = Double(Config.fovRange.lowerBound)...Double(Config.fovRange.upperBound)
