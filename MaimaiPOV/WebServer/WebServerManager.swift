@@ -524,7 +524,7 @@ final class WebServerManager: @unchecked Sendable {
                     if let pitch = WebControlInput.clampedDouble(
                         in: bodyData,
                         key: "pitch",
-                        range: WebControlInput.yawRange
+                        range: WebControlInput.pitchRange
                     ) {
                         pipeline.pitch = Float(pitch)
                         pipeline.updatePitch()
@@ -871,8 +871,9 @@ final class WebServerManager: @unchecked Sendable {
 enum WebControlInput {
     static let focusValueRange = Config.focusValueRange
     static let shutterTimescaleRange = Config.shutterTimescaleRange
-    static let yawRange = -90.0...90.0
-    static let rollRange = -45.0...45.0
+    static let yawRange = Double(Config.yawRange.lowerBound)...Double(Config.yawRange.upperBound)
+    static let pitchRange = Double(Config.pitchRange.lowerBound)...Double(Config.pitchRange.upperBound)
+    static let rollRange = Double(Config.rollRange.lowerBound)...Double(Config.rollRange.upperBound)
     static let fovRange = Double(Config.fovRange.lowerBound)...Double(Config.fovRange.upperBound)
     static let distRatioRange = Double(Config.distRatioRange.lowerBound)...Double(Config.distRatioRange.upperBound)
     static let activitySmoothFactorRange: ClosedRange<Double> = {

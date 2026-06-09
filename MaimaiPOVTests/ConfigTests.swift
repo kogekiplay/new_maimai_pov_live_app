@@ -8,6 +8,9 @@ final class ConfigTests: XCTestCase {
     private let readoutTimeKey = "com.maimai.readoutTimeMs"
     private let fovKey = "com.maimai.fov"
     private let distRatioKey = "com.maimai.distRatio"
+    private let yawKey = "com.maimai.yaw"
+    private let pitchKey = "com.maimai.pitch"
+    private let rollKey = "com.maimai.roll"
     private let yoloPaddingKey = "com.maimai.yoloPadding"
     private let streamBitrateKey = "com.maimai.streamBitrate"
     private let activitySmoothFactorKey = "com.maimai.activitySmoothFactor"
@@ -20,6 +23,9 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: readoutTimeKey)
         UserDefaults.standard.removeObject(forKey: fovKey)
         UserDefaults.standard.removeObject(forKey: distRatioKey)
+        UserDefaults.standard.removeObject(forKey: yawKey)
+        UserDefaults.standard.removeObject(forKey: pitchKey)
+        UserDefaults.standard.removeObject(forKey: rollKey)
         UserDefaults.standard.removeObject(forKey: yoloPaddingKey)
         UserDefaults.standard.removeObject(forKey: streamBitrateKey)
         UserDefaults.standard.removeObject(forKey: activitySmoothFactorKey)
@@ -79,6 +85,32 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(2.5, forKey: distRatioKey)
 
         XCTAssertEqual(Config.distRatio, 1)
+    }
+
+    func testStabilizerOrientationClampsPersistedValuesToControlRanges() {
+        UserDefaults.standard.set(-200.0, forKey: yawKey)
+
+        XCTAssertEqual(Config.yaw, -90, accuracy: 0.0001)
+
+        UserDefaults.standard.set(200.0, forKey: yawKey)
+
+        XCTAssertEqual(Config.yaw, 90, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-200.0, forKey: pitchKey)
+
+        XCTAssertEqual(Config.pitch, -90, accuracy: 0.0001)
+
+        UserDefaults.standard.set(200.0, forKey: pitchKey)
+
+        XCTAssertEqual(Config.pitch, 90, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-90.0, forKey: rollKey)
+
+        XCTAssertEqual(Config.roll, -45, accuracy: 0.0001)
+
+        UserDefaults.standard.set(90.0, forKey: rollKey)
+
+        XCTAssertEqual(Config.roll, 45, accuracy: 0.0001)
     }
 
     func testYoloPaddingClampsPersistedValuesToSupportedRange() {

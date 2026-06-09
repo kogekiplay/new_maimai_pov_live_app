@@ -259,34 +259,43 @@ enum Config {
         }
     }
     static let defaultYaw: Float   = 0.0
+    static let yawRange: ClosedRange<Float> = -90.0...90.0
     static var yaw: Float {
         get {
             guard UserDefaults.standard.object(forKey: yawKey) != nil else {
                 return defaultYaw
             }
-            return Float(UserDefaults.standard.double(forKey: yawKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: yawKey)), to: yawRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: yawKey) }
+        set {
+            UserDefaults.standard.set(Double(clampFloat(newValue, to: yawRange)), forKey: yawKey)
+        }
     }
     static let defaultPitch: Float = 0.0
+    static let pitchRange: ClosedRange<Float> = -90.0...90.0
     static var pitch: Float {
         get {
             guard UserDefaults.standard.object(forKey: pitchKey) != nil else {
                 return defaultPitch
             }
-            return Float(UserDefaults.standard.double(forKey: pitchKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: pitchKey)), to: pitchRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: pitchKey) }
+        set {
+            UserDefaults.standard.set(Double(clampFloat(newValue, to: pitchRange)), forKey: pitchKey)
+        }
     }
     static let defaultRoll: Float  = 0.0
+    static let rollRange: ClosedRange<Float> = -45.0...45.0
     static var roll: Float {
         get {
             guard UserDefaults.standard.object(forKey: rollKey) != nil else {
                 return defaultRoll
             }
-            return Float(UserDefaults.standard.double(forKey: rollKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: rollKey)), to: rollRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: rollKey) }
+        set {
+            UserDefaults.standard.set(Double(clampFloat(newValue, to: rollRange)), forKey: rollKey)
+        }
     }
     static let defaultStabEnabled: Bool = true
     static var stabEnabled: Bool {
