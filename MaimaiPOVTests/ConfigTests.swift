@@ -29,6 +29,7 @@ final class ConfigTests: XCTestCase {
     private let smoothingMinDeviationKey = "com.maimai.smoothingMinDeviation"
     private let smoothingMaxDeviationKey = "com.maimai.smoothingMaxDeviation"
     private let smoothingCenterFloorKey = "com.maimai.smoothingCenterFloor"
+    private let marqueeSpeedKey = "com.maimai.marqueeSpeed"
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: focusValueKey)
@@ -58,6 +59,7 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: smoothingMinDeviationKey)
         UserDefaults.standard.removeObject(forKey: smoothingMaxDeviationKey)
         UserDefaults.standard.removeObject(forKey: smoothingCenterFloorKey)
+        UserDefaults.standard.removeObject(forKey: marqueeSpeedKey)
         super.tearDown()
     }
 
@@ -297,5 +299,19 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(2.0, forKey: smoothingCenterFloorKey)
 
         XCTAssertEqual(Config.smoothingCenterFloor, 1.0, accuracy: 0.0001)
+    }
+
+    func testMarqueeSpeedClampsPersistedValuesToSupportedRange() {
+        UserDefaults.standard.set(-5.0, forKey: marqueeSpeedKey)
+
+        XCTAssertEqual(Config.marqueeSpeed, 0.5, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.0, forKey: marqueeSpeedKey)
+
+        XCTAssertEqual(Config.marqueeSpeed, 0.5, accuracy: 0.0001)
+
+        UserDefaults.standard.set(120.0, forKey: marqueeSpeedKey)
+
+        XCTAssertEqual(Config.marqueeSpeed, 20.0, accuracy: 0.0001)
     }
 }

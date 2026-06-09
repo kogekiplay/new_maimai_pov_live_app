@@ -526,14 +526,15 @@ enum Config {
     }
 
     static let defaultMarqueeSpeed: Float = 3.0
+    static let marqueeSpeedRange: ClosedRange<Float> = 0.5...20.0
     static var marqueeSpeed: Float {
         get {
             guard UserDefaults.standard.object(forKey: marqueeSpeedKey) != nil else {
                 return defaultMarqueeSpeed
             }
-            return Float(UserDefaults.standard.double(forKey: marqueeSpeedKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: marqueeSpeedKey)), to: marqueeSpeedRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: marqueeSpeedKey) }
+        set { UserDefaults.standard.set(Double(clampFloat(newValue, to: marqueeSpeedRange)), forKey: marqueeSpeedKey) }
     }
 
     static let defaultDeviceStatusEnabled: Bool = true
