@@ -47,6 +47,9 @@ enum DifficultyValue: Codable, Equatable, Sendable {
 
     var intVal: Int? {
         if case .intValue(let v) = self { return v }
+        if case .stringValue(let v) = self {
+            return Int(v.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
         return nil
     }
 

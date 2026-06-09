@@ -6,6 +6,10 @@ final class SongDatabaseTests: XCTestCase {
         XCTAssertTrue(DifficultyValue.stringValue(" UTAGE\n").isUtage)
     }
 
+    func testDifficultyValueParsesTrimmedNumericString() {
+        XCTAssertEqual(DifficultyValue.stringValue(" 3\n").intVal, 3)
+    }
+
     func testFindNoteUsesTrimmedDisplayDifficultyInput() {
         let database = SongDatabase()
         let song = Self.song(notes: [
