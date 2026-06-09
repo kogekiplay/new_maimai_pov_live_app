@@ -38,6 +38,17 @@ final class SongDatabaseTests: XCTestCase {
         XCTAssertEqual(picked?.chartType, "utage")
     }
 
+    func testFindCandidatesTrimsNewlinesAroundQuery() {
+        let database = SongDatabase()
+        let song = Self.song(id: 100, title: "Test Song")
+        database.install(Self.snapshot(songs: [song]))
+
+        let result = database.findCandidates(query: "\nTest Song\r\n")
+
+        XCTAssertEqual(result.candidates.map(\.id), [100])
+        XCTAssertEqual(result.matchKind, .title)
+    }
+
     private static func song(
         id: Int = 100,
         title: String = "Test Song",
@@ -77,5 +88,31 @@ final class SongDatabaseTests: XCTestCase {
             maxNotes: nil,
             isEnable: true
         )
+    }
+
+    private static func snapshot(songs: [Song]) -> SongDatabase.BundleLoadResult {
+        var byId: [Int: Song] = [:]
+        var byTitle: [String: [Song]] = [:]
+
+        for song in songs {
+            byId[song.id] = song
+            byTitle[song.title.lowercased(), default: []].append(song)
+        }
+
+        return .success(SongDatabase.BundleSnapshot(
+            songList: songs,
+            aliasMap: [:],
+            byId: byId,
+            byTitle: byTitle,
+            byAlias: [:],
+            summary: SongDatabase.LoadSummary(
+                loadedCount: songs.count,
+                standardCount: songs.filter { $0.chartType == "standard" }.count,
+                dxCount: songs.filter { $0.chartType == "dx" }.count,
+                utageCount: songs.filter { $0.chartType == "utage" }.count,
+                titleIndexCount: byTitle.count,
+                aliasIndexCount: 0
+            )
+        ))
     }
 }

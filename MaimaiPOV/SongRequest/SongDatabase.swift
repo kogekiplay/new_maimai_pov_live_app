@@ -343,7 +343,7 @@ class SongDatabase {
     }
 
     func findCandidates(query: String) -> FindCandidatesResult {
-        let q = query.lowercased().trimmingCharacters(in: .whitespaces)
+        let q = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty { return FindCandidatesResult(candidates: [], matchKind: nil) }
 
         if let id = Int(q), id > 0 {
