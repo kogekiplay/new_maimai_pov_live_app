@@ -326,11 +326,9 @@ final class QueueAPIHandler: @unchecked Sendable {
 
     func getUserInfo(request: HttpRequest) -> HttpResponse {
         guard let rawUsername = request.queryParams.first(where: { $0.0 == "username" })?.1,
-              !rawUsername.isEmpty else {
+              let username = URLQueryDecoder.decodeNonBlankComponent(rawUsername) else {
             return .badRequest(.text("Missing 'username' parameter"))
         }
-
-        let username = URLQueryDecoder.decodeComponent(rawUsername)
 
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>([:])

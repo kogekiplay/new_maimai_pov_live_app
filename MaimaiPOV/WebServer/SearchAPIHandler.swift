@@ -10,11 +10,9 @@ final class SearchAPIHandler: @unchecked Sendable {
 
     func search(request: HttpRequest) -> HttpResponse {
         guard let queryParam = request.queryParams.first(where: { $0.0 == "q" })?.1,
-              !queryParam.isEmpty else {
+              let query = URLQueryDecoder.decodeNonBlankComponent(queryParam) else {
             return .badRequest(.text("Missing query parameter 'q'"))
         }
-
-        let query = URLQueryDecoder.decodeComponent(queryParam)
 
         let sem = DispatchSemaphore(value: 0)
         let response = LockedValue<[String: Any]>([:])

@@ -5,4 +5,9 @@ enum URLQueryDecoder {
         let formDecoded = rawValue.replacingOccurrences(of: "+", with: " ")
         return formDecoded.removingPercentEncoding ?? formDecoded
     }
+
+    static func decodeNonBlankComponent(_ rawValue: String) -> String? {
+        let decoded = decodeComponent(rawValue)
+        return decoded.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : decoded
+    }
 }

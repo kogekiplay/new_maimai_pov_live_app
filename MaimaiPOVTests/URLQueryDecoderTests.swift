@@ -9,4 +9,12 @@ final class URLQueryDecoderTests: XCTestCase {
     func testDecodeComponentPreservesEscapedPlusSign() {
         XCTAssertEqual(URLQueryDecoder.decodeComponent("A%2BB+DX"), "A+B DX")
     }
+
+    func testDecodeNonBlankComponentRejectsPlusOnlyWhitespace() {
+        XCTAssertNil(URLQueryDecoder.decodeNonBlankComponent("+++"))
+    }
+
+    func testDecodeNonBlankComponentRejectsEscapedWhitespace() {
+        XCTAssertNil(URLQueryDecoder.decodeNonBlankComponent("%0A%20"))
+    }
 }
