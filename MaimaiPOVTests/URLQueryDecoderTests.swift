@@ -17,4 +17,8 @@ final class URLQueryDecoderTests: XCTestCase {
     func testDecodeNonBlankComponentRejectsEscapedWhitespace() {
         XCTAssertNil(URLQueryDecoder.decodeNonBlankComponent("%0A%20"))
     }
+
+    func testDecodeIntComponentDecodesPercentEncodedDigits() {
+        XCTAssertEqual(URLQueryDecoder.decodeIntComponent("%31"), 1)
+    }
 }

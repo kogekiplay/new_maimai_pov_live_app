@@ -357,7 +357,9 @@ final class WebServerManager: @unchecked Sendable {
         server["/api/danmaku/history"] = { [weak self] request in
             guard self != nil else { return .internalServerError }
 
-            let sinceId = Int(request.queryParams.first(where: { $0.0 == "sinceId" })?.1 ?? "0") ?? 0
+            let sinceId = request.queryParams
+                .first(where: { $0.0 == "sinceId" })
+                .flatMap { URLQueryDecoder.decodeIntComponent($0.1) } ?? 0
             let entries = DanmakuBufferManager.shared.getHistory(sinceId: sinceId)
 
             guard let jsonData = try? JSONEncoder().encode(entries) else {
