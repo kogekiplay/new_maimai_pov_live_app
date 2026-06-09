@@ -122,6 +122,10 @@ final class WebControlInputTests: XCTestCase {
         XCTAssertEqual(WebControlInput.clampedDouble(in: ["focus": 0.5], key: "focus", range: 0...1), 0.5)
     }
 
+    func testClampedDoubleAcceptsIntegerJSONValues() {
+        XCTAssertEqual(WebControlInput.clampedDouble(in: ["fov": 100], key: "fov", range: WebControlInput.fovRange), 100)
+    }
+
     func testClampedDoubleClampsValuesOutsideRange() {
         XCTAssertEqual(WebControlInput.clampedDouble(in: ["focus": -0.25], key: "focus", range: 0...1), 0)
         XCTAssertEqual(WebControlInput.clampedDouble(in: ["focus": 1.25], key: "focus", range: 0...1), 1)

@@ -881,7 +881,12 @@ enum WebControlInput {
     static let songRequestPauseThresholdRange = 1...9_999
 
     static func clampedDouble(in body: [String: Any], key: String, range: ClosedRange<Double>) -> Double? {
-        guard let value = body[key] as? Double else {
+        let value: Double
+        if let doubleValue = body[key] as? Double {
+            value = doubleValue
+        } else if let intValue = body[key] as? Int {
+            value = Double(intValue)
+        } else {
             return nil
         }
         return min(max(value, range.lowerBound), range.upperBound)
