@@ -133,6 +133,19 @@ final class DebugAPIHandlerTests: XCTestCase {
 }
 
 final class WebControlInputTests: XCTestCase {
+    func testJSONNumberInputParsesIntegralIntValues() {
+        XCTAssertEqual(JSONNumberInput.integralInt(30), 30)
+        XCTAssertEqual(JSONNumberInput.integralInt(30.0), 30)
+        XCTAssertNil(JSONNumberInput.integralInt(30.5))
+        XCTAssertNil(JSONNumberInput.integralInt("30"))
+    }
+
+    func testJSONNumberInputParsesDoubleValues() {
+        XCTAssertEqual(JSONNumberInput.double(30), 30)
+        XCTAssertEqual(JSONNumberInput.double(30.5), 30.5)
+        XCTAssertNil(JSONNumberInput.double("30.5"))
+    }
+
     func testClampedDoubleReturnsNilForMissingOrNonNumericValues() {
         XCTAssertNil(WebControlInput.clampedDouble(in: [:], key: "focus", range: 0...1))
         XCTAssertNil(WebControlInput.clampedDouble(in: ["focus": "0.5"], key: "focus", range: 0...1))

@@ -881,28 +881,14 @@ enum WebControlInput {
     static let songRequestPauseThresholdRange = 1...9_999
 
     static func clampedDouble(in body: [String: Any], key: String, range: ClosedRange<Double>) -> Double? {
-        let value: Double
-        if let doubleValue = body[key] as? Double {
-            value = doubleValue
-        } else if let intValue = body[key] as? Int {
-            value = Double(intValue)
-        } else {
+        guard let value = JSONNumberInput.double(body[key]) else {
             return nil
         }
         return min(max(value, range.lowerBound), range.upperBound)
     }
 
     static func clampedInt(in body: [String: Any], key: String, range: ClosedRange<Int>) -> Int? {
-        let value: Int
-        if let intValue = body[key] as? Int {
-            value = intValue
-        } else if let doubleValue = body[key] as? Double,
-                  doubleValue.isFinite,
-                  doubleValue.rounded(.towardZero) == doubleValue,
-                  doubleValue >= Double(Int.min),
-                  doubleValue <= Double(Int.max) {
-            value = Int(doubleValue)
-        } else {
+        guard let value = JSONNumberInput.integralInt(body[key]) else {
             return nil
         }
         return min(max(value, range.lowerBound), range.upperBound)

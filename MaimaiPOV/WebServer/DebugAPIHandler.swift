@@ -35,31 +35,17 @@ final class DebugAPIHandler: @unchecked Sendable {
     }
 
     private static func positiveIntValue(_ rawValue: Any?) -> Int? {
-        guard let value = intValue(rawValue), value > 0 else {
+        guard let value = JSONNumberInput.integralInt(rawValue), value > 0 else {
             return nil
         }
         return value
-    }
-
-    private static func intValue(_ rawValue: Any?) -> Int? {
-        if let intValue = rawValue as? Int {
-            return intValue
-        } else if let doubleValue = rawValue as? Double,
-                  doubleValue.isFinite,
-                  doubleValue.rounded(.towardZero) == doubleValue,
-                  doubleValue >= Double(Int.min),
-                  doubleValue <= Double(Int.max) {
-            return Int(doubleValue)
-        } else {
-            return nil
-        }
     }
 
     static func optionalBatteryLevel(in body: [String: Any], key: String) -> OptionalIntInput {
         guard let rawValue = body[key], !(rawValue is NSNull) else {
             return .valid(nil)
         }
-        guard let value = intValue(rawValue), (0...100).contains(value) else {
+        guard let value = JSONNumberInput.integralInt(rawValue), (0...100).contains(value) else {
             return .invalid
         }
         return .valid(value)
@@ -69,7 +55,7 @@ final class DebugAPIHandler: @unchecked Sendable {
         guard let rawValue = body[key], !(rawValue is NSNull) else {
             return defaultValue
         }
-        return intValue(rawValue) ?? defaultValue
+        return JSONNumberInput.integralInt(rawValue) ?? defaultValue
     }
 
     func simulateGift(request: HttpRequest) -> HttpResponse {

@@ -15,3 +15,29 @@ enum URLQueryDecoder {
         Int(decodeComponent(rawValue).trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }
+
+enum JSONNumberInput {
+    static func double(_ rawValue: Any?) -> Double? {
+        if let doubleValue = rawValue as? Double {
+            return doubleValue
+        } else if let intValue = rawValue as? Int {
+            return Double(intValue)
+        } else {
+            return nil
+        }
+    }
+
+    static func integralInt(_ rawValue: Any?) -> Int? {
+        if let intValue = rawValue as? Int {
+            return intValue
+        }
+        guard let doubleValue = rawValue as? Double,
+              doubleValue.isFinite,
+              doubleValue.rounded(.towardZero) == doubleValue,
+              doubleValue >= Double(Int.min),
+              doubleValue <= Double(Int.max) else {
+            return nil
+        }
+        return Int(doubleValue)
+    }
+}

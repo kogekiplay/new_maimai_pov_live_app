@@ -26,28 +26,14 @@ final class QueueAPIHandler: @unchecked Sendable {
     }
 
     static func requiredDisplayIndex(in body: [String: Any]) -> Int? {
-        guard let displayIndex = intValue(body["index"]), displayIndex >= 0 else {
+        guard let displayIndex = JSONNumberInput.integralInt(body["index"]), displayIndex >= 0 else {
             return nil
         }
         return displayIndex
     }
 
-    private static func intValue(_ rawValue: Any?) -> Int? {
-        if let intValue = rawValue as? Int {
-            return intValue
-        } else if let doubleValue = rawValue as? Double,
-                  doubleValue.isFinite,
-                  doubleValue.rounded(.towardZero) == doubleValue,
-                  doubleValue >= Double(Int.min),
-                  doubleValue <= Double(Int.max) {
-            return Int(doubleValue)
-        } else {
-            return nil
-        }
-    }
-
     private static func positiveIntValue(_ rawValue: Any?) -> Int? {
-        guard let value = intValue(rawValue), value > 0 else {
+        guard let value = JSONNumberInput.integralInt(rawValue), value > 0 else {
             return nil
         }
         return value
