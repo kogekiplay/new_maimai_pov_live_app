@@ -442,8 +442,7 @@ final class WebServerManager: @unchecked Sendable {
                         Config.autoFocusEnabled = autoFocus
                         pipeline.camera.setAutoFocus(autoFocus)
                     }
-                    if let lens = bodyData["selectedLens"] as? String,
-                       let lensType = LensType(rawValue: lens) {
+                    if let lensType = WebControlInput.lensType(in: bodyData, key: "selectedLens") {
                         pipeline.selectedLens = lensType
                         pipeline.handleLensChange(lensType)
                     }
@@ -892,5 +891,23 @@ enum WebControlInput {
             return nil
         }
         return min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    static func lensType(in body: [String: Any], key: String) -> LensType? {
+        guard let rawValue = body[key] as? String else {
+            return nil
+        }
+        let normalized = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let lens = LensType(rawValue: normalized) {
+            return lens
+        }
+        switch normalized {
+        case "Main":
+            return .main
+        case "Ultra-Wide", "UW":
+            return .ultraWide
+        default:
+            return nil
+        }
     }
 }

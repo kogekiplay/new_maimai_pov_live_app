@@ -192,6 +192,14 @@ final class WebControlInputTests: XCTestCase {
         XCTAssertEqual(WebControlInput.clampedInt(in: ["threshold": 30.0], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange), 30)
         XCTAssertNil(WebControlInput.clampedInt(in: ["threshold": 30.5], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange))
     }
+
+    func testLensTypeAcceptsRawValuesAndWebAliases() {
+        XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "Main (1x)"], key: "selectedLens"), .main)
+        XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "Main"], key: "selectedLens"), .main)
+        XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "Ultra-Wide (0.5x)"], key: "selectedLens"), .ultraWide)
+        XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "Ultra-Wide"], key: "selectedLens"), .ultraWide)
+        XCTAssertNil(WebControlInput.lensType(in: ["selectedLens": "Telephoto"], key: "selectedLens"))
+    }
 }
 
 final class QueueAPIHandlerTests: XCTestCase {

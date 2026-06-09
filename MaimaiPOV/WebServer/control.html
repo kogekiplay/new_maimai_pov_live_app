@@ -445,8 +445,8 @@ body{background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);color:var(
 <div class="cam-row">
 <span class="cam-label">镜头</span>
 <div class="cam-segmented">
-<button class="cam-seg-btn" :class="{active:camSettings.selectedLens==='Main'}" @click="camSettings.selectedLens='Main';updateCameraSettings()">Main</button>
-<button class="cam-seg-btn" :class="{active:camSettings.selectedLens==='Ultra-Wide'}" @click="camSettings.selectedLens='Ultra-Wide';updateCameraSettings()">UW</button>
+<button class="cam-seg-btn" :class="{active:camSettings.selectedLens==='Main (1x)'}" @click="camSettings.selectedLens='Main (1x)';updateCameraSettings()">Main</button>
+<button class="cam-seg-btn" :class="{active:camSettings.selectedLens==='Ultra-Wide (0.5x)'}" @click="camSettings.selectedLens='Ultra-Wide (0.5x)';updateCameraSettings()">UW</button>
 </div>
 </div>
 <div class="cam-toggle-row">
@@ -802,7 +802,7 @@ sseReconnectAttempts:0,
 sseConnected:false,
 previewActive:false,
 previewKey:Date.now(),
-camSettings:{iso:2000,minISO:50,maxISO:3200,shutterTimescale:244,focusValue:0.5,autoFocusEnabled:false,selectedLens:'Main',awbLocked:false},
+camSettings:{iso:2000,minISO:50,maxISO:3200,shutterTimescale:244,focusValue:0.5,autoFocusEnabled:false,selectedLens:'Main (1x)',awbLocked:false},
 stabSettings:{stabEnabled:true,yaw:0,pitch:0,roll:0,fov:100,distRatio:0,activityMode:false,activitySmoothFactor:0.03},
 audioSettings:{leftGain:1,rightGain:1,isStereoMixEnabled:false},
 camDebounceTimer:null,
