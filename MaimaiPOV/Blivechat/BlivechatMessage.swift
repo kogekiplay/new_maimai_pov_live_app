@@ -5,6 +5,9 @@ private func normalizedAuthorName(_ value: Any?) -> String {
 }
 
 private func integralInt(_ value: Any?) -> Int? {
+    if value is Bool {
+        return nil
+    }
     if let intValue = value as? Int {
         return intValue
     }

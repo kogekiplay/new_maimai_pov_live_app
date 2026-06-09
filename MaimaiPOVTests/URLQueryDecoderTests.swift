@@ -299,6 +299,42 @@ final class BlivechatMessageInputTests: XCTestCase {
         XCTAssertEqual(message?.contentType, 2)
     }
 
+    func testBlivechatJSONBooleansDoNotParseAsNumericFields() throws {
+        let danmakuData = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: Data(#"["",true,"Alice",true,"hello",true,true,true,true,true,true,"id","",true,0,0,""]"#.utf8)
+            ) as? [Any]
+        )
+
+        let danmaku = DanmakuMessage(fromArray: danmakuData)
+
+        XCTAssertEqual(danmaku?.timestamp, 0)
+        XCTAssertEqual(danmaku?.authorType, .normal)
+        XCTAssertEqual(danmaku?.privilegeType, PrivilegeType.none)
+        XCTAssertEqual(danmaku?.isGiftDanmaku, false)
+        XCTAssertEqual(danmaku?.authorLevel, 0)
+        XCTAssertEqual(danmaku?.isNewbie, false)
+        XCTAssertEqual(danmaku?.isMobileVerified, false)
+        XCTAssertEqual(danmaku?.medalLevel, 0)
+        XCTAssertEqual(danmaku?.contentType, 0)
+
+        let giftData = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: Data(#"{"authorName":"Alice","timestamp":true,"totalCoin":true,"totalFreeCoin":true,"num":true,"privilegeType":true,"medalLevel":true}"#.utf8)
+            ) as? [String: Any]
+        )
+
+        let gift = GiftMessage(fromDict: giftData)
+
+        XCTAssertEqual(gift?.timestamp, 0)
+        XCTAssertEqual(gift?.totalCoin, 0)
+        XCTAssertEqual(gift?.totalFreeCoin, 0)
+        XCTAssertEqual(gift?.num, 0)
+        XCTAssertEqual(gift?.privilegeType, PrivilegeType.none)
+        XCTAssertEqual(gift?.medalLevel, 0)
+        XCTAssertEqual(gift?.isPaidGift, false)
+    }
+
     func testGiftMessageTrimsAuthorName() {
         let message = GiftMessage(fromDict: ["authorName": "\nAlice ", "giftName": "Gift"])
 
