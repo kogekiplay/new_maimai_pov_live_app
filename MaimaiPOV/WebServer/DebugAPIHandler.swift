@@ -12,6 +12,13 @@ final class DebugAPIHandler: @unchecked Sendable {
         return value
     }
 
+    static func requiredPositiveInt(in body: [String: Any], key: String) -> Int? {
+        guard let value = body[key] as? Int, value > 0 else {
+            return nil
+        }
+        return value
+    }
+
     func simulateGift(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
               let authorName = Self.requiredNonBlankString(in: body, key: "authorName") else {
@@ -347,7 +354,7 @@ final class DebugAPIHandler: @unchecked Sendable {
 
     func setExpirationTimeout(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let timeout = body["timeout"] as? Int else {
+              let timeout = Self.requiredPositiveInt(in: body, key: "timeout") else {
             return .badRequest(.text("Missing 'timeout' (seconds)"))
         }
 

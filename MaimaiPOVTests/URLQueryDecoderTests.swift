@@ -42,6 +42,15 @@ final class DebugAPIHandlerTests: XCTestCase {
             " Alice "
         )
     }
+
+    func testRequiredPositiveIntRejectsZeroAndNegativeValues() {
+        XCTAssertNil(DebugAPIHandler.requiredPositiveInt(in: ["timeout": 0], key: "timeout"))
+        XCTAssertNil(DebugAPIHandler.requiredPositiveInt(in: ["timeout": -1], key: "timeout"))
+    }
+
+    func testRequiredPositiveIntAcceptsPositiveValue() {
+        XCTAssertEqual(DebugAPIHandler.requiredPositiveInt(in: ["timeout": 30], key: "timeout"), 30)
+    }
 }
 
 final class QueueAPIHandlerTests: XCTestCase {
