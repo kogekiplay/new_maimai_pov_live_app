@@ -268,10 +268,48 @@ final class BlivechatMessageInputTests: XCTestCase {
         XCTAssertEqual(message?.content, " hello ")
     }
 
+    func testDanmakuMessageAcceptsIntegralDoubleNumbers() {
+        let data: [Any] = [
+            "", 12.0, "Alice", 1.0, "hello", 3.0, 1.0, 25.0, 1.0, 1.0, 18.0, "id", "", 2.0, 0, 0, ""
+        ]
+
+        let message = DanmakuMessage(fromArray: data)
+
+        XCTAssertEqual(message?.timestamp, 12)
+        XCTAssertEqual(message?.authorType, .member)
+        XCTAssertEqual(message?.privilegeType, .captain)
+        XCTAssertEqual(message?.isGiftDanmaku, true)
+        XCTAssertEqual(message?.authorLevel, 25)
+        XCTAssertEqual(message?.isNewbie, true)
+        XCTAssertEqual(message?.isMobileVerified, true)
+        XCTAssertEqual(message?.medalLevel, 18)
+        XCTAssertEqual(message?.contentType, 2)
+    }
+
     func testGiftMessageTrimsAuthorName() {
         let message = GiftMessage(fromDict: ["authorName": "\nAlice ", "giftName": "Gift"])
 
         XCTAssertEqual(message?.authorName, "Alice")
+    }
+
+    func testGiftMessageAcceptsIntegralDoubleNumbers() {
+        let message = GiftMessage(fromDict: [
+            "authorName": "Alice",
+            "timestamp": 12.0,
+            "totalCoin": 1000.0,
+            "totalFreeCoin": 200.0,
+            "num": 3.0,
+            "privilegeType": 2.0,
+            "medalLevel": 10.0
+        ])
+
+        XCTAssertEqual(message?.timestamp, 12)
+        XCTAssertEqual(message?.totalCoin, 1000)
+        XCTAssertEqual(message?.totalFreeCoin, 200)
+        XCTAssertEqual(message?.num, 3)
+        XCTAssertEqual(message?.privilegeType, .admiral)
+        XCTAssertEqual(message?.medalLevel, 10)
+        XCTAssertEqual(message?.isPaidGift, true)
     }
 
     func testMemberMessageTrimsAuthorName() {
@@ -280,10 +318,42 @@ final class BlivechatMessageInputTests: XCTestCase {
         XCTAssertEqual(message?.authorName, "Alice")
     }
 
+    func testMemberMessageAcceptsIntegralDoubleNumbers() {
+        let message = MemberMessage(fromDict: [
+            "authorName": "Alice",
+            "timestamp": 12.0,
+            "privilegeType": 3.0,
+            "num": 2.0,
+            "totalCoin": 1000.0,
+            "price": 138.0
+        ])
+
+        XCTAssertEqual(message?.timestamp, 12)
+        XCTAssertEqual(message?.privilegeType, .captain)
+        XCTAssertEqual(message?.num, 2)
+        XCTAssertEqual(message?.totalCoin, 1000)
+        XCTAssertEqual(message?.price, 138)
+    }
+
     func testSuperChatMessageTrimsAuthorName() {
         let message = SuperChatMessage(fromDict: ["authorName": "\nAlice ", "content": " hello "])
 
         XCTAssertEqual(message?.authorName, "Alice")
         XCTAssertEqual(message?.content, " hello ")
+    }
+
+    func testSuperChatMessageAcceptsIntegralDoubleNumbers() {
+        let message = SuperChatMessage(fromDict: [
+            "authorName": "Alice",
+            "timestamp": 12.0,
+            "price": 30.0,
+            "privilegeType": 1.0,
+            "medalLevel": 6.0
+        ])
+
+        XCTAssertEqual(message?.timestamp, 12)
+        XCTAssertEqual(message?.price, 30)
+        XCTAssertEqual(message?.privilegeType, .governor)
+        XCTAssertEqual(message?.medalLevel, 6)
     }
 }

@@ -4,6 +4,24 @@ private func normalizedAuthorName(_ value: Any?) -> String {
     (value as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
+private func integralInt(_ value: Any?) -> Int? {
+    if let intValue = value as? Int {
+        return intValue
+    }
+    guard let doubleValue = value as? Double,
+          doubleValue.isFinite,
+          doubleValue.rounded(.towardZero) == doubleValue,
+          doubleValue >= Double(Int.min),
+          doubleValue <= Double(Int.max) else {
+        return nil
+    }
+    return Int(doubleValue)
+}
+
+private func intValue(_ value: Any?, default defaultValue: Int = 0) -> Int {
+    integralInt(value) ?? defaultValue
+}
+
 enum BlivechatCommand: Int, Codable, Sendable {
     case heartbeat = 0
     case joinRoom = 1
@@ -59,19 +77,19 @@ struct DanmakuMessage: Sendable {
         guard data.count >= 17 else { return nil }
 
         self.avatarUrl = data[0] as? String ?? ""
-        self.timestamp = data[1] as? Int ?? 0
+        self.timestamp = intValue(data[1])
         self.authorName = normalizedAuthorName(data[2])
-        self.authorType = AuthorType(rawValue: data[3] as? Int ?? 0) ?? .normal
+        self.authorType = AuthorType(rawValue: intValue(data[3])) ?? .normal
         self.content = data[4] as? String ?? ""
-        self.privilegeType = PrivilegeType(rawValue: data[5] as? Int ?? 0) ?? .none
-        self.isGiftDanmaku = (data[6] as? Int ?? 0) != 0
-        self.authorLevel = data[7] as? Int ?? 0
-        self.isNewbie = (data[8] as? Int ?? 0) != 0
-        self.isMobileVerified = (data[9] as? Int ?? 0) != 0
-        self.medalLevel = data[10] as? Int ?? 0
+        self.privilegeType = PrivilegeType(rawValue: intValue(data[5])) ?? .none
+        self.isGiftDanmaku = intValue(data[6]) != 0
+        self.authorLevel = intValue(data[7])
+        self.isNewbie = intValue(data[8]) != 0
+        self.isMobileVerified = intValue(data[9]) != 0
+        self.medalLevel = intValue(data[10])
         self.id = data[11] as? String ?? ""
         self.translation = data[12] as? String ?? ""
-        self.contentType = data[13] as? Int ?? 0
+        self.contentType = intValue(data[13])
         self.uid = data[16] as? String ?? ""
         self.medalName = data.count > 17 ? (data[17] as? String ?? "") : ""
     }
@@ -97,14 +115,14 @@ struct GiftMessage: Sendable {
     init?(fromDict data: [String: Any]) {
         self.id = data["id"] as? String ?? ""
         self.avatarUrl = data["avatarUrl"] as? String ?? ""
-        self.timestamp = data["timestamp"] as? Int ?? 0
+        self.timestamp = intValue(data["timestamp"])
         self.authorName = normalizedAuthorName(data["authorName"])
-        self.totalCoin = data["totalCoin"] as? Int ?? 0
-        self.totalFreeCoin = data["totalFreeCoin"] as? Int ?? 0
+        self.totalCoin = intValue(data["totalCoin"])
+        self.totalFreeCoin = intValue(data["totalFreeCoin"])
         self.giftName = data["giftName"] as? String ?? ""
-        self.num = data["num"] as? Int ?? 0
-        self.privilegeType = PrivilegeType(rawValue: data["privilegeType"] as? Int ?? 0) ?? .none
-        self.medalLevel = data["medalLevel"] as? Int ?? 0
+        self.num = intValue(data["num"])
+        self.privilegeType = PrivilegeType(rawValue: intValue(data["privilegeType"])) ?? .none
+        self.medalLevel = intValue(data["medalLevel"])
         self.uid = data["uid"] as? String ?? ""
     }
 }
@@ -126,13 +144,13 @@ struct MemberMessage: Sendable {
     init?(fromDict data: [String: Any]) {
         self.id = data["id"] as? String ?? ""
         self.avatarUrl = data["avatarUrl"] as? String ?? ""
-        self.timestamp = data["timestamp"] as? Int ?? 0
+        self.timestamp = intValue(data["timestamp"])
         self.authorName = normalizedAuthorName(data["authorName"])
-        self.privilegeType = PrivilegeType(rawValue: data["privilegeType"] as? Int ?? 0) ?? .none
+        self.privilegeType = PrivilegeType(rawValue: intValue(data["privilegeType"])) ?? .none
         self.giftName = data["giftName"] as? String ?? ""
-        self.num = data["num"] as? Int ?? 0
-        self.totalCoin = data["totalCoin"] as? Int ?? 0
-        self.price = data["price"] as? Int ?? 0
+        self.num = intValue(data["num"])
+        self.totalCoin = intValue(data["totalCoin"])
+        self.price = intValue(data["price"])
         self.uid = data["uid"] as? String ?? ""
     }
 }
@@ -154,13 +172,13 @@ struct SuperChatMessage: Sendable {
     init?(fromDict data: [String: Any]) {
         self.id = data["id"] as? String ?? ""
         self.avatarUrl = data["avatarUrl"] as? String ?? ""
-        self.timestamp = data["timestamp"] as? Int ?? 0
+        self.timestamp = intValue(data["timestamp"])
         self.authorName = normalizedAuthorName(data["authorName"])
-        self.price = data["price"] as? Int ?? 0
+        self.price = intValue(data["price"])
         self.content = data["content"] as? String ?? ""
         self.translation = data["translation"] as? String ?? ""
-        self.privilegeType = PrivilegeType(rawValue: data["privilegeType"] as? Int ?? 0) ?? .none
-        self.medalLevel = data["medalLevel"] as? Int ?? 0
+        self.privilegeType = PrivilegeType(rawValue: intValue(data["privilegeType"])) ?? .none
+        self.medalLevel = intValue(data["medalLevel"])
         self.uid = data["uid"] as? String ?? ""
     }
 }
@@ -170,7 +188,7 @@ struct BlivechatErrorMessage: Sendable {
     let message: String
 
     init?(fromDict data: [String: Any]) {
-        self.code = data["code"] as? Int ?? -1
+        self.code = intValue(data["code"], default: -1)
         self.message = data["msg"] as? String ?? ""
     }
 }
@@ -230,5 +248,5 @@ struct AnyCodable: Codable {
     var arrayValue: [Any]? { value as? [Any] }
     var dictValue: [String: Any]? { value as? [String: Any] }
     var stringValue: String? { value as? String }
-    var intValue: Int? { value as? Int }
+    var intValue: Int? { integralInt(value) }
 }
