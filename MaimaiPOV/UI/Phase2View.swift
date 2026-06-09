@@ -1081,7 +1081,7 @@ struct Phase2View: View {
 
     private var overlayPosXRow: some View {
         labeledRow("OX") {
-            Slider(value: $pipeline.overlayPosX, in: -0.5...1.5, step: 0.01)
+            Slider(value: $pipeline.overlayPosX, in: Config.overlayPositionRange, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayPosX)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -1090,7 +1090,7 @@ struct Phase2View: View {
 
     private var overlayPosYRow: some View {
         labeledRow("OY") {
-            Slider(value: $pipeline.overlayPosY, in: -0.5...1.5, step: 0.01)
+            Slider(value: $pipeline.overlayPosY, in: Config.overlayPositionRange, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayPosY)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -1099,7 +1099,7 @@ struct Phase2View: View {
 
     private var overlayScaleRow: some View {
         labeledRow("OScale") {
-            Slider(value: $pipeline.overlayScale, in: 0.05...3.0, step: 0.01)
+            Slider(value: $pipeline.overlayScale, in: Config.overlayScaleRange, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayScale)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -1108,7 +1108,7 @@ struct Phase2View: View {
 
     private var overlayOpacityRow: some View {
         labeledRow("OAlpha") {
-            Slider(value: $pipeline.overlayOpacity, in: 0...1, step: 0.01)
+            Slider(value: $pipeline.overlayOpacity, in: Config.overlayOpacityRange, step: 0.01)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.overlayOpacity)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -1117,7 +1117,7 @@ struct Phase2View: View {
 
     private var overlayRotationRow: some View {
         labeledRow("ORot") {
-            Slider(value: $pipeline.overlayRotation, in: 0...360, step: 1)
+            Slider(value: $pipeline.overlayRotation, in: Config.overlayRotationRange, step: 1)
         } valueLabel: {
             Text("\(Int(pipeline.overlayRotation))°").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -1158,7 +1158,7 @@ struct Phase2View: View {
 
     private var cropVerticalOffsetRow: some View {
         labeledRow("HOffset") {
-            Slider(value: $pipeline.cropHorizontalOffset, in: -500...500, step: 10)
+            Slider(value: $pipeline.cropHorizontalOffset, in: Config.cropHorizontalOffsetRange, step: 10)
         } valueLabel: {
             Text("\(Int(pipeline.cropHorizontalOffset))px").font(.caption).foregroundColor(.gray).frame(width: 50, alignment: .trailing)
         }

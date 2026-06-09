@@ -19,6 +19,12 @@ final class ConfigTests: XCTestCase {
     private let trackRecenterSpeedKey = "com.maimai.trackRecenterSpeed"
     private let recenterGraceMsKey = "com.maimai.recenterGraceMs"
     private let acquireSpeedKey = "com.maimai.acquireSpeed"
+    private let overlayPosXKey = "com.maimai.overlayPosX"
+    private let overlayPosYKey = "com.maimai.overlayPosY"
+    private let overlayScaleKey = "com.maimai.overlayScale"
+    private let overlayOpacityKey = "com.maimai.overlayOpacity"
+    private let overlayRotationKey = "com.maimai.overlayRotation"
+    private let cropHorizontalOffsetKey = "com.maimai.cropHorizontalOffset"
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: focusValueKey)
@@ -38,6 +44,12 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: trackRecenterSpeedKey)
         UserDefaults.standard.removeObject(forKey: recenterGraceMsKey)
         UserDefaults.standard.removeObject(forKey: acquireSpeedKey)
+        UserDefaults.standard.removeObject(forKey: overlayPosXKey)
+        UserDefaults.standard.removeObject(forKey: overlayPosYKey)
+        UserDefaults.standard.removeObject(forKey: overlayScaleKey)
+        UserDefaults.standard.removeObject(forKey: overlayOpacityKey)
+        UserDefaults.standard.removeObject(forKey: overlayRotationKey)
+        UserDefaults.standard.removeObject(forKey: cropHorizontalOffsetKey)
         super.tearDown()
     }
 
@@ -193,5 +205,55 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(0.8, forKey: acquireSpeedKey)
 
         XCTAssertEqual(Config.acquireSpeed, 0.5, accuracy: 0.0001)
+    }
+
+    func testOverlayControlValuesClampPersistedValuesToControlRanges() {
+        UserDefaults.standard.set(-2.0, forKey: overlayPosXKey)
+
+        XCTAssertEqual(Config.overlayPosX, -0.5, accuracy: 0.0001)
+
+        UserDefaults.standard.set(3.0, forKey: overlayPosXKey)
+
+        XCTAssertEqual(Config.overlayPosX, 1.5, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-2.0, forKey: overlayPosYKey)
+
+        XCTAssertEqual(Config.overlayPosY, -0.5, accuracy: 0.0001)
+
+        UserDefaults.standard.set(3.0, forKey: overlayPosYKey)
+
+        XCTAssertEqual(Config.overlayPosY, 1.5, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.001, forKey: overlayScaleKey)
+
+        XCTAssertEqual(Config.overlayScale, 0.05, accuracy: 0.0001)
+
+        UserDefaults.standard.set(5.0, forKey: overlayScaleKey)
+
+        XCTAssertEqual(Config.overlayScale, 3.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-0.5, forKey: overlayOpacityKey)
+
+        XCTAssertEqual(Config.overlayOpacity, 0.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(2.0, forKey: overlayOpacityKey)
+
+        XCTAssertEqual(Config.overlayOpacity, 1.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-45.0, forKey: overlayRotationKey)
+
+        XCTAssertEqual(Config.overlayRotation, 0.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(720.0, forKey: overlayRotationKey)
+
+        XCTAssertEqual(Config.overlayRotation, 360.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-750.0, forKey: cropHorizontalOffsetKey)
+
+        XCTAssertEqual(Config.cropHorizontalOffset, -500.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(750.0, forKey: cropHorizontalOffsetKey)
+
+        XCTAssertEqual(Config.cropHorizontalOffset, 500.0, accuracy: 0.0001)
     }
 }

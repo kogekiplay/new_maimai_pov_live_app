@@ -372,14 +372,15 @@ enum Config {
     }
 
     static let defaultOverlayPosX: Float = 0.5
+    static let overlayPositionRange: ClosedRange<Float> = -0.5...1.5
     static var overlayPosX: Float {
         get {
             guard UserDefaults.standard.object(forKey: overlayPosXKey) != nil else {
                 return defaultOverlayPosX
             }
-            return Float(UserDefaults.standard.double(forKey: overlayPosXKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: overlayPosXKey)), to: overlayPositionRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: overlayPosXKey) }
+        set { UserDefaults.standard.set(Double(clampFloat(newValue, to: overlayPositionRange)), forKey: overlayPosXKey) }
     }
     static let defaultOverlayPosY: Float = 0.5
     static var overlayPosY: Float {
@@ -387,39 +388,42 @@ enum Config {
             guard UserDefaults.standard.object(forKey: overlayPosYKey) != nil else {
                 return defaultOverlayPosY
             }
-            return Float(UserDefaults.standard.double(forKey: overlayPosYKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: overlayPosYKey)), to: overlayPositionRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: overlayPosYKey) }
+        set { UserDefaults.standard.set(Double(clampFloat(newValue, to: overlayPositionRange)), forKey: overlayPosYKey) }
     }
     static let defaultOverlayScale: Float = 0.2
+    static let overlayScaleRange: ClosedRange<Float> = 0.05...3.0
     static var overlayScale: Float {
         get {
             guard UserDefaults.standard.object(forKey: overlayScaleKey) != nil else {
                 return defaultOverlayScale
             }
-            return Float(UserDefaults.standard.double(forKey: overlayScaleKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: overlayScaleKey)), to: overlayScaleRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: overlayScaleKey) }
+        set { UserDefaults.standard.set(Double(clampFloat(newValue, to: overlayScaleRange)), forKey: overlayScaleKey) }
     }
     static let defaultOverlayOpacity: Float = 1.0
+    static let overlayOpacityRange: ClosedRange<Float> = 0.0...1.0
     static var overlayOpacity: Float {
         get {
             guard UserDefaults.standard.object(forKey: overlayOpacityKey) != nil else {
                 return defaultOverlayOpacity
             }
-            return Float(UserDefaults.standard.double(forKey: overlayOpacityKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: overlayOpacityKey)), to: overlayOpacityRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: overlayOpacityKey) }
+        set { UserDefaults.standard.set(Double(clampFloat(newValue, to: overlayOpacityRange)), forKey: overlayOpacityKey) }
     }
     static let defaultOverlayRotation: Float = 0.0
+    static let overlayRotationRange: ClosedRange<Float> = 0.0...360.0
     static var overlayRotation: Float {
         get {
             guard UserDefaults.standard.object(forKey: overlayRotationKey) != nil else {
                 return defaultOverlayRotation
             }
-            return Float(UserDefaults.standard.double(forKey: overlayRotationKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: overlayRotationKey)), to: overlayRotationRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: overlayRotationKey) }
+        set { UserDefaults.standard.set(Double(clampFloat(newValue, to: overlayRotationRange)), forKey: overlayRotationKey) }
     }
 
     static let defaultLeftPanelEnabled: Bool = true
@@ -480,14 +484,15 @@ enum Config {
     }
 
     static let defaultCropHorizontalOffset: Float = 0.0
+    static let cropHorizontalOffsetRange: ClosedRange<Float> = -500.0...500.0
     static var cropHorizontalOffset: Float {
         get {
             guard UserDefaults.standard.object(forKey: cropHorizontalOffsetKey) != nil else {
                 return defaultCropHorizontalOffset
             }
-            return Float(UserDefaults.standard.double(forKey: cropHorizontalOffsetKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: cropHorizontalOffsetKey)), to: cropHorizontalOffsetRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: cropHorizontalOffsetKey) }
+        set { UserDefaults.standard.set(Double(clampFloat(newValue, to: cropHorizontalOffsetRange)), forKey: cropHorizontalOffsetKey) }
     }
 
     static let defaultActivitySmoothFactor: Float = 0.03
