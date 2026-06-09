@@ -82,6 +82,12 @@ final class WebControlInputTests: XCTestCase {
         XCTAssertEqual(WebControlInput.clampedDouble(in: ["focus": -0.25], key: "focus", range: 0...1), 0)
         XCTAssertEqual(WebControlInput.clampedDouble(in: ["focus": 1.25], key: "focus", range: 0...1), 1)
     }
+
+    func testAudioGainRangeMatchesControlSurfaces() {
+        XCTAssertEqual(WebControlInput.clampedDouble(in: ["gain": -0.5], key: "gain", range: WebControlInput.audioGainRange), 0)
+        XCTAssertEqual(WebControlInput.clampedDouble(in: ["gain": 1.25], key: "gain", range: WebControlInput.audioGainRange), 1.25)
+        XCTAssertEqual(WebControlInput.clampedDouble(in: ["gain": 3.0], key: "gain", range: WebControlInput.audioGainRange), 2)
+    }
 }
 
 final class QueueAPIHandlerTests: XCTestCase {

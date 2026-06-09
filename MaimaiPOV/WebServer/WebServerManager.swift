@@ -612,10 +612,18 @@ final class WebServerManager: @unchecked Sendable {
                 let result = LockedValue<[String: Any]>([:])
                 Task { @MainActor in
                     guard let pipeline = self.pipeline else { sem.signal(); return }
-                    if let leftGain = bodyData["leftGain"] as? Double {
+                    if let leftGain = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "leftGain",
+                        range: WebControlInput.audioGainRange
+                    ) {
                         pipeline.audioMixer.leftGain = Float(leftGain)
                     }
-                    if let rightGain = bodyData["rightGain"] as? Double {
+                    if let rightGain = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "rightGain",
+                        range: WebControlInput.audioGainRange
+                    ) {
                         pipeline.audioMixer.rightGain = Float(rightGain)
                     }
                     result.set([
@@ -865,6 +873,7 @@ enum WebControlInput {
     static let fovRange = 30.0...160.0
     static let distRatioRange = 0.0...1.0
     static let activitySmoothFactorRange = 0.01...0.2
+    static let audioGainRange = 0.0...2.0
 
     static func clampedDouble(in body: [String: Any], key: String, range: ClosedRange<Double>) -> Double? {
         guard let value = body[key] as? Double else {
