@@ -12,9 +12,6 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   build:
     name: Build & Archive
@@ -23,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Verify Core ML Model
         run: |
@@ -109,7 +106,7 @@ jobs:
           ls -lh build/ipa/MaimaiPOV.ipa
 
       - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MaimaiPOV
           path: build/ipa/MaimaiPOV.ipa
