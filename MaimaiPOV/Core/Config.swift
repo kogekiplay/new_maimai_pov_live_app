@@ -185,9 +185,13 @@ enum Config {
 
     static let defaultSmoothingEnabled: Bool = true
     static let defaultSmoothingBaseAlpha: Double = 0.3
+    static let smoothingBaseAlphaRange = 0.05...1.0
     static let defaultSmoothingMinDeviation: Double = 0.02
+    static let smoothingMinDeviationRange = 0.0...0.1
     static let defaultSmoothingMaxDeviation: Double = 0.05
+    static let smoothingMaxDeviationRange = 0.0...0.15
     static let defaultSmoothingCenterFloor: Double = 0.3
+    static let smoothingCenterFloorRange = 0.0...1.0
 
     static var smoothingEnabled: Bool {
         get {
@@ -203,36 +207,36 @@ enum Config {
             guard UserDefaults.standard.object(forKey: smoothingBaseAlphaKey) != nil else {
                 return defaultSmoothingBaseAlpha
             }
-            return UserDefaults.standard.double(forKey: smoothingBaseAlphaKey)
+            return clampDouble(UserDefaults.standard.double(forKey: smoothingBaseAlphaKey), to: smoothingBaseAlphaRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: smoothingBaseAlphaKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: smoothingBaseAlphaRange), forKey: smoothingBaseAlphaKey) }
     }
     static var smoothingMinDeviation: Double {
         get {
             guard UserDefaults.standard.object(forKey: smoothingMinDeviationKey) != nil else {
                 return defaultSmoothingMinDeviation
             }
-            return UserDefaults.standard.double(forKey: smoothingMinDeviationKey)
+            return clampDouble(UserDefaults.standard.double(forKey: smoothingMinDeviationKey), to: smoothingMinDeviationRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: smoothingMinDeviationKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: smoothingMinDeviationRange), forKey: smoothingMinDeviationKey) }
     }
     static var smoothingMaxDeviation: Double {
         get {
             guard UserDefaults.standard.object(forKey: smoothingMaxDeviationKey) != nil else {
                 return defaultSmoothingMaxDeviation
             }
-            return UserDefaults.standard.double(forKey: smoothingMaxDeviationKey)
+            return clampDouble(UserDefaults.standard.double(forKey: smoothingMaxDeviationKey), to: smoothingMaxDeviationRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: smoothingMaxDeviationKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: smoothingMaxDeviationRange), forKey: smoothingMaxDeviationKey) }
     }
     static var smoothingCenterFloor: Double {
         get {
             guard UserDefaults.standard.object(forKey: smoothingCenterFloorKey) != nil else {
                 return defaultSmoothingCenterFloor
             }
-            return UserDefaults.standard.double(forKey: smoothingCenterFloorKey)
+            return clampDouble(UserDefaults.standard.double(forKey: smoothingCenterFloorKey), to: smoothingCenterFloorRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: smoothingCenterFloorKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: smoothingCenterFloorRange), forKey: smoothingCenterFloorKey) }
     }
 
     // Stabilizer defaults

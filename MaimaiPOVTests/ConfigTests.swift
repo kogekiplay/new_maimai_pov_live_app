@@ -25,6 +25,10 @@ final class ConfigTests: XCTestCase {
     private let overlayOpacityKey = "com.maimai.overlayOpacity"
     private let overlayRotationKey = "com.maimai.overlayRotation"
     private let cropHorizontalOffsetKey = "com.maimai.cropHorizontalOffset"
+    private let smoothingBaseAlphaKey = "com.maimai.smoothingBaseAlpha"
+    private let smoothingMinDeviationKey = "com.maimai.smoothingMinDeviation"
+    private let smoothingMaxDeviationKey = "com.maimai.smoothingMaxDeviation"
+    private let smoothingCenterFloorKey = "com.maimai.smoothingCenterFloor"
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: focusValueKey)
@@ -50,6 +54,10 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: overlayOpacityKey)
         UserDefaults.standard.removeObject(forKey: overlayRotationKey)
         UserDefaults.standard.removeObject(forKey: cropHorizontalOffsetKey)
+        UserDefaults.standard.removeObject(forKey: smoothingBaseAlphaKey)
+        UserDefaults.standard.removeObject(forKey: smoothingMinDeviationKey)
+        UserDefaults.standard.removeObject(forKey: smoothingMaxDeviationKey)
+        UserDefaults.standard.removeObject(forKey: smoothingCenterFloorKey)
         super.tearDown()
     }
 
@@ -255,5 +263,39 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(750.0, forKey: cropHorizontalOffsetKey)
 
         XCTAssertEqual(Config.cropHorizontalOffset, 500.0, accuracy: 0.0001)
+    }
+
+    func testSmoothingControlValuesClampPersistedValuesToControlRanges() {
+        UserDefaults.standard.set(0.001, forKey: smoothingBaseAlphaKey)
+
+        XCTAssertEqual(Config.smoothingBaseAlpha, 0.05, accuracy: 0.0001)
+
+        UserDefaults.standard.set(2.0, forKey: smoothingBaseAlphaKey)
+
+        XCTAssertEqual(Config.smoothingBaseAlpha, 1.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-0.5, forKey: smoothingMinDeviationKey)
+
+        XCTAssertEqual(Config.smoothingMinDeviation, 0.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.5, forKey: smoothingMinDeviationKey)
+
+        XCTAssertEqual(Config.smoothingMinDeviation, 0.1, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-0.5, forKey: smoothingMaxDeviationKey)
+
+        XCTAssertEqual(Config.smoothingMaxDeviation, 0.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.5, forKey: smoothingMaxDeviationKey)
+
+        XCTAssertEqual(Config.smoothingMaxDeviation, 0.15, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-0.5, forKey: smoothingCenterFloorKey)
+
+        XCTAssertEqual(Config.smoothingCenterFloor, 0.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(2.0, forKey: smoothingCenterFloorKey)
+
+        XCTAssertEqual(Config.smoothingCenterFloor, 1.0, accuracy: 0.0001)
     }
 }

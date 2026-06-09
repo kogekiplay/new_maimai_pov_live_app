@@ -1180,7 +1180,7 @@ struct Phase2View: View {
 
     private var smoothingBaseAlphaRow: some View {
         labeledRow("Alpha") {
-            Slider(value: $pipeline.smoothingBaseAlpha, in: 0.05...1.0, step: 0.05)
+            Slider(value: $pipeline.smoothingBaseAlpha, in: Config.smoothingBaseAlphaRange, step: 0.05)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.smoothingBaseAlpha)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -1190,12 +1190,12 @@ struct Phase2View: View {
     private var smoothingDeviationRow: some View {
         Group {
             labeledRow("MinDev") {
-                Slider(value: $pipeline.smoothingMinDeviation, in: 0.0...0.1, step: 0.005)
+                Slider(value: $pipeline.smoothingMinDeviation, in: Config.smoothingMinDeviationRange, step: 0.005)
             } valueLabel: {
                 Text(String(format: "%.3f", pipeline.smoothingMinDeviation)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
             labeledRow("MaxDev") {
-                Slider(value: $pipeline.smoothingMaxDeviation, in: 0.0...0.15, step: 0.005)
+                Slider(value: $pipeline.smoothingMaxDeviation, in: Config.smoothingMaxDeviationRange, step: 0.005)
             } valueLabel: {
                 Text(String(format: "%.3f", pipeline.smoothingMaxDeviation)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
             }
@@ -1205,7 +1205,7 @@ struct Phase2View: View {
 
     private var smoothingCenterFloorRow: some View {
         labeledRow("CFloor") {
-            Slider(value: $pipeline.smoothingCenterFloor, in: 0.0...1.0, step: 0.05)
+            Slider(value: $pipeline.smoothingCenterFloor, in: Config.smoothingCenterFloorRange, step: 0.05)
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.smoothingCenterFloor)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
