@@ -357,3 +357,20 @@ final class BlivechatMessageInputTests: XCTestCase {
         XCTAssertEqual(message?.medalLevel, 6)
     }
 }
+
+final class DanmakuBufferManagerTests: XCTestCase {
+    func testGetHistoryForUserReturnsEmptyForNegativeLimit() {
+        let username = "negative-limit-\(UUID().uuidString)"
+        _ = DanmakuBufferManager.shared.addEntry(
+            type: .danmaku,
+            username: username,
+            content: "hello",
+            timestamp: 1,
+            avatarUrl: ""
+        )
+
+        XCTAssertTrue(
+            DanmakuBufferManager.shared.getHistoryForUser(username: username, limit: -1).isEmpty
+        )
+    }
+}

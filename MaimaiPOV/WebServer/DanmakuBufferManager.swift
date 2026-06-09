@@ -132,6 +132,7 @@ final class DanmakuBufferManager: @unchecked Sendable {
     func getHistoryForUser(username: String, limit: Int = 20) -> [DanmakuEntry] {
         lock.lock()
         defer { lock.unlock() }
+        guard limit > 0 else { return [] }
         let entries = buffer.filter { $0.username == username }
         return Array(entries.suffix(limit))
     }
