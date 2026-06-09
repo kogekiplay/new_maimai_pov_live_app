@@ -8,7 +8,8 @@ enum URLQueryDecoder {
 
     static func decodeNonBlankComponent(_ rawValue: String) -> String? {
         let decoded = decodeComponent(rawValue)
-        return decoded.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : decoded
+        let trimmed = decoded.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     static func decodeIntComponent(_ rawValue: String) -> Int? {

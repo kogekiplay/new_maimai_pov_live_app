@@ -40,7 +40,8 @@ final class QueueAPIHandler: @unchecked Sendable {
     }
 
     private static func nonBlankString(_ value: String) -> String? {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : value
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func coverURL(from musicId: Int?) -> String? {

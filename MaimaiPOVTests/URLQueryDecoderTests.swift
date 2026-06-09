@@ -19,6 +19,10 @@ final class URLQueryDecoderTests: XCTestCase {
         XCTAssertNil(URLQueryDecoder.decodeNonBlankComponent("%0A%20"))
     }
 
+    func testDecodeNonBlankComponentTrimsDecodedValue() {
+        XCTAssertEqual(URLQueryDecoder.decodeNonBlankComponent("%20Alice%20"), "Alice")
+    }
+
     func testDecodeIntComponentDecodesPercentEncodedDigits() {
         XCTAssertEqual(URLQueryDecoder.decodeIntComponent("%31"), 1)
     }
@@ -38,13 +42,13 @@ final class DebugAPIHandlerTests: XCTestCase {
         )
     }
 
-    func testRequiredNonBlankStringKeepsNonBlankValue() {
+    func testRequiredNonBlankStringTrimsNonBlankValue() {
         XCTAssertEqual(
             DebugAPIHandler.requiredNonBlankString(
                 in: ["authorName": " Alice "],
                 key: "authorName"
             ),
-            " Alice "
+            "Alice"
         )
     }
 
@@ -211,8 +215,8 @@ final class QueueAPIHandlerTests: XCTestCase {
         XCTAssertNil(QueueAPIHandler.usernameOrLAN(in: ["username": " \n "]))
     }
 
-    func testUsernameOrLANKeepsNonBlankUsername() {
-        XCTAssertEqual(QueueAPIHandler.usernameOrLAN(in: ["username": " Alice "]), " Alice ")
+    func testUsernameOrLANTrimsNonBlankUsername() {
+        XCTAssertEqual(QueueAPIHandler.usernameOrLAN(in: ["username": " Alice "]), "Alice")
     }
 
     func testRequiredUsernameRejectsMissingUsername() {
@@ -225,6 +229,10 @@ final class QueueAPIHandlerTests: XCTestCase {
 
     func testRequiredUsernameAcceptsExplicitLANUsername() {
         XCTAssertEqual(QueueAPIHandler.requiredUsername(in: ["username": "LAN"]), "LAN")
+    }
+
+    func testRequiredUsernameTrimsExplicitUsername() {
+        XCTAssertEqual(QueueAPIHandler.requiredUsername(in: ["username": "\nAlice "]), "Alice")
     }
 
     func testRequiredPositiveMusicIdRejectsMissingZeroAndNegativeValues() {

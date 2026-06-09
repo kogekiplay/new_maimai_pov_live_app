@@ -10,11 +10,11 @@ final class DebugAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
     static func requiredNonBlankString(in body: [String: Any], key: String) -> String? {
-        guard let value = body[key] as? String,
-              !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard let value = body[key] as? String else {
             return nil
         }
-        return value
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     static func requiredPositiveInt(in body: [String: Any], key: String) -> Int? {
