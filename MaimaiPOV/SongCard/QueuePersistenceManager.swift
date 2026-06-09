@@ -42,6 +42,7 @@ final class QueuePersistenceManager: @unchecked Sendable {
     }
 
     func save(snapshot: QueueSnapshot) {
+        let snapshot = snapshot.normalized()
         guard !snapshot.queue.isEmpty || !snapshot.userGiftPool.isEmpty else {
             clearSnapshot()
             return

@@ -64,6 +64,23 @@ final class QueuePersistenceManagerTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: temporaryDirectory.appendingPathComponent("queue_snapshot.tmp").path))
     }
 
+    func testSaveNormalizesCurrentIndexBeforeWritingSnapshot() throws {
+        let manager = QueuePersistenceManager(snapshotDirectory: temporaryDirectory)
+        manager.save(snapshot: QueueSnapshot(
+            version: QueueSnapshot.currentVersion,
+            savedAt: Date(timeIntervalSince1970: 3),
+            queue: [Self.song(named: "Saved Song")],
+            currentIndex: 99,
+            userGiftPool: ["alice": 1_000]
+        ))
+
+        let snapshotURL = temporaryDirectory.appendingPathComponent("queue_snapshot.json")
+        let data = try Data(contentsOf: snapshotURL)
+        let persisted = try JSONDecoder().decode(QueueSnapshot.self, from: data)
+
+        XCTAssertEqual(persisted.currentIndex, 0)
+    }
+
     func testClearSnapshotRemovesSnapshotBackupAndTemporaryFiles() throws {
         let manager = QueuePersistenceManager(snapshotDirectory: temporaryDirectory)
         for fileName in ["queue_snapshot.json", "queue_snapshot.bak", "queue_snapshot.tmp"] {
