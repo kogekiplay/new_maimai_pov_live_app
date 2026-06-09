@@ -174,7 +174,9 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
 
     func updateGiftValue(name: String, delta: Int) -> Bool {
         guard let index = findSongIndex(byName: name) else { return false }
-        queue[index].giftValue = userGiftPool[name] ?? queue[index].giftValue + delta
+        let giftValue = userGiftPool[name] ?? queue[index].giftValue + delta
+        userGiftPool[name] = giftValue
+        queue[index].giftValue = giftValue
         delegate?.onGiftValueChanged(queue[index], queueIndex: index)
         scheduleSave()
         return true

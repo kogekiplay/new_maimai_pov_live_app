@@ -184,6 +184,19 @@ final class SongCardManagerTests: XCTestCase {
         XCTAssertEqual(manager.currentSong?.songName, "Third Song")
     }
 
+    func testUpdateGiftValueKeepsGiftPoolInSyncWhenPoolHasNoExistingValue() {
+        let manager = SongCardManager(persistenceManager: QueuePersistenceManager(snapshotDirectory: temporaryDirectory))
+        manager.updateQueue([
+            Self.song(named: "Current Song", requesterName: "alice"),
+            Self.song(named: "Gifted Song", requesterName: "bob")
+        ])
+
+        XCTAssertTrue(manager.updateGiftValue(name: "bob", delta: 300))
+
+        XCTAssertEqual(manager.queue[1].giftValue, 300)
+        XCTAssertEqual(manager.userGiftPool["bob"], 300)
+    }
+
     private static func song(
         named name: String,
         requesterName: String = "alice",
