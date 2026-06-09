@@ -901,10 +901,10 @@ enum WebControlInput {
         if let lens = LensType(rawValue: normalized) {
             return lens
         }
-        switch normalized {
-        case "Main":
+        switch normalized.lowercased() {
+        case "main", "main (1x)":
             return .main
-        case "Ultra-Wide", "UW":
+        case "ultra-wide", "ultra-wide (0.5x)", "uw":
             return .ultraWide
         default:
             return nil

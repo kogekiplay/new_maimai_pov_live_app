@@ -211,8 +211,10 @@ final class WebControlInputTests: XCTestCase {
     func testLensTypeAcceptsRawValuesAndWebAliases() {
         XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "Main (1x)"], key: "selectedLens"), .main)
         XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "Main"], key: "selectedLens"), .main)
+        XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "main"], key: "selectedLens"), .main)
         XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "Ultra-Wide (0.5x)"], key: "selectedLens"), .ultraWide)
         XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "Ultra-Wide"], key: "selectedLens"), .ultraWide)
+        XCTAssertEqual(WebControlInput.lensType(in: ["selectedLens": "uW"], key: "selectedLens"), .ultraWide)
         XCTAssertNil(WebControlInput.lensType(in: ["selectedLens": "Telephoto"], key: "selectedLens"))
     }
 }
