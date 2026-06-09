@@ -146,9 +146,19 @@ final class WebControlInputTests: XCTestCase {
         XCTAssertNil(JSONNumberInput.double("30.5"))
     }
 
+    func testJSONNumberInputRejectsNonFiniteDoubleValues() {
+        XCTAssertNil(JSONNumberInput.double(Double.nan))
+        XCTAssertNil(JSONNumberInput.double(Double.infinity))
+    }
+
     func testClampedDoubleReturnsNilForMissingOrNonNumericValues() {
         XCTAssertNil(WebControlInput.clampedDouble(in: [:], key: "focus", range: 0...1))
         XCTAssertNil(WebControlInput.clampedDouble(in: ["focus": "0.5"], key: "focus", range: 0...1))
+    }
+
+    func testClampedDoubleRejectsNonFiniteValues() {
+        XCTAssertNil(WebControlInput.clampedDouble(in: ["focus": Double.nan], key: "focus", range: 0...1))
+        XCTAssertNil(WebControlInput.clampedDouble(in: ["focus": Double.infinity], key: "focus", range: 0...1))
     }
 
     func testClampedDoubleKeepsValuesInsideRange() {
