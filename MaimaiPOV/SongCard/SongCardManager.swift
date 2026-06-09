@@ -247,6 +247,7 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
     }
 
     func restoreFromSnapshot(_ snapshot: QueueSnapshot) {
+        let snapshot = snapshot.normalized()
         queue = snapshot.queue
         currentIndex = snapshot.currentIndex
         userGiftPool = snapshot.userGiftPool
@@ -257,6 +258,7 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
     }
 
     func restoreGiftValuesOnly(from snapshot: QueueSnapshot) {
+        let snapshot = snapshot.normalized()
         var carriedGifts: [String: Int] = [:]
         let startIndex = snapshot.currentIndex + 1
         guard startIndex < snapshot.queue.count else { return }
@@ -272,6 +274,7 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
     }
 
     func restoreAllGiftValues(from snapshot: QueueSnapshot) {
+        let snapshot = snapshot.normalized()
         var playedNames = Set<String>()
         if snapshot.currentIndex >= 0 {
             for i in 0...snapshot.currentIndex where i < snapshot.queue.count {
