@@ -18,7 +18,6 @@
 		1AFA276E78B685BB5FFC9DE3 /* MarqueeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234526FDF17F5B4CDE8507D5 /* MarqueeManager.swift */; };
 		1C30E0180EB90449DF966854 /* SongCardRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08FD90470A4B05202A2AB12F /* SongCardRenderer.swift */; };
 		24268EC5D1A85F7A44711195 /* SongCardManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE78717545E85E236A0081A5 /* SongCardManagerTests.swift */; };
-		2A8E6DB92885E4D4A3F26D3A /* SongDatabaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F2F93BD9F7A44B19598A1DA /* SongDatabaseTests.swift */; };
 		2C952A1A0708D1A80F508F37 /* SongCardUniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9853B0536BA40FF4D8339699 /* SongCardUniforms.swift */; };
 		3368665641794D0D2A5B5356 /* MaimaiPOVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E170C132EDDA40A6A66D6314 /* MaimaiPOVApp.swift */; };
 		37B2C61A68290CC3BBA954DA /* YOLODetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D8E9D89EE53E66EC54880B /* YOLODetector.swift */; };
@@ -46,6 +45,7 @@
 		6B2EF8EEFD93B93A43CB29BE /* MarqueeUniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EF91FF33B5979A440E9387D /* MarqueeUniforms.swift */; };
 		6CE4353EC6B597860DCE328A /* control.html in Resources */ = {isa = PBXBuildFile; fileRef = 5F1BD65E0BD5E33DCC72F850 /* control.html */; };
 		755A428E97682E8B48E6659E /* QueueDisplayWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002EDDA1077BED0DD6D30F36 /* QueueDisplayWindowTests.swift */; };
+		772ECDA60B9B65D0D60BE683 /* DanmakuParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89186D3369D0EF438A62CB70 /* DanmakuParserTests.swift */; };
 		78CC0FF0ABEA27E267983FF8 /* DeviceStatusManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A33673687D074D5BD061425 /* DeviceStatusManager.swift */; };
 		7DB1B7870DCB7DADBFFA35F0 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DC9DBF549FCD41DA96D579 /* MotionManager.swift */; };
 		7EF5C76438961F5DB1AD264A /* AdaptiveGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E58A83BD1A0869DEB491F7E /* AdaptiveGlass.swift */; };
@@ -66,6 +66,7 @@
 		9E5B14AD68A99A1812443EA9 /* BBoxTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8587E32C1DBB3BABD213D0FF /* BBoxTracker.swift */; };
 		A059BB48745A9B8573B0B166 /* DanmakuParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A5C7EA7E2B7530EA146EAA /* DanmakuParser.swift */; };
 		A0FF3CB06FD4279D006806B1 /* MarqueeRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127FCAFBAAB0F803FA916DE4 /* MarqueeRenderer.swift */; };
+		A81D7F6247CE3EA1F5C568BE /* SongDatabaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C729C0835BCA9F1227C7CDE7 /* SongDatabaseTests.swift */; };
 		AE25D35491071B326398D773 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3335E687B44BB3ABF1322E /* Config.swift */; };
 		B0A661B9C714856E4F3769C8 /* Stabilizer.metal in Sources */ = {isa = PBXBuildFile; fileRef = 116DFFFD90A0D2767EC58B5D /* Stabilizer.metal */; };
 		B0D684E375FC25CB200AC554 /* BlivechatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBE8DDE579A7717A6971C50 /* BlivechatMessage.swift */; };
@@ -165,6 +166,7 @@
 		8587E32C1DBB3BABD213D0FF /* BBoxTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxTracker.swift; sourceTree = "<group>"; };
 		86094BCB48C5EF5521F92827 /* SongCardTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardTemplate.swift; sourceTree = "<group>"; };
 		882633726D5A459E5FC3C5CD /* MetalStabilizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalStabilizer.swift; sourceTree = "<group>"; };
+		89186D3369D0EF438A62CB70 /* DanmakuParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DanmakuParserTests.swift; sourceTree = "<group>"; };
 		8CCFBA22C5AFCFC7554CFAD6 /* QueueDisplayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDisplayWindow.swift; sourceTree = "<group>"; };
 		9853B0536BA40FF4D8339699 /* SongCardUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardUniforms.swift; sourceTree = "<group>"; };
 		98DD04CA5A77FD7823A3C309 /* CoverImageServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageServiceTests.swift; sourceTree = "<group>"; };
@@ -178,6 +180,7 @@
 		BD5B69C649A2719D9D2B1872 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
 		C0FC22CE1AFAA8DC5D0CCCAC /* SongRequest */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SongRequest; path = MaimaiPOV/SongRequest; sourceTree = SOURCE_ROOT; };
 		C12CF72CC59DB900A8E50A5D /* MaimaiPOVTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MaimaiPOVTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C729C0835BCA9F1227C7CDE7 /* SongDatabaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongDatabaseTests.swift; sourceTree = "<group>"; };
 		CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardDataTests.swift; sourceTree = "<group>"; };
 		CB5BE47CA7E23F002BF7B89A /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		CFB9A694361D510732BBCF68 /* HaishinKit_source */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HaishinKit_source; path = HaishinKit_source; sourceTree = SOURCE_ROOT; };
@@ -201,7 +204,6 @@
 		F8647E108476D7F423F530E5 /* OverlayCompositor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayCompositor.swift; sourceTree = "<group>"; };
 		F8F7EBD17B204010D7E9FE84 /* YOLOPreprocessUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YOLOPreprocessUniforms.swift; sourceTree = "<group>"; };
 		FAEC424FFD2918A1E13C9A03 /* CoverImageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageService.swift; sourceTree = "<group>"; };
-		4F2F93BD9F7A44B19598A1DA /* SongDatabaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongDatabaseTests.swift; sourceTree = "<group>"; };
 		FE78717545E85E236A0081A5 /* SongCardManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardManagerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -321,11 +323,12 @@
 			isa = PBXGroup;
 			children = (
 				98DD04CA5A77FD7823A3C309 /* CoverImageServiceTests.swift */,
+				89186D3369D0EF438A62CB70 /* DanmakuParserTests.swift */,
 				002EDDA1077BED0DD6D30F36 /* QueueDisplayWindowTests.swift */,
 				442D9005D3F238A4CD8EEED3 /* QueuePersistenceManagerTests.swift */,
 				CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */,
-				4F2F93BD9F7A44B19598A1DA /* SongDatabaseTests.swift */,
 				FE78717545E85E236A0081A5 /* SongCardManagerTests.swift */,
+				C729C0835BCA9F1227C7CDE7 /* SongDatabaseTests.swift */,
 			);
 			path = MaimaiPOVTests;
 			sourceTree = "<group>";
@@ -691,11 +694,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				815589585B4463666ECE4440 /* CoverImageServiceTests.swift in Sources */,
+				772ECDA60B9B65D0D60BE683 /* DanmakuParserTests.swift in Sources */,
 				755A428E97682E8B48E6659E /* QueueDisplayWindowTests.swift in Sources */,
 				D133F7799703D7D7ADD6B8D9 /* QueuePersistenceManagerTests.swift in Sources */,
 				4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */,
-				2A8E6DB92885E4D4A3F26D3A /* SongDatabaseTests.swift in Sources */,
 				24268EC5D1A85F7A44711195 /* SongCardManagerTests.swift in Sources */,
+				A81D7F6247CE3EA1F5C568BE /* SongDatabaseTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

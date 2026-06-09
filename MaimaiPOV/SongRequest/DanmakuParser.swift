@@ -30,7 +30,7 @@ final class DanmakuParser {
     }
 
     func parse(_ text: String) -> ParseResult {
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard let commandPrefixPattern, let cancelPattern, let matchPattern else {
             return ParseResult(type: .notACommand, originalQuery: "")
@@ -51,10 +51,10 @@ final class DanmakuParser {
             return ParseResult(type: .notACommand, originalQuery: "")
         }
 
-        var rawQuery = String(trimmed[queryRange]).trimmingCharacters(in: .whitespaces)
+        var rawQuery = String(trimmed[queryRange]).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !rawQuery.isEmpty else { return ParseResult(type: .notACommand, originalQuery: "") }
 
-        let originalQuery = rawQuery.trimmingCharacters(in: .whitespaces)
+        let originalQuery = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
 
         var diffInput: String?
         var chartTypePreference: String?
@@ -65,7 +65,7 @@ final class DanmakuParser {
             if let (captured, fullRange) = matchFromTail(rawQuery, regex: difficultyTailPattern) {
                 diffInput = captured.lowercased()
                 rawQuery.removeSubrange(fullRange)
-                rawQuery = rawQuery.trimmingCharacters(in: .whitespaces)
+                rawQuery = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
                 changed = true
                 continue
             }
@@ -74,7 +74,7 @@ final class DanmakuParser {
                 let token = captured.lowercased()
                 chartTypePreference = (token == "dx") ? "dx" : "standard"
                 rawQuery.removeSubrange(fullRange)
-                rawQuery = rawQuery.trimmingCharacters(in: .whitespaces)
+                rawQuery = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
                 changed = true
                 continue
             }
@@ -82,7 +82,7 @@ final class DanmakuParser {
             if let (captured, fullRange) = matchFromHead(rawQuery, regex: difficultyHeadPattern) {
                 diffInput = captured.lowercased()
                 rawQuery.removeSubrange(fullRange)
-                rawQuery = rawQuery.trimmingCharacters(in: .whitespaces)
+                rawQuery = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
                 changed = true
                 continue
             }
@@ -91,13 +91,13 @@ final class DanmakuParser {
                 let token = captured.lowercased()
                 chartTypePreference = (token == "dx") ? "dx" : "standard"
                 rawQuery.removeSubrange(fullRange)
-                rawQuery = rawQuery.trimmingCharacters(in: .whitespaces)
+                rawQuery = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
                 changed = true
                 continue
             }
         }
 
-        let queryName = rawQuery.trimmingCharacters(in: .whitespaces)
+        let queryName = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if queryName.isEmpty {
             return ParseResult(type: .songRequest(query: originalQuery, diffInput: nil, chartTypePreference: nil), originalQuery: originalQuery)
         }
