@@ -4,6 +4,24 @@ import Swifter
 final class QueueAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
+    static func usernameOrLAN(in body: [String: Any]) -> String? {
+        guard let rawUsername = body["username"] as? String else {
+            return "LAN"
+        }
+        return nonBlankString(rawUsername)
+    }
+
+    static func requiredUsername(in body: [String: Any]) -> String? {
+        guard let rawUsername = body["username"] as? String else {
+            return nil
+        }
+        return nonBlankString(rawUsername)
+    }
+
+    private static func nonBlankString(_ value: String) -> String? {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : value
+    }
+
     private func coverURL(from musicId: Int?) -> String? {
         guard let musicId = musicId else { return nil }
         return "/api/cover/\(musicId)"
@@ -142,7 +160,9 @@ final class QueueAPIHandler: @unchecked Sendable {
 
         let difficulty = body["difficulty"] as? String
         let chartType = body["chartType"] as? String
-        let username = body["username"] as? String ?? "LAN"
+        guard let username = Self.usernameOrLAN(in: body) else {
+            return .badRequest(.text("Missing or invalid 'username'"))
+        }
 
         let sem = DispatchSemaphore(value: 0)
         let success = LockedValue(false)
@@ -290,7 +310,7 @@ final class QueueAPIHandler: @unchecked Sendable {
 
     func cancelSongForUser(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let username = body["username"] as? String else {
+              let username = Self.requiredUsername(in: body) else {
             return .badRequest(.text("Missing or invalid 'username'"))
         }
 

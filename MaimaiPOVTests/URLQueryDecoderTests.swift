@@ -43,3 +43,29 @@ final class DebugAPIHandlerTests: XCTestCase {
         )
     }
 }
+
+final class QueueAPIHandlerTests: XCTestCase {
+    func testUsernameOrLANDefaultsMissingUsernameToLAN() {
+        XCTAssertEqual(QueueAPIHandler.usernameOrLAN(in: [:]), "LAN")
+    }
+
+    func testUsernameOrLANRejectsBlankUsername() {
+        XCTAssertNil(QueueAPIHandler.usernameOrLAN(in: ["username": " \n "]))
+    }
+
+    func testUsernameOrLANKeepsNonBlankUsername() {
+        XCTAssertEqual(QueueAPIHandler.usernameOrLAN(in: ["username": " Alice "]), " Alice ")
+    }
+
+    func testRequiredUsernameRejectsMissingUsername() {
+        XCTAssertNil(QueueAPIHandler.requiredUsername(in: [:]))
+    }
+
+    func testRequiredUsernameRejectsBlankUsername() {
+        XCTAssertNil(QueueAPIHandler.requiredUsername(in: ["username": " \n "]))
+    }
+
+    func testRequiredUsernameAcceptsExplicitLANUsername() {
+        XCTAssertEqual(QueueAPIHandler.requiredUsername(in: ["username": "LAN"]), "LAN")
+    }
+}
