@@ -39,7 +39,9 @@ enum DifficultyValue: Codable, Equatable, Sendable {
     case stringValue(String)
 
     var isUtage: Bool {
-        if case .stringValue(let v) = self { return v == "utage" }
+        if case .stringValue(let v) = self {
+            return v.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "utage"
+        }
         return false
     }
 

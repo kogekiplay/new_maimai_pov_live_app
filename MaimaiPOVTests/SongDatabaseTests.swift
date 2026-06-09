@@ -2,6 +2,10 @@ import XCTest
 @testable import MaimaiPOV
 
 final class SongDatabaseTests: XCTestCase {
+    func testDifficultyValueRecognizesTrimmedUtageString() {
+        XCTAssertTrue(DifficultyValue.stringValue(" UTAGE\n").isUtage)
+    }
+
     func testFindNoteUsesTrimmedDisplayDifficultyInput() {
         let database = SongDatabase()
         let song = Self.song(notes: [
