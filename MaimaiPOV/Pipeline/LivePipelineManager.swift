@@ -1787,14 +1787,15 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
-        let startQueueIndex = ci + 1
+        let rightPanelRange = QueueDisplayWindow(queueCount: queue.count, currentIndex: ci).followingRange
+        let startQueueIndex = rightPanelRange.lowerBound
 
-        guard startQueueIndex < queue.count else {
+        guard !rightPanelRange.isEmpty else {
             compositor.clearAll()
             return
         }
 
-        let allSongs = Array(queue[startQueueIndex...])
+        let allSongs = Array(queue[rightPanelRange])
 
         var targetScrollRow = 0
         var maxGift = 0
@@ -1993,14 +1994,15 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
-        let startQueueIndex = ci + 1
+        let rightPanelRange = QueueDisplayWindow(queueCount: queue.count, currentIndex: ci).followingRange
+        let startQueueIndex = rightPanelRange.lowerBound
 
-        guard startQueueIndex < queue.count else {
+        guard !rightPanelRange.isEmpty else {
             compositor.clearAll()
             return
         }
 
-        let allRightPanelSongs = Array(queue[startQueueIndex...])
+        let allRightPanelSongs = Array(queue[rightPanelRange])
 
         Task { @MainActor [weak self] in
             renderer.renderTitle { texture in
@@ -2056,9 +2058,9 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
-        let startQueueIndex = ci + 1
+        let rightPanelRange = QueueDisplayWindow(queueCount: queue.count, currentIndex: ci).followingRange
 
-        guard startQueueIndex < queue.count else {
+        guard !rightPanelRange.isEmpty else {
             compositor.clearAll()
             return
         }
@@ -2082,14 +2084,15 @@ final class LivePipelineManager: ObservableObject, SongCardDataProvider, @unchec
 
         let ci = songCardManager.currentIndex
         let queue = songCardManager.queue
-        let startQueueIndex = ci + 1
+        let rightPanelRange = QueueDisplayWindow(queueCount: queue.count, currentIndex: ci).followingRange
+        let startQueueIndex = rightPanelRange.lowerBound
 
-        guard startQueueIndex < queue.count else {
+        guard !rightPanelRange.isEmpty else {
             compositor.clearAll()
             return
         }
 
-        let rightPanelSongCount = queue.count - startQueueIndex
+        let rightPanelSongCount = rightPanelRange.count
         let currentRowCount = compositor.currentRowCount()
         let needsNewBottom = rightPanelSongCount > (currentRowCount - 1)
 

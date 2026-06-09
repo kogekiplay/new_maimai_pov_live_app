@@ -37,4 +37,16 @@ final class QueueDisplayWindowTests: XCTestCase {
         XCTAssertEqual(window.realIndex(forDisplayIndex: 0), 2)
         XCTAssertEqual(window.realIndex(forDisplayIndex: 1), 3)
     }
+
+    func testFollowingRangeClampsCurrentIndexBelowIdleToQueueStart() {
+        let window = QueueDisplayWindow(queueCount: 3, currentIndex: -2)
+
+        XCTAssertEqual(Array(window.followingRange), [0, 1, 2])
+    }
+
+    func testFollowingRangeIsEmptyForCurrentIndexPastQueueEnd() {
+        let window = QueueDisplayWindow(queueCount: 3, currentIndex: 99)
+
+        XCTAssertTrue(window.followingRange.isEmpty)
+    }
 }
