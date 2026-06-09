@@ -129,6 +129,9 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
                 currentIndex = queue.count - 1
             }
         }
+        if !queue.isEmpty {
+            currentIndex = min(max(currentIndex, 0), queue.count - 1)
+        }
 
         if wasInRightPanel {
             delegate?.onSongRemoved(queueIndex: index)
