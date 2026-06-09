@@ -2,6 +2,11 @@ import Foundation
 import Swifter
 
 final class DebugAPIHandler: @unchecked Sendable {
+    enum OptionalIntInput: Equatable {
+        case valid(Int?)
+        case invalid
+    }
+
     weak var pipeline: LivePipelineManager?
 
     static func requiredNonBlankString(in body: [String: Any], key: String) -> String? {
@@ -17,6 +22,16 @@ final class DebugAPIHandler: @unchecked Sendable {
             return nil
         }
         return value
+    }
+
+    static func optionalBatteryLevel(in body: [String: Any], key: String) -> OptionalIntInput {
+        guard let rawValue = body[key], !(rawValue is NSNull) else {
+            return .valid(nil)
+        }
+        guard let value = rawValue as? Int, (0...100).contains(value) else {
+            return .invalid
+        }
+        return .valid(value)
     }
 
     func simulateGift(request: HttpRequest) -> HttpResponse {
@@ -327,7 +342,13 @@ final class DebugAPIHandler: @unchecked Sendable {
             return .badRequest(.text("Invalid JSON body"))
         }
 
-        let level = body["level"] as? Int
+        let level: Int?
+        switch Self.optionalBatteryLevel(in: body, key: "level") {
+        case .valid(let parsedLevel):
+            level = parsedLevel
+        case .invalid:
+            return .badRequest(.text("Invalid 'level'"))
+        }
 
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])

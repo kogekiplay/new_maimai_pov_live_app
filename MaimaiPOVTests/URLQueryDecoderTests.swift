@@ -51,6 +51,21 @@ final class DebugAPIHandlerTests: XCTestCase {
     func testRequiredPositiveIntAcceptsPositiveValue() {
         XCTAssertEqual(DebugAPIHandler.requiredPositiveInt(in: ["timeout": 30], key: "timeout"), 30)
     }
+
+    func testOptionalBatteryLevelAllowsMissingOrNullLevel() {
+        XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: [:], key: "level"), .valid(nil))
+        XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": NSNull()], key: "level"), .valid(nil))
+    }
+
+    func testOptionalBatteryLevelAcceptsInclusivePercentageRange() {
+        XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": 0], key: "level"), .valid(0))
+        XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": 100], key: "level"), .valid(100))
+    }
+
+    func testOptionalBatteryLevelRejectsOutOfRangePercentages() {
+        XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": -1], key: "level"), .invalid)
+        XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": 101], key: "level"), .invalid)
+    }
 }
 
 final class QueueAPIHandlerTests: XCTestCase {
