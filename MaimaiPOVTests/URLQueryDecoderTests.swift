@@ -66,6 +66,21 @@ final class DebugAPIHandlerTests: XCTestCase {
         XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": -1], key: "level"), .invalid)
         XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": 101], key: "level"), .invalid)
     }
+
+    func testOptionalPositiveIntUsesDefaultForMissingOrNullValue() {
+        XCTAssertEqual(DebugAPIHandler.optionalPositiveInt(in: [:], key: "totalCoin", defaultValue: 1000), 1000)
+        XCTAssertEqual(DebugAPIHandler.optionalPositiveInt(in: ["totalCoin": NSNull()], key: "totalCoin", defaultValue: 1000), 1000)
+    }
+
+    func testOptionalPositiveIntAcceptsPositiveValue() {
+        XCTAssertEqual(DebugAPIHandler.optionalPositiveInt(in: ["price": 30], key: "price", defaultValue: 1), 30)
+    }
+
+    func testOptionalPositiveIntRejectsZeroNegativeAndNonNumericValues() {
+        XCTAssertNil(DebugAPIHandler.optionalPositiveInt(in: ["mergeCount": 0], key: "mergeCount", defaultValue: 1))
+        XCTAssertNil(DebugAPIHandler.optionalPositiveInt(in: ["mergeCount": -1], key: "mergeCount", defaultValue: 1))
+        XCTAssertNil(DebugAPIHandler.optionalPositiveInt(in: ["mergeCount": "1"], key: "mergeCount", defaultValue: 1))
+    }
 }
 
 final class WebControlInputTests: XCTestCase {

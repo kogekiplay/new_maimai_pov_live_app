@@ -24,6 +24,16 @@ final class DebugAPIHandler: @unchecked Sendable {
         return value
     }
 
+    static func optionalPositiveInt(in body: [String: Any], key: String, defaultValue: Int) -> Int? {
+        guard let rawValue = body[key], !(rawValue is NSNull) else {
+            return defaultValue
+        }
+        guard let value = rawValue as? Int, value > 0 else {
+            return nil
+        }
+        return value
+    }
+
     static func optionalBatteryLevel(in body: [String: Any], key: String) -> OptionalIntInput {
         guard let rawValue = body[key], !(rawValue is NSNull) else {
             return .valid(nil)
@@ -40,7 +50,9 @@ final class DebugAPIHandler: @unchecked Sendable {
             return .badRequest(.text("Missing 'authorName'"))
         }
 
-        let totalCoin = body["totalCoin"] as? Int ?? 1000
+        guard let totalCoin = Self.optionalPositiveInt(in: body, key: "totalCoin", defaultValue: 1000) else {
+            return .badRequest(.text("Invalid 'totalCoin'"))
+        }
 
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>(["success": true])
@@ -108,7 +120,9 @@ final class DebugAPIHandler: @unchecked Sendable {
             return .badRequest(.text("Missing 'authorName'"))
         }
 
-        let price = body["price"] as? Int ?? 30
+        guard let price = Self.optionalPositiveInt(in: body, key: "price", defaultValue: 30) else {
+            return .badRequest(.text("Invalid 'price'"))
+        }
         let content = body["content"] as? String ?? ""
 
         let sem = DispatchSemaphore(value: 0)
@@ -309,7 +323,9 @@ final class DebugAPIHandler: @unchecked Sendable {
         let typeRaw = body["type"] as? Int ?? 0
         let type = MarqueeItem.MarqueeItemType(rawValue: typeRaw) ?? .songSuccess
         let mergeKey = body["mergeKey"] as? String
-        let mergeCount = body["mergeCount"] as? Int ?? 1
+        guard let mergeCount = Self.optionalPositiveInt(in: body, key: "mergeCount", defaultValue: 1) else {
+            return .badRequest(.text("Invalid 'mergeCount'"))
+        }
         let textPrefix = body["textPrefix"] as? String
 
         let sem = DispatchSemaphore(value: 0)
