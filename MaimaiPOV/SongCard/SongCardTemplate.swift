@@ -180,21 +180,21 @@ struct SongCardTemplate {
             """
         }
 
-        let (levelInt, levelDec) = splitLevel(data.level ?? "")
-        let requesterText = data.requester.map { "by \($0)" } ?? ""
+        let (levelInt, levelDec) = splitLevel(data.level?.htmlEscaped ?? "")
+        let requesterText = data.requester.map { "by \($0.htmlEscaped)" } ?? ""
 
         return defaultHTML
             .replacingOccurrences(of: "{{DIFF_CLASS}}", with: diffClass)
-            .replacingOccurrences(of: "{{DIFFICULTY}}", with: data.difficulty ?? "")
+            .replacingOccurrences(of: "{{DIFFICULTY}}", with: data.difficulty?.htmlEscaped ?? "")
             .replacingOccurrences(of: "{{LEVEL_INT}}", with: levelInt)
             .replacingOccurrences(of: "{{LEVEL_DEC}}", with: levelDec)
-            .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName)
+            .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName.htmlEscaped)
             .replacingOccurrences(of: "{{CHART_CLASS}}", with: chartClass)
             .replacingOccurrences(of: "{{CHART_TYPE}}", with: chartType)
             .replacingOccurrences(of: "{{REQUESTER}}", with: requesterText)
             .replacingOccurrences(of: "{{COVER_HTML}}", with: coverHTML)
-            .replacingOccurrences(of: "{{ARTIST}}", with: data.artist)
-            .replacingOccurrences(of: "{{COVER_URL}}", with: data.coverURL ?? "")
+            .replacingOccurrences(of: "{{ARTIST}}", with: data.artist.htmlEscaped)
+            .replacingOccurrences(of: "{{COVER_URL}}", with: data.coverURL?.htmlEscaped ?? "")
     }
 
     private static func splitLevel(_ level: String) -> (intPart: String, decPart: String) {

@@ -374,3 +374,48 @@ final class DanmakuBufferManagerTests: XCTestCase {
         )
     }
 }
+
+final class SongCardTemplateEscapingTests: XCTestCase {
+    private let unsafeData = SongCardData(
+        songName: "A&B <Song> \"DX\"",
+        artist: "M&A <Artist>",
+        difficulty: "Re<Master>&",
+        level: "13<&",
+        requester: "U&B <User> \"quote\"",
+        requesterName: "U&B <User> \"quote\""
+    )
+
+    func testRightPanelRowEscapesUserControlledText() {
+        let html = RightPanelTemplate.renderRow(data: unsafeData)
+
+        XCTAssertTrue(html.contains("A&amp;B &lt;Song&gt; &quot;DX&quot;"))
+        XCTAssertTrue(html.contains("by U&amp;B &lt;User&gt; &quot;quote&quot;"))
+        XCTAssertTrue(html.contains("13&lt;&amp;"))
+        XCTAssertFalse(html.contains("A&B <Song>"))
+        XCTAssertFalse(html.contains("by U&B <User>"))
+    }
+
+    func testLeftPanelSongCardEscapesUserControlledText() {
+        let html = LeftPanelTemplate.renderSongCard(data: unsafeData)
+
+        XCTAssertTrue(html.contains("A&amp;B &lt;Song&gt; &quot;DX&quot;"))
+        XCTAssertTrue(html.contains("Re&lt;Master&gt;&amp;"))
+        XCTAssertTrue(html.contains("13&lt;&amp;"))
+        XCTAssertTrue(html.contains("by U&amp;B &lt;User&gt; &quot;quote&quot;"))
+        XCTAssertFalse(html.contains("A&B <Song>"))
+        XCTAssertFalse(html.contains("Re<Master>&"))
+        XCTAssertFalse(html.contains("by U&B <User>"))
+    }
+
+    func testCurrentSongCardEscapesUserControlledText() {
+        let html = SongCardTemplate.render(data: unsafeData)
+
+        XCTAssertTrue(html.contains("A&amp;B &lt;Song&gt; &quot;DX&quot;"))
+        XCTAssertTrue(html.contains("Re&lt;Master&gt;&amp;"))
+        XCTAssertTrue(html.contains("13&lt;&amp;"))
+        XCTAssertTrue(html.contains("by U&amp;B &lt;User&gt; &quot;quote&quot;"))
+        XCTAssertFalse(html.contains("A&B <Song>"))
+        XCTAssertFalse(html.contains("Re<Master>&"))
+        XCTAssertFalse(html.contains("by U&B <User>"))
+    }
+}

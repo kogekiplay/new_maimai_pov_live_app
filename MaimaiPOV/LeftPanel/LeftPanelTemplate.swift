@@ -291,16 +291,16 @@ struct LeftPanelTemplate {
             """
         }
 
-        let (levelInt, levelDec) = Self.splitLevel(data.level ?? "")
-        let requesterText = data.requester.map { "by \($0)" } ?? ""
+        let (levelInt, levelDec) = Self.splitLevel(data.level?.htmlEscaped ?? "")
+        let requesterText = data.requester.map { "by \($0.htmlEscaped)" } ?? ""
         let giftHTML = Self.giftValueHTML(data.giftValue)
 
         return songCardHTML
             .replacingOccurrences(of: "{{DIFF_CLASS}}", with: diffClass)
-            .replacingOccurrences(of: "{{DIFFICULTY}}", with: data.difficulty ?? "")
+            .replacingOccurrences(of: "{{DIFFICULTY}}", with: data.difficulty?.htmlEscaped ?? "")
             .replacingOccurrences(of: "{{LEVEL_INT}}", with: levelInt)
             .replacingOccurrences(of: "{{LEVEL_DEC}}", with: levelDec)
-            .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName)
+            .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName.htmlEscaped)
             .replacingOccurrences(of: "{{CHART_CLASS}}", with: chartClass)
             .replacingOccurrences(of: "{{CHART_TYPE}}", with: chartType)
             .replacingOccurrences(of: "{{REQUESTER}}", with: requesterText)
@@ -314,12 +314,8 @@ struct LeftPanelTemplate {
 
     static func renderAnnouncement(text: String) -> String {
         let displayText = text.isEmpty ? L10n.string("No announcement") : text
-        let escaped = displayText
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
         return announcementHTML
-            .replacingOccurrences(of: "{{ANNOUNCEMENT_TEXT}}", with: escaped)
+            .replacingOccurrences(of: "{{ANNOUNCEMENT_TEXT}}", with: displayText.htmlEscaped)
     }
 
     static func giftValueHTML(_ value: Int) -> String {

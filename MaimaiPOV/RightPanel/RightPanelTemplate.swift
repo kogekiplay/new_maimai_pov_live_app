@@ -200,7 +200,7 @@ struct RightPanelTemplate {
         let diffClass = Self.diffClass(data.difficulty)
         let chartClass = Self.chartBadgeClass(data.chartType)
         let chartType = Self.chartTypeDisplay(data.chartType)
-        let level = data.level ?? ""
+        let level = data.level?.htmlEscaped ?? ""
 
         let coverHTML: String
         if let base64 = coverBase64 {
@@ -213,13 +213,13 @@ struct RightPanelTemplate {
             """
         }
 
-        let requesterText = data.requester.map { "by \($0)" } ?? ""
+        let requesterText = data.requester.map { "by \($0.htmlEscaped)" } ?? ""
         let giftHTML = Self.giftValueHTML(data.giftValue)
 
         return rowHTML
             .replacingOccurrences(of: "{{DIFF_CLASS}}", with: diffClass)
             .replacingOccurrences(of: "{{COVER_HTML}}", with: coverHTML)
-            .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName)
+            .replacingOccurrences(of: "{{SONG_NAME}}", with: data.songName.htmlEscaped)
             .replacingOccurrences(of: "{{CHART_CLASS}}", with: chartClass)
             .replacingOccurrences(of: "{{CHART_TYPE}}", with: chartType)
             .replacingOccurrences(of: "{{LEVEL}}", with: level)
