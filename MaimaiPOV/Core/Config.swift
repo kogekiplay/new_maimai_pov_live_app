@@ -531,12 +531,15 @@ enum Config {
     }
 
     static let defaultSongRequestPauseThreshold: Int = 30
+    static let songRequestPauseThresholdRange = 1...9_999
     static var songRequestPauseThreshold: Int {
         get {
             let v = UserDefaults.standard.integer(forKey: songRequestPauseThresholdKey)
-            return v == 0 ? defaultSongRequestPauseThreshold : v
+            return clampSongRequestPauseThreshold(v == 0 ? defaultSongRequestPauseThreshold : v)
         }
-        set { UserDefaults.standard.set(newValue, forKey: songRequestPauseThresholdKey) }
+        set {
+            UserDefaults.standard.set(clampSongRequestPauseThreshold(newValue), forKey: songRequestPauseThresholdKey)
+        }
     }
 
     // UserDefaults keys
@@ -618,6 +621,10 @@ enum Config {
 
     private static func clampYoloPadding(_ value: Int) -> Int {
         min(max(value, yoloPaddingRange.lowerBound), yoloPaddingRange.upperBound)
+    }
+
+    private static func clampSongRequestPauseThreshold(_ value: Int) -> Int {
+        min(max(value, songRequestPauseThresholdRange.lowerBound), songRequestPauseThresholdRange.upperBound)
     }
 
     private static func clampFloat(_ value: Float, to range: ClosedRange<Float>) -> Float {

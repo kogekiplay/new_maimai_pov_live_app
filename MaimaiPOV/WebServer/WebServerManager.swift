@@ -880,7 +880,7 @@ enum WebControlInput {
         return Double(range.lowerBound)...Double(range.upperBound)
     }()
     static let audioGainRange = 0.0...2.0
-    static let songRequestPauseThresholdRange = 1...9_999
+    static let songRequestPauseThresholdRange = Config.songRequestPauseThresholdRange
 
     static func clampedDouble(in body: [String: Any], key: String, range: ClosedRange<Double>) -> Double? {
         guard let value = JSONNumberInput.double(body[key]) else {

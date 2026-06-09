@@ -9,6 +9,7 @@ final class ConfigTests: XCTestCase {
     private let yoloPaddingKey = "com.maimai.yoloPadding"
     private let streamBitrateKey = "com.maimai.streamBitrate"
     private let activitySmoothFactorKey = "com.maimai.activitySmoothFactor"
+    private let songRequestPauseThresholdKey = "com.maimai.songRequestPauseThreshold"
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: syncOffsetKey)
@@ -18,6 +19,7 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: yoloPaddingKey)
         UserDefaults.standard.removeObject(forKey: streamBitrateKey)
         UserDefaults.standard.removeObject(forKey: activitySmoothFactorKey)
+        UserDefaults.standard.removeObject(forKey: songRequestPauseThresholdKey)
         super.tearDown()
     }
 
@@ -85,5 +87,15 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(0.9, forKey: activitySmoothFactorKey)
 
         XCTAssertEqual(Config.activitySmoothFactor, 0.2, accuracy: 0.0001)
+    }
+
+    func testSongRequestPauseThresholdClampsPersistedValuesToControlRange() {
+        UserDefaults.standard.set(-10, forKey: songRequestPauseThresholdKey)
+
+        XCTAssertEqual(Config.songRequestPauseThreshold, 1)
+
+        UserDefaults.standard.set(20_000, forKey: songRequestPauseThresholdKey)
+
+        XCTAssertEqual(Config.songRequestPauseThreshold, 9_999)
     }
 }
