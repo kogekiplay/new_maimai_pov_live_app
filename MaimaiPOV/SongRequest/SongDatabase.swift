@@ -40,7 +40,8 @@ enum DifficultyValue: Codable, Equatable, Sendable {
 
     var isUtage: Bool {
         if case .stringValue(let v) = self {
-            return v.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "utage"
+            let key = v.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return key == "utage" || key == "宴"
         }
         return false
     }

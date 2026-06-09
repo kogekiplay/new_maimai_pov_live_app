@@ -6,6 +6,10 @@ final class SongDatabaseTests: XCTestCase {
         XCTAssertTrue(DifficultyValue.stringValue(" UTAGE\n").isUtage)
     }
 
+    func testDifficultyValueRecognizesChineseUtageString() {
+        XCTAssertTrue(DifficultyValue.stringValue(" 宴\n").isUtage)
+    }
+
     func testDifficultyValueParsesTrimmedNumericString() {
         XCTAssertEqual(DifficultyValue.stringValue(" 3\n").intVal, 3)
     }
