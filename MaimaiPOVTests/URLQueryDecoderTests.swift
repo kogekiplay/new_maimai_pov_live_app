@@ -68,6 +68,22 @@ final class DebugAPIHandlerTests: XCTestCase {
     }
 }
 
+final class WebControlInputTests: XCTestCase {
+    func testClampedDoubleReturnsNilForMissingOrNonNumericValues() {
+        XCTAssertNil(WebControlInput.clampedDouble(in: [:], key: "focus", range: 0...1))
+        XCTAssertNil(WebControlInput.clampedDouble(in: ["focus": "0.5"], key: "focus", range: 0...1))
+    }
+
+    func testClampedDoubleKeepsValuesInsideRange() {
+        XCTAssertEqual(WebControlInput.clampedDouble(in: ["focus": 0.5], key: "focus", range: 0...1), 0.5)
+    }
+
+    func testClampedDoubleClampsValuesOutsideRange() {
+        XCTAssertEqual(WebControlInput.clampedDouble(in: ["focus": -0.25], key: "focus", range: 0...1), 0)
+        XCTAssertEqual(WebControlInput.clampedDouble(in: ["focus": 1.25], key: "focus", range: 0...1), 1)
+    }
+}
+
 final class QueueAPIHandlerTests: XCTestCase {
     func testUsernameOrLANDefaultsMissingUsernameToLAN() {
         XCTAssertEqual(QueueAPIHandler.usernameOrLAN(in: [:]), "LAN")

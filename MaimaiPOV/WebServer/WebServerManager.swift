@@ -245,7 +245,11 @@ final class WebServerManager: @unchecked Sendable {
                         pipeline.activityMode = enabled
                         pipeline.updateActivityMode()
                     }
-                    if let sf = bodyData["smoothFactor"] as? Double {
+                    if let sf = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "smoothFactor",
+                        range: WebControlInput.activitySmoothFactorRange
+                    ) {
                         pipeline.activitySmoothFactor = Float(sf)
                         pipeline.updateActivitySmoothFactor()
                     }
@@ -405,15 +409,27 @@ final class WebServerManager: @unchecked Sendable {
                 let result = LockedValue<[String: Any]>([:])
                 Task { @MainActor in
                     guard let pipeline = self.pipeline else { sem.signal(); return }
-                    if let iso = bodyData["iso"] as? Double {
+                    if let iso = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "iso",
+                        range: pipeline.minISO...pipeline.maxISO
+                    ) {
                         pipeline.isoValue = iso
                         pipeline.applyExposure()
                     }
-                    if let shutter = bodyData["shutterTimescale"] as? Double {
+                    if let shutter = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "shutterTimescale",
+                        range: WebControlInput.shutterTimescaleRange
+                    ) {
                         pipeline.shutterTimescale = shutter
                         pipeline.applyExposure()
                     }
-                    if let focus = bodyData["focusValue"] as? Double {
+                    if let focus = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "focusValue",
+                        range: WebControlInput.focusValueRange
+                    ) {
                         pipeline.focusValue = focus
                         pipeline.applyExposure()
                     }
@@ -498,23 +514,31 @@ final class WebServerManager: @unchecked Sendable {
                         pipeline.stabEnabled = enabled
                         pipeline.updateStabilizerEnabled()
                     }
-                    if let yaw = bodyData["yaw"] as? Double {
+                    if let yaw = WebControlInput.clampedDouble(in: bodyData, key: "yaw", range: WebControlInput.yawRange) {
                         pipeline.yaw = Float(yaw)
                         pipeline.updateYaw()
                     }
-                    if let pitch = bodyData["pitch"] as? Double {
+                    if let pitch = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "pitch",
+                        range: WebControlInput.yawRange
+                    ) {
                         pipeline.pitch = Float(pitch)
                         pipeline.updatePitch()
                     }
-                    if let roll = bodyData["roll"] as? Double {
+                    if let roll = WebControlInput.clampedDouble(in: bodyData, key: "roll", range: WebControlInput.rollRange) {
                         pipeline.roll = Float(roll)
                         pipeline.updateRoll()
                     }
-                    if let fov = bodyData["fov"] as? Double {
+                    if let fov = WebControlInput.clampedDouble(in: bodyData, key: "fov", range: WebControlInput.fovRange) {
                         pipeline.fov = Float(fov)
                         pipeline.updateFov()
                     }
-                    if let dist = bodyData["distRatio"] as? Double {
+                    if let dist = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "distRatio",
+                        range: WebControlInput.distRatioRange
+                    ) {
                         pipeline.distRatio = Float(dist)
                         pipeline.updateDistRatio()
                     }
@@ -522,7 +546,11 @@ final class WebServerManager: @unchecked Sendable {
                         pipeline.activityMode = activityMode
                         pipeline.updateActivityMode()
                     }
-                    if let sf = bodyData["activitySmoothFactor"] as? Double {
+                    if let sf = WebControlInput.clampedDouble(
+                        in: bodyData,
+                        key: "activitySmoothFactor",
+                        range: WebControlInput.activitySmoothFactorRange
+                    ) {
                         pipeline.activitySmoothFactor = Float(sf)
                         pipeline.updateActivitySmoothFactor()
                     }
@@ -826,5 +854,22 @@ final class WebServerManager: @unchecked Sendable {
         }
 
         return address
+    }
+}
+
+enum WebControlInput {
+    static let focusValueRange = 0.0...1.0
+    static let shutterTimescaleRange = 30.0...1000.0
+    static let yawRange = -90.0...90.0
+    static let rollRange = -45.0...45.0
+    static let fovRange = 30.0...160.0
+    static let distRatioRange = 0.0...1.0
+    static let activitySmoothFactorRange = 0.01...0.2
+
+    static func clampedDouble(in body: [String: Any], key: String, range: ClosedRange<Double>) -> Double? {
+        guard let value = body[key] as? Double else {
+            return nil
+        }
+        return min(max(value, range.lowerBound), range.upperBound)
     }
 }
