@@ -1,5 +1,9 @@
 import Foundation
 
+private func normalizedAuthorName(_ value: Any?) -> String {
+    (value as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
 enum BlivechatCommand: Int, Codable, Sendable {
     case heartbeat = 0
     case joinRoom = 1
@@ -56,7 +60,7 @@ struct DanmakuMessage: Sendable {
 
         self.avatarUrl = data[0] as? String ?? ""
         self.timestamp = data[1] as? Int ?? 0
-        self.authorName = data[2] as? String ?? ""
+        self.authorName = normalizedAuthorName(data[2])
         self.authorType = AuthorType(rawValue: data[3] as? Int ?? 0) ?? .normal
         self.content = data[4] as? String ?? ""
         self.privilegeType = PrivilegeType(rawValue: data[5] as? Int ?? 0) ?? .none
@@ -94,7 +98,7 @@ struct GiftMessage: Sendable {
         self.id = data["id"] as? String ?? ""
         self.avatarUrl = data["avatarUrl"] as? String ?? ""
         self.timestamp = data["timestamp"] as? Int ?? 0
-        self.authorName = data["authorName"] as? String ?? ""
+        self.authorName = normalizedAuthorName(data["authorName"])
         self.totalCoin = data["totalCoin"] as? Int ?? 0
         self.totalFreeCoin = data["totalFreeCoin"] as? Int ?? 0
         self.giftName = data["giftName"] as? String ?? ""
@@ -123,7 +127,7 @@ struct MemberMessage: Sendable {
         self.id = data["id"] as? String ?? ""
         self.avatarUrl = data["avatarUrl"] as? String ?? ""
         self.timestamp = data["timestamp"] as? Int ?? 0
-        self.authorName = data["authorName"] as? String ?? ""
+        self.authorName = normalizedAuthorName(data["authorName"])
         self.privilegeType = PrivilegeType(rawValue: data["privilegeType"] as? Int ?? 0) ?? .none
         self.giftName = data["giftName"] as? String ?? ""
         self.num = data["num"] as? Int ?? 0
@@ -151,7 +155,7 @@ struct SuperChatMessage: Sendable {
         self.id = data["id"] as? String ?? ""
         self.avatarUrl = data["avatarUrl"] as? String ?? ""
         self.timestamp = data["timestamp"] as? Int ?? 0
-        self.authorName = data["authorName"] as? String ?? ""
+        self.authorName = normalizedAuthorName(data["authorName"])
         self.price = data["price"] as? Int ?? 0
         self.content = data["content"] as? String ?? ""
         self.translation = data["translation"] as? String ?? ""

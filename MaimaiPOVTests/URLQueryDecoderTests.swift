@@ -255,3 +255,35 @@ final class QueueAPIHandlerTests: XCTestCase {
         XCTAssertNil(QueueAPIHandler.requiredDisplayIndex(in: ["index": 1.5]))
     }
 }
+
+final class BlivechatMessageInputTests: XCTestCase {
+    func testDanmakuMessageTrimsAuthorName() {
+        let data: [Any] = [
+            "", 0, " Alice ", 0, " hello ", 0, 0, 0, 0, 0, 0, "id", "", 0, 0, 0, ""
+        ]
+
+        let message = DanmakuMessage(fromArray: data)
+
+        XCTAssertEqual(message?.authorName, "Alice")
+        XCTAssertEqual(message?.content, " hello ")
+    }
+
+    func testGiftMessageTrimsAuthorName() {
+        let message = GiftMessage(fromDict: ["authorName": "\nAlice ", "giftName": "Gift"])
+
+        XCTAssertEqual(message?.authorName, "Alice")
+    }
+
+    func testMemberMessageTrimsAuthorName() {
+        let message = MemberMessage(fromDict: ["authorName": "\nAlice "])
+
+        XCTAssertEqual(message?.authorName, "Alice")
+    }
+
+    func testSuperChatMessageTrimsAuthorName() {
+        let message = SuperChatMessage(fromDict: ["authorName": "\nAlice ", "content": " hello "])
+
+        XCTAssertEqual(message?.authorName, "Alice")
+        XCTAssertEqual(message?.content, " hello ")
+    }
+}
