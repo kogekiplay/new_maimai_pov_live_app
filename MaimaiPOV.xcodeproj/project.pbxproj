@@ -11,6 +11,7 @@
 		074798CB331544E3930BF961 /* OverlayCompositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8647E108476D7F423F530E5 /* OverlayCompositor.swift */; };
 		0986160EADF9E2B6DAD5BAC7 /* YOLOOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E6AD6052E973E084A95101 /* YOLOOverlayView.swift */; };
 		099A6F4BDA91403B9D45BD28 /* YOLOPreprocess.metal in Sources */ = {isa = PBXBuildFile; fileRef = D531AC1EF48A90475296DFE7 /* YOLOPreprocess.metal */; };
+		0ED40CDD9F809687B2159B1B /* SystemGestureDeferralTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B317CEFE2D109431FD3CBD97 /* SystemGestureDeferralTests.swift */; };
 		11D5B5CFBA10DCB63D5FFA22 /* QueuePersistenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE9423E6A23EFF970B902171 /* QueuePersistenceManager.swift */; };
 		1224C4B9C8A708BB31E8856B /* LeftPanelCompositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4F5B9D85CFA8B0CBDFD531 /* LeftPanelCompositor.swift */; };
 		12620DBF9E6722685B3E095A /* SongCardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58807DC24191E57C3624E58A /* SongCardManager.swift */; };
@@ -89,6 +90,7 @@
 		DA3C087311DA9A28A8B8E21D /* LeftPanelTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC060CD8279C903B645AFE9A /* LeftPanelTemplate.swift */; };
 		DA4F5216377F449B53C69B2A /* SongRequest in Resources */ = {isa = PBXBuildFile; fileRef = C0FC22CE1AFAA8DC5D0CCCAC /* SongRequest */; };
 		DAE90668661A70FCEE766E9B /* Overlay.metal in Sources */ = {isa = PBXBuildFile; fileRef = 52170AB3E7C57BBAAB6870C8 /* Overlay.metal */; };
+		DD78C98DF8855ED2F032670A /* SystemGestureDeferral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C298622B40B0AF493599B04 /* SystemGestureDeferral.swift */; };
 		DD9B5E19E29B883AE740FAA3 /* MetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6BCB832B20659F88660D898 /* MetalView.swift */; };
 		DE7DE7D5EAA3D5B620280AAB /* SongCardData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 843314B39A51A4BA29F68406 /* SongCardData.swift */; };
 		E038790BBC095DC6FC2CB847 /* BlivechatClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F5844A5327DA54740B0C5F1 /* BlivechatClient.swift */; };
@@ -172,6 +174,7 @@
 		86094BCB48C5EF5521F92827 /* SongCardTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardTemplate.swift; sourceTree = "<group>"; };
 		882633726D5A459E5FC3C5CD /* MetalStabilizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalStabilizer.swift; sourceTree = "<group>"; };
 		89186D3369D0EF438A62CB70 /* DanmakuParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DanmakuParserTests.swift; sourceTree = "<group>"; };
+		8C298622B40B0AF493599B04 /* SystemGestureDeferral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemGestureDeferral.swift; sourceTree = "<group>"; };
 		8CCFBA22C5AFCFC7554CFAD6 /* QueueDisplayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDisplayWindow.swift; sourceTree = "<group>"; };
 		920B7EA8490031711F48ABF0 /* URLQueryDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLQueryDecoder.swift; sourceTree = "<group>"; };
 		9853B0536BA40FF4D8339699 /* SongCardUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardUniforms.swift; sourceTree = "<group>"; };
@@ -183,6 +186,7 @@
 		AC060CD8279C903B645AFE9A /* LeftPanelTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftPanelTemplate.swift; sourceTree = "<group>"; };
 		AC3B7C48B3AD0D63A43CD8A7 /* URLQueryDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLQueryDecoderTests.swift; sourceTree = "<group>"; };
 		AE9423E6A23EFF970B902171 /* QueuePersistenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuePersistenceManager.swift; sourceTree = "<group>"; };
+		B317CEFE2D109431FD3CBD97 /* SystemGestureDeferralTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemGestureDeferralTests.swift; sourceTree = "<group>"; };
 		B8E39390DD94738B7AB38E16 /* WebServerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebServerManager.swift; sourceTree = "<group>"; };
 		BD5B69C649A2719D9D2B1872 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
 		C0FC22CE1AFAA8DC5D0CCCAC /* SongRequest */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SongRequest; path = MaimaiPOV/SongRequest; sourceTree = SOURCE_ROOT; };
@@ -338,6 +342,7 @@
 				CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */,
 				FE78717545E85E236A0081A5 /* SongCardManagerTests.swift */,
 				C729C0835BCA9F1227C7CDE7 /* SongDatabaseTests.swift */,
+				B317CEFE2D109431FD3CBD97 /* SystemGestureDeferralTests.swift */,
 				AC3B7C48B3AD0D63A43CD8A7 /* URLQueryDecoderTests.swift */,
 			);
 			path = MaimaiPOVTests;
@@ -576,6 +581,7 @@
 				4EDF1351FE018822E54EA583 /* DebugOverlayView.swift */,
 				601C17EDF83A4FEA8B86970F /* HomeIndicatorHider.swift */,
 				666CD3279AED00AF4535230E /* Phase2View.swift */,
+				8C298622B40B0AF493599B04 /* SystemGestureDeferral.swift */,
 				20E6AD6052E973E084A95101 /* YOLOOverlayView.swift */,
 			);
 			path = UI;
@@ -713,6 +719,7 @@
 				4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */,
 				24268EC5D1A85F7A44711195 /* SongCardManagerTests.swift in Sources */,
 				A81D7F6247CE3EA1F5C568BE /* SongDatabaseTests.swift in Sources */,
+				0ED40CDD9F809687B2159B1B /* SystemGestureDeferralTests.swift in Sources */,
 				A55F728C4E1C30FFB1355575 /* URLQueryDecoderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -791,6 +798,7 @@
 				66C5912CDBA7496F2F09542B /* SongDatabase.swift in Sources */,
 				B0A661B9C714856E4F3769C8 /* Stabilizer.metal in Sources */,
 				BBEC6B588215A3195AEB8F04 /* StabilizerUniforms.swift in Sources */,
+				DD78C98DF8855ED2F032670A /* SystemGestureDeferral.swift in Sources */,
 				EC1841384677AAB9DAC574B3 /* TextureHelper.swift in Sources */,
 				42AF96AFA7DF798B4F699EAD /* URLQueryDecoder.swift in Sources */,
 				B776CF6FF76B81418F469E6B /* WebServerManager.swift in Sources */,

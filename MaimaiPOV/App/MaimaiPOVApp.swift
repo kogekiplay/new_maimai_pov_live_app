@@ -7,7 +7,7 @@ struct MaimaiPOVApp: App {
     var body: some Scene {
         WindowGroup {
             Phase2View()
-                .defersSystemGestures(on: .bottom)
+                .defersSystemGestures(on: SystemGestureDeferral.deferredEdges)
         }
         .defaultSize(.init(width: 393, height: 852))
     }
