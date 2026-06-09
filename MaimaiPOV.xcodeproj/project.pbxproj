@@ -25,6 +25,7 @@
 		3FD033BAD81AF1E9FF4349A0 /* BlivechatConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5710C81C78E271EC29BC220D /* BlivechatConfig.swift */; };
 		4240C8D6C7356F5EC3F97773 /* Swifter in Frameworks */ = {isa = PBXBuildFile; productRef = F7B3CEBC184CFD58DABCFA7C /* Swifter */; };
 		426419F3952EA618098C1063 /* AudioDeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD5B69C649A2719D9D2B1872 /* AudioDeviceManager.swift */; };
+		42AF96AFA7DF798B4F699EAD /* URLQueryDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920B7EA8490031711F48ABF0 /* URLQueryDecoder.swift */; };
 		43693D576236385D4334BCFF /* LeftPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1EDA25735BD66CB491ACCF /* LeftPanelRenderer.swift */; };
 		4960C39DA3C28E9CD47EA077 /* SongCard.metal in Sources */ = {isa = PBXBuildFile; fileRef = 5421EF97A1F11E3BF7A5E378 /* SongCard.metal */; };
 		4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */; };
@@ -66,6 +67,7 @@
 		9E5B14AD68A99A1812443EA9 /* BBoxTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8587E32C1DBB3BABD213D0FF /* BBoxTracker.swift */; };
 		A059BB48745A9B8573B0B166 /* DanmakuParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A5C7EA7E2B7530EA146EAA /* DanmakuParser.swift */; };
 		A0FF3CB06FD4279D006806B1 /* MarqueeRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127FCAFBAAB0F803FA916DE4 /* MarqueeRenderer.swift */; };
+		A55F728C4E1C30FFB1355575 /* URLQueryDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3B7C48B3AD0D63A43CD8A7 /* URLQueryDecoderTests.swift */; };
 		A81D7F6247CE3EA1F5C568BE /* SongDatabaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C729C0835BCA9F1227C7CDE7 /* SongDatabaseTests.swift */; };
 		AE25D35491071B326398D773 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3335E687B44BB3ABF1322E /* Config.swift */; };
 		B0A661B9C714856E4F3769C8 /* Stabilizer.metal in Sources */ = {isa = PBXBuildFile; fileRef = 116DFFFD90A0D2767EC58B5D /* Stabilizer.metal */; };
@@ -168,6 +170,7 @@
 		882633726D5A459E5FC3C5CD /* MetalStabilizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalStabilizer.swift; sourceTree = "<group>"; };
 		89186D3369D0EF438A62CB70 /* DanmakuParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DanmakuParserTests.swift; sourceTree = "<group>"; };
 		8CCFBA22C5AFCFC7554CFAD6 /* QueueDisplayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDisplayWindow.swift; sourceTree = "<group>"; };
+		920B7EA8490031711F48ABF0 /* URLQueryDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLQueryDecoder.swift; sourceTree = "<group>"; };
 		9853B0536BA40FF4D8339699 /* SongCardUniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongCardUniforms.swift; sourceTree = "<group>"; };
 		98DD04CA5A77FD7823A3C309 /* CoverImageServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageServiceTests.swift; sourceTree = "<group>"; };
 		99A583BDDF4E4F1121159357 /* DebugInfoManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugInfoManager.swift; sourceTree = "<group>"; };
@@ -175,6 +178,7 @@
 		9BBE8DDE579A7717A6971C50 /* BlivechatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlivechatMessage.swift; sourceTree = "<group>"; };
 		A8535ED03F951F2649B0B3B8 /* DeviceStatus.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = DeviceStatus.metal; sourceTree = "<group>"; };
 		AC060CD8279C903B645AFE9A /* LeftPanelTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftPanelTemplate.swift; sourceTree = "<group>"; };
+		AC3B7C48B3AD0D63A43CD8A7 /* URLQueryDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLQueryDecoderTests.swift; sourceTree = "<group>"; };
 		AE9423E6A23EFF970B902171 /* QueuePersistenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuePersistenceManager.swift; sourceTree = "<group>"; };
 		B8E39390DD94738B7AB38E16 /* WebServerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebServerManager.swift; sourceTree = "<group>"; };
 		BD5B69C649A2719D9D2B1872 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
@@ -329,6 +333,7 @@
 				CA77D5724AE49C5CFE475FBA /* SongCardDataTests.swift */,
 				FE78717545E85E236A0081A5 /* SongCardManagerTests.swift */,
 				C729C0835BCA9F1227C7CDE7 /* SongDatabaseTests.swift */,
+				AC3B7C48B3AD0D63A43CD8A7 /* URLQueryDecoderTests.swift */,
 			);
 			path = MaimaiPOVTests;
 			sourceTree = "<group>";
@@ -499,6 +504,7 @@
 				339EF47C06E70715103F6083 /* QueueAPIHandler.swift */,
 				8CCFBA22C5AFCFC7554CFAD6 /* QueueDisplayWindow.swift */,
 				D8F2D4C48566FAB764DB15B4 /* SearchAPIHandler.swift */,
+				920B7EA8490031711F48ABF0 /* URLQueryDecoder.swift */,
 				B8E39390DD94738B7AB38E16 /* WebServerManager.swift */,
 			);
 			path = WebServer;
@@ -700,6 +706,7 @@
 				4ACBFB3BA52C6E6AB2F8FF3E /* SongCardDataTests.swift in Sources */,
 				24268EC5D1A85F7A44711195 /* SongCardManagerTests.swift in Sources */,
 				A81D7F6247CE3EA1F5C568BE /* SongDatabaseTests.swift in Sources */,
+				A55F728C4E1C30FFB1355575 /* URLQueryDecoderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -777,6 +784,7 @@
 				B0A661B9C714856E4F3769C8 /* Stabilizer.metal in Sources */,
 				BBEC6B588215A3195AEB8F04 /* StabilizerUniforms.swift in Sources */,
 				EC1841384677AAB9DAC574B3 /* TextureHelper.swift in Sources */,
+				42AF96AFA7DF798B4F699EAD /* URLQueryDecoder.swift in Sources */,
 				B776CF6FF76B81418F469E6B /* WebServerManager.swift in Sources */,
 				37B2C61A68290CC3BBA954DA /* YOLODetector.swift in Sources */,
 				0986160EADF9E2B6DAD5BAC7 /* YOLOOverlayView.swift in Sources */,

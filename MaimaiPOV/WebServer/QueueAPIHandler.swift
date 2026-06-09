@@ -327,7 +327,7 @@ final class QueueAPIHandler: @unchecked Sendable {
             return .badRequest(.text("Missing 'username' parameter"))
         }
 
-        let username = rawUsername.removingPercentEncoding ?? rawUsername
+        let username = URLQueryDecoder.decodeComponent(rawUsername)
 
         let sem = DispatchSemaphore(value: 0)
         let result = LockedValue<[String: Any]>([:])

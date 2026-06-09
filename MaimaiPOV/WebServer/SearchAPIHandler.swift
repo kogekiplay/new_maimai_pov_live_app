@@ -14,7 +14,7 @@ final class SearchAPIHandler: @unchecked Sendable {
             return .badRequest(.text("Missing query parameter 'q'"))
         }
 
-        let query = queryParam.removingPercentEncoding ?? queryParam
+        let query = URLQueryDecoder.decodeComponent(queryParam)
 
         let sem = DispatchSemaphore(value: 0)
         let response = LockedValue<[String: Any]>([:])
