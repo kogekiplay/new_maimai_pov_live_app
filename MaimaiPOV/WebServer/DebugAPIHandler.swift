@@ -65,6 +65,13 @@ final class DebugAPIHandler: @unchecked Sendable {
         return .valid(value)
     }
 
+    static func optionalMarqueeTypeRaw(in body: [String: Any], key: String, defaultValue: Int = 0) -> Int {
+        guard let rawValue = body[key], !(rawValue is NSNull) else {
+            return defaultValue
+        }
+        return intValue(rawValue) ?? defaultValue
+    }
+
     func simulateGift(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
               let authorName = Self.requiredNonBlankString(in: body, key: "authorName") else {
@@ -341,7 +348,7 @@ final class DebugAPIHandler: @unchecked Sendable {
             return .badRequest(.text("Missing 'text'"))
         }
 
-        let typeRaw = body["type"] as? Int ?? 0
+        let typeRaw = Self.optionalMarqueeTypeRaw(in: body, key: "type")
         let type = MarqueeItem.MarqueeItemType(rawValue: typeRaw) ?? .songSuccess
         let mergeKey = body["mergeKey"] as? String
         guard let mergeCount = Self.optionalPositiveInt(in: body, key: "mergeCount", defaultValue: 1) else {

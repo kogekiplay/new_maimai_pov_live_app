@@ -102,6 +102,11 @@ final class DebugAPIHandlerTests: XCTestCase {
         XCTAssertNil(DebugAPIHandler.optionalPositiveInt(in: ["mergeCount": "1"], key: "mergeCount", defaultValue: 1))
     }
 
+    func testOptionalMarqueeTypeRawAcceptsIntegralDoubleValue() {
+        XCTAssertEqual(DebugAPIHandler.optionalMarqueeTypeRaw(in: ["type": 2.0], key: "type"), 2)
+        XCTAssertEqual(DebugAPIHandler.optionalMarqueeTypeRaw(in: ["type": 2.5], key: "type"), 0)
+    }
+
     func testSimulateDanmakuRejectsBlankContent() async throws {
         let body = try jsonData(["authorName": "Alice", "content": " \n "])
 
