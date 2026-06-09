@@ -72,6 +72,11 @@ final class DebugAPIHandlerTests: XCTestCase {
         XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": 100], key: "level"), .valid(100))
     }
 
+    func testOptionalBatteryLevelAcceptsIntegralDoubleValue() {
+        XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": 50.0], key: "level"), .valid(50))
+        XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": 50.5], key: "level"), .invalid)
+    }
+
     func testOptionalBatteryLevelRejectsOutOfRangePercentages() {
         XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": -1], key: "level"), .invalid)
         XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": 101], key: "level"), .invalid)
