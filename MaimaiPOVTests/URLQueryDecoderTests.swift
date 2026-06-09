@@ -57,6 +57,11 @@ final class DebugAPIHandlerTests: XCTestCase {
         XCTAssertEqual(DebugAPIHandler.requiredPositiveInt(in: ["timeout": 30], key: "timeout"), 30)
     }
 
+    func testRequiredPositiveIntAcceptsIntegralDoubleValue() {
+        XCTAssertEqual(DebugAPIHandler.requiredPositiveInt(in: ["timeout": 30.0], key: "timeout"), 30)
+        XCTAssertNil(DebugAPIHandler.requiredPositiveInt(in: ["timeout": 30.5], key: "timeout"))
+    }
+
     func testOptionalBatteryLevelAllowsMissingOrNullLevel() {
         XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: [:], key: "level"), .valid(nil))
         XCTAssertEqual(DebugAPIHandler.optionalBatteryLevel(in: ["level": NSNull()], key: "level"), .valid(nil))
@@ -79,6 +84,11 @@ final class DebugAPIHandlerTests: XCTestCase {
 
     func testOptionalPositiveIntAcceptsPositiveValue() {
         XCTAssertEqual(DebugAPIHandler.optionalPositiveInt(in: ["price": 30], key: "price", defaultValue: 1), 30)
+    }
+
+    func testOptionalPositiveIntAcceptsIntegralDoubleValue() {
+        XCTAssertEqual(DebugAPIHandler.optionalPositiveInt(in: ["price": 30.0], key: "price", defaultValue: 1), 30)
+        XCTAssertNil(DebugAPIHandler.optionalPositiveInt(in: ["price": 30.5], key: "price", defaultValue: 1))
     }
 
     func testOptionalPositiveIntRejectsZeroNegativeAndNonNumericValues() {
@@ -184,5 +194,10 @@ final class QueueAPIHandlerTests: XCTestCase {
 
     func testRequiredPositiveMusicIdAcceptsPositiveValue() {
         XCTAssertEqual(QueueAPIHandler.requiredPositiveMusicId(in: ["musicId": 123]), 123)
+    }
+
+    func testRequiredPositiveMusicIdAcceptsIntegralDoubleValue() {
+        XCTAssertEqual(QueueAPIHandler.requiredPositiveMusicId(in: ["musicId": 123.0]), 123)
+        XCTAssertNil(QueueAPIHandler.requiredPositiveMusicId(in: ["musicId": 123.5]))
     }
 }

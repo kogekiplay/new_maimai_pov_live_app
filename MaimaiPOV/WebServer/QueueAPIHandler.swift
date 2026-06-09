@@ -19,10 +19,26 @@ final class QueueAPIHandler: @unchecked Sendable {
     }
 
     static func requiredPositiveMusicId(in body: [String: Any]) -> Int? {
-        guard let musicId = body["musicId"] as? Int, musicId > 0 else {
+        guard let musicId = positiveIntValue(body["musicId"]) else {
             return nil
         }
         return musicId
+    }
+
+    private static func positiveIntValue(_ rawValue: Any?) -> Int? {
+        let value: Int
+        if let intValue = rawValue as? Int {
+            value = intValue
+        } else if let doubleValue = rawValue as? Double,
+                  doubleValue.isFinite,
+                  doubleValue.rounded(.towardZero) == doubleValue,
+                  doubleValue >= Double(Int.min),
+                  doubleValue <= Double(Int.max) {
+            value = Int(doubleValue)
+        } else {
+            return nil
+        }
+        return value > 0 ? value : nil
     }
 
     private static func nonBlankString(_ value: String) -> String? {

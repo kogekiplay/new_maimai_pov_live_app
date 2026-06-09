@@ -18,7 +18,7 @@ final class DebugAPIHandler: @unchecked Sendable {
     }
 
     static func requiredPositiveInt(in body: [String: Any], key: String) -> Int? {
-        guard let value = body[key] as? Int, value > 0 else {
+        guard let value = positiveIntValue(body[key]) else {
             return nil
         }
         return value
@@ -28,10 +28,26 @@ final class DebugAPIHandler: @unchecked Sendable {
         guard let rawValue = body[key], !(rawValue is NSNull) else {
             return defaultValue
         }
-        guard let value = rawValue as? Int, value > 0 else {
+        guard let value = positiveIntValue(rawValue) else {
             return nil
         }
         return value
+    }
+
+    private static func positiveIntValue(_ rawValue: Any?) -> Int? {
+        let value: Int
+        if let intValue = rawValue as? Int {
+            value = intValue
+        } else if let doubleValue = rawValue as? Double,
+                  doubleValue.isFinite,
+                  doubleValue.rounded(.towardZero) == doubleValue,
+                  doubleValue >= Double(Int.min),
+                  doubleValue <= Double(Int.max) {
+            value = Int(doubleValue)
+        } else {
+            return nil
+        }
+        return value > 0 ? value : nil
     }
 
     static func optionalBatteryLevel(in body: [String: Any], key: String) -> OptionalIntInput {
