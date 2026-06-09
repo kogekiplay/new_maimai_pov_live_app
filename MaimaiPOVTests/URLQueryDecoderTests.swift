@@ -88,6 +88,14 @@ final class WebControlInputTests: XCTestCase {
         XCTAssertEqual(WebControlInput.clampedDouble(in: ["gain": 1.25], key: "gain", range: WebControlInput.audioGainRange), 1.25)
         XCTAssertEqual(WebControlInput.clampedDouble(in: ["gain": 3.0], key: "gain", range: WebControlInput.audioGainRange), 2)
     }
+
+    func testClampedIntUsesControlSurfaceRange() {
+        XCTAssertNil(WebControlInput.clampedInt(in: [:], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange))
+        XCTAssertNil(WebControlInput.clampedInt(in: ["threshold": "30"], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange))
+        XCTAssertEqual(WebControlInput.clampedInt(in: ["threshold": 0], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange), 1)
+        XCTAssertEqual(WebControlInput.clampedInt(in: ["threshold": 30], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange), 30)
+        XCTAssertEqual(WebControlInput.clampedInt(in: ["threshold": 10_000], key: "threshold", range: WebControlInput.songRequestPauseThresholdRange), 9_999)
+    }
 }
 
 final class QueueAPIHandlerTests: XCTestCase {

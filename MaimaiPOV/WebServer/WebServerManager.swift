@@ -289,7 +289,11 @@ final class WebServerManager: @unchecked Sendable {
                 if let paused = bodyData["paused"] as? Bool {
                     Config.songRequestPaused = paused
                 }
-                if let threshold = bodyData["threshold"] as? Int, threshold > 0 {
+                if let threshold = WebControlInput.clampedInt(
+                    in: bodyData,
+                    key: "threshold",
+                    range: WebControlInput.songRequestPauseThresholdRange
+                ) {
                     Config.songRequestPauseThreshold = threshold
                 }
                 let data = try? JSONSerialization.data(withJSONObject: [
@@ -874,9 +878,17 @@ enum WebControlInput {
     static let distRatioRange = 0.0...1.0
     static let activitySmoothFactorRange = 0.01...0.2
     static let audioGainRange = 0.0...2.0
+    static let songRequestPauseThresholdRange = 1...9_999
 
     static func clampedDouble(in body: [String: Any], key: String, range: ClosedRange<Double>) -> Double? {
         guard let value = body[key] as? Double else {
+            return nil
+        }
+        return min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    static func clampedInt(in body: [String: Any], key: String, range: ClosedRange<Int>) -> Int? {
+        guard let value = body[key] as? Int else {
             return nil
         }
         return min(max(value, range.lowerBound), range.upperBound)
