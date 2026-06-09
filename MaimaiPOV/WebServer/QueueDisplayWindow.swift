@@ -25,7 +25,9 @@ struct QueueDisplayWindow: Sendable {
         index - startIndex
     }
 
-    func realIndex(forDisplayIndex displayIndex: Int) -> Int {
-        startIndex + displayIndex
+    func realIndex(forDisplayIndex displayIndex: Int) -> Int? {
+        let index = startIndex + displayIndex
+        guard visibleRange.contains(index) else { return nil }
+        return index
     }
 }

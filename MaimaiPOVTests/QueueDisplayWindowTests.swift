@@ -25,6 +25,16 @@ final class QueueDisplayWindowTests: XCTestCase {
 
         XCTAssertTrue(window.visibleRange.isEmpty)
         XCTAssertEqual(window.remaining, 0)
-        XCTAssertEqual(window.realIndex(forDisplayIndex: 0), 0)
+        XCTAssertNil(window.realIndex(forDisplayIndex: 0))
+    }
+
+    func testRealIndexRejectsDisplayIndexesOutsideVisibleWindow() {
+        let window = QueueDisplayWindow(queueCount: 4, currentIndex: 2)
+
+        XCTAssertEqual(Array(window.visibleRange), [2, 3])
+        XCTAssertNil(window.realIndex(forDisplayIndex: -1))
+        XCTAssertNil(window.realIndex(forDisplayIndex: 2))
+        XCTAssertEqual(window.realIndex(forDisplayIndex: 0), 2)
+        XCTAssertEqual(window.realIndex(forDisplayIndex: 1), 3)
     }
 }

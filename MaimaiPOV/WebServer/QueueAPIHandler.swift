@@ -44,8 +44,8 @@ final class QueueAPIHandler: @unchecked Sendable {
         ]
     }
 
-    private func realIndex(_ displayIndex: Int) -> Int {
-        guard let pipeline = pipeline else { return displayIndex }
+    private func realIndex(_ displayIndex: Int) -> Int? {
+        guard let pipeline = pipeline else { return nil }
         let manager = pipeline.songCardManager
         let window = QueueDisplayWindow(queueCount: manager.queue.count, currentIndex: manager.currentIndex)
         return window.realIndex(forDisplayIndex: displayIndex)
@@ -104,7 +104,10 @@ final class QueueAPIHandler: @unchecked Sendable {
                 sem.signal()
                 return
             }
-            let index = self.realIndex(displayIndex)
+            guard let index = self.realIndex(displayIndex) else {
+                sem.signal()
+                return
+            }
             let manager = pipeline.songCardManager
             guard index >= 0, index < manager.queue.count else {
                 sem.signal()
