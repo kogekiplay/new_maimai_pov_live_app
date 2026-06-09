@@ -1,8 +1,10 @@
 import SwiftUI
 import UIKit
 
-class HomeIndicatorHostingController<Content: View>: UIHostingController<Content> {
+final class SystemGestureDeferringHostingController<Content: View>: UIHostingController<Content> {
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge {
         SystemGestureDeferral.uiKitEdges
     }
 }
+
+typealias HomeIndicatorHostingController<Content: View> = SystemGestureDeferringHostingController<Content>
