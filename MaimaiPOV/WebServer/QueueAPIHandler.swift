@@ -18,6 +18,13 @@ final class QueueAPIHandler: @unchecked Sendable {
         return nonBlankString(rawUsername)
     }
 
+    static func requiredPositiveMusicId(in body: [String: Any]) -> Int? {
+        guard let musicId = body["musicId"] as? Int, musicId > 0 else {
+            return nil
+        }
+        return musicId
+    }
+
     private static func nonBlankString(_ value: String) -> String? {
         value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : value
     }
@@ -154,7 +161,7 @@ final class QueueAPIHandler: @unchecked Sendable {
 
     func addForUser(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let musicId = body["musicId"] as? Int else {
+              let musicId = Self.requiredPositiveMusicId(in: body) else {
             return .badRequest(.text("Missing or invalid 'musicId'"))
         }
 
@@ -235,7 +242,7 @@ final class QueueAPIHandler: @unchecked Sendable {
 
     func add(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let musicId = body["musicId"] as? Int else {
+              let musicId = Self.requiredPositiveMusicId(in: body) else {
             return .badRequest(.text("Missing or invalid 'musicId'"))
         }
 

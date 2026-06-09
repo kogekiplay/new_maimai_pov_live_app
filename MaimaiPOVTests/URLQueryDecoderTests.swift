@@ -122,4 +122,14 @@ final class QueueAPIHandlerTests: XCTestCase {
     func testRequiredUsernameAcceptsExplicitLANUsername() {
         XCTAssertEqual(QueueAPIHandler.requiredUsername(in: ["username": "LAN"]), "LAN")
     }
+
+    func testRequiredPositiveMusicIdRejectsMissingZeroAndNegativeValues() {
+        XCTAssertNil(QueueAPIHandler.requiredPositiveMusicId(in: [:]))
+        XCTAssertNil(QueueAPIHandler.requiredPositiveMusicId(in: ["musicId": 0]))
+        XCTAssertNil(QueueAPIHandler.requiredPositiveMusicId(in: ["musicId": -1]))
+    }
+
+    func testRequiredPositiveMusicIdAcceptsPositiveValue() {
+        XCTAssertEqual(QueueAPIHandler.requiredPositiveMusicId(in: ["musicId": 123]), 123)
+    }
 }
