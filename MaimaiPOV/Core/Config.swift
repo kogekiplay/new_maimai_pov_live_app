@@ -468,12 +468,15 @@ enum Config {
     }
 
     static let defaultStreamBitrate: Int = 4000
+    static let streamBitrateRange = 1_000...10_000
     static var streamBitrate: Int {
         get {
             let v = UserDefaults.standard.integer(forKey: streamBitrateKey)
-            return v == 0 ? defaultStreamBitrate : v
+            return clampStreamBitrate(v == 0 ? defaultStreamBitrate : v)
         }
-        set { UserDefaults.standard.set(newValue, forKey: streamBitrateKey) }
+        set {
+            UserDefaults.standard.set(clampStreamBitrate(newValue), forKey: streamBitrateKey)
+        }
     }
 
     static let defaultMarqueeSpeed: Float = 3.0
@@ -590,6 +593,10 @@ enum Config {
         }
     }
     private static let streamPresetsKey = "com.maimai.streamPresets"
+
+    private static func clampStreamBitrate(_ value: Int) -> Int {
+        min(max(value, streamBitrateRange.lowerBound), streamBitrateRange.upperBound)
+    }
 }
 
 struct StreamPreset: Codable, Identifiable {

@@ -1265,7 +1265,7 @@ struct Phase2View: View {
             Slider(value: Binding(
                 get: { Double(pipeline.streamManager.videoBitrate) },
                 set: { pipeline.streamManager.videoBitrate = Int($0); Config.streamBitrate = Int($0) }
-            ), in: 1000...10000, step: 500)
+            ), in: Double(Config.streamBitrateRange.lowerBound)...Double(Config.streamBitrateRange.upperBound), step: 500)
         } valueLabel: {
             Text("\(pipeline.streamManager.videoBitrate)kbps")
                 .font(.caption)
