@@ -1003,7 +1003,11 @@ struct Phase2View: View {
 
     private var yoloPaddingRow: some View {
         labeledRow("YOLOPad") {
-            Slider(value: $pipeline.yoloPadding, in: 0...100, step: 1)
+            Slider(
+                value: $pipeline.yoloPadding,
+                in: Double(Config.yoloPaddingRange.lowerBound)...Double(Config.yoloPaddingRange.upperBound),
+                step: 1
+            )
         } valueLabel: {
             Text("\(Int(pipeline.yoloPadding))px").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }

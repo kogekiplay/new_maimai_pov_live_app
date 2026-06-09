@@ -8,14 +8,17 @@ enum Config {
     static let stabHeight  = 1440
     static let yoloInputSize = 640
     static let defaultYoloPadding: Int = 40
+    static let yoloPaddingRange = 0...100
     static var yoloPadding: Int {
         get {
             guard UserDefaults.standard.object(forKey: yoloPaddingKey) != nil else {
                 return defaultYoloPadding
             }
-            return UserDefaults.standard.integer(forKey: yoloPaddingKey)
+            return clampYoloPadding(UserDefaults.standard.integer(forKey: yoloPaddingKey))
         }
-        set { UserDefaults.standard.set(newValue, forKey: yoloPaddingKey) }
+        set {
+            UserDefaults.standard.set(clampYoloPadding(newValue), forKey: yoloPaddingKey)
+        }
     }
     static let defaultYoloPreviewEnabled: Bool = false
     static var yoloPreviewEnabled: Bool {
@@ -596,6 +599,10 @@ enum Config {
 
     private static func clampStreamBitrate(_ value: Int) -> Int {
         min(max(value, streamBitrateRange.lowerBound), streamBitrateRange.upperBound)
+    }
+
+    private static func clampYoloPadding(_ value: Int) -> Int {
+        min(max(value, yoloPaddingRange.lowerBound), yoloPaddingRange.upperBound)
     }
 }
 
