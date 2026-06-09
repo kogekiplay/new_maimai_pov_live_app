@@ -72,3 +72,36 @@ extension String {
             .replacingOccurrences(of: ">", with: "&gt;")
     }
 }
+
+extension SongCardData {
+    func renderCacheKey(coverBase64: String?) -> String {
+        "\(renderCacheKeyPrefix)|\(Self.cacheComponent(Self.coverFingerprint(coverBase64)))"
+    }
+
+    var renderCacheKeyPrefix: String {
+        [
+            Self.cacheComponent(songName),
+            Self.cacheComponent(artist),
+            Self.cacheComponent(difficulty),
+            Self.cacheComponent(level),
+            Self.cacheComponent(requester),
+            Self.cacheComponent(chartType),
+            Self.cacheComponent(String(giftValue))
+        ].joined(separator: "|")
+    }
+
+    private static func cacheComponent(_ value: String?) -> String {
+        let value = value ?? ""
+        return "\(value.utf8.count):\(value)"
+    }
+
+    private static func coverFingerprint(_ coverBase64: String?) -> String {
+        guard let coverBase64 else { return "" }
+        var hash: UInt64 = 1_469_598_103_934_665_603
+        for byte in coverBase64.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return "\(coverBase64.utf8.count):\(String(hash, radix: 16))"
+    }
+}

@@ -39,13 +39,13 @@ final class LeftPanelRenderer {
         announcementWebView.scrollView.isScrollEnabled = false
     }
 
-    private func cacheKey(for data: SongCardData?) -> String {
+    private func cacheKey(for data: SongCardData?, coverBase64: String?) -> String {
         guard let data = data else { return "_empty_" }
-        return "\(data.requesterName ?? "")_\(data.songName)_\(data.giftValue)"
+        return data.renderCacheKey(coverBase64: coverBase64)
     }
 
     func renderCurrentSong(_ data: SongCardData?, coverBase64: String?, completion: @escaping (MTLTexture?) -> Void) {
-        let key = cacheKey(for: data)
+        let key = cacheKey(for: data, coverBase64: coverBase64)
         if cachedCurrentSongKey == key, let cached = cachedCurrentSongTexture {
             completion(cached)
             return

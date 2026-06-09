@@ -47,8 +47,8 @@ final class RightPanelRenderer {
         titleWebView.scrollView.isScrollEnabled = false
     }
 
-    private func cacheKey(for data: SongCardData) -> String {
-        return "\(data.requesterName ?? "")_\(data.songName)_\(data.giftValue)"
+    private func cacheKey(for data: SongCardData, coverBase64: String?) -> String {
+        return data.renderCacheKey(coverBase64: coverBase64)
     }
 
     func renderTitle(completion: @escaping (MTLTexture?) -> Void) {
@@ -66,7 +66,7 @@ final class RightPanelRenderer {
     }
 
     func renderRow(data: SongCardData, queueIndex: Int, coverBase64: String?, completion: @escaping (Int, MTLTexture?) -> Void) {
-        let key = cacheKey(for: data)
+        let key = cacheKey(for: data, coverBase64: coverBase64)
         if let cached = rowTextureCache[key] {
             completion(queueIndex, cached)
             return
@@ -91,7 +91,7 @@ final class RightPanelRenderer {
 
         isRenderingRow = true
         let item = pendingRowRenders.removeFirst()
-        let key = cacheKey(for: item.data)
+        let key = cacheKey(for: item.data, coverBase64: item.coverBase64)
 
         if let cached = rowTextureCache[key] {
             item.completion(item.queueIndex, cached)
@@ -117,7 +117,7 @@ final class RightPanelRenderer {
 
         for (i, song) in songs.enumerated() {
             let queueIndex = startQueueIndex + i
-            let key = cacheKey(for: song)
+            let key = cacheKey(for: song, coverBase64: covers[queueIndex])
             if let cached = rowTextureCache[key] {
                 results[queueIndex] = cached
             } else {
@@ -153,8 +153,8 @@ final class RightPanelRenderer {
                 }
 
                 let item = rowsToRender[index]
-                let key = cacheKey(for: item.song)
                 let coverBase64 = covers[item.queueIndex]
+                let key = cacheKey(for: item.song, coverBase64: coverBase64)
 
                 if let cached = rowTextureCache[key] {
                     results[item.queueIndex] = cached
@@ -189,11 +189,11 @@ final class RightPanelRenderer {
     }
 
     func invalidateRow(data: SongCardData) {
-        rowTextureCache.removeValue(forKey: cacheKey(for: data))
+        rowTextureCache = rowTextureCache.filter { !$0.key.hasPrefix(data.renderCacheKeyPrefix) }
     }
 
     func getCachedRow(data: SongCardData) -> MTLTexture? {
-        return rowTextureCache[cacheKey(for: data)]
+        rowTextureCache.first { $0.key.hasPrefix(data.renderCacheKeyPrefix) }?.value
     }
 
     func getTitleTexture() -> MTLTexture? {
