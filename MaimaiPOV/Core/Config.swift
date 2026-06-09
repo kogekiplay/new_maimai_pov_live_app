@@ -472,14 +472,17 @@ enum Config {
     }
 
     static let defaultActivitySmoothFactor: Float = 0.03
+    static let activitySmoothFactorRange: ClosedRange<Float> = 0.01...0.2
     static var activitySmoothFactor: Float {
         get {
             guard UserDefaults.standard.object(forKey: activitySmoothFactorKey) != nil else {
                 return defaultActivitySmoothFactor
             }
-            return Float(UserDefaults.standard.double(forKey: activitySmoothFactorKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: activitySmoothFactorKey)), to: activitySmoothFactorRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: activitySmoothFactorKey) }
+        set {
+            UserDefaults.standard.set(Double(clampFloat(newValue, to: activitySmoothFactorRange)), forKey: activitySmoothFactorKey)
+        }
     }
 
     static let defaultStreamBitrate: Int = 4000

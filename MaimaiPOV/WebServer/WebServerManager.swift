@@ -875,7 +875,10 @@ enum WebControlInput {
     static let rollRange = -45.0...45.0
     static let fovRange = Double(Config.fovRange.lowerBound)...Double(Config.fovRange.upperBound)
     static let distRatioRange = Double(Config.distRatioRange.lowerBound)...Double(Config.distRatioRange.upperBound)
-    static let activitySmoothFactorRange = 0.01...0.2
+    static let activitySmoothFactorRange: ClosedRange<Double> = {
+        let range = Config.activitySmoothFactorRange
+        return Double(range.lowerBound)...Double(range.upperBound)
+    }()
     static let audioGainRange = 0.0...2.0
     static let songRequestPauseThresholdRange = 1...9_999
 

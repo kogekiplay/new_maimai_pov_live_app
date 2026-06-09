@@ -8,6 +8,7 @@ final class ConfigTests: XCTestCase {
     private let distRatioKey = "com.maimai.distRatio"
     private let yoloPaddingKey = "com.maimai.yoloPadding"
     private let streamBitrateKey = "com.maimai.streamBitrate"
+    private let activitySmoothFactorKey = "com.maimai.activitySmoothFactor"
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: syncOffsetKey)
@@ -16,6 +17,7 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: distRatioKey)
         UserDefaults.standard.removeObject(forKey: yoloPaddingKey)
         UserDefaults.standard.removeObject(forKey: streamBitrateKey)
+        UserDefaults.standard.removeObject(forKey: activitySmoothFactorKey)
         super.tearDown()
     }
 
@@ -73,5 +75,15 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(-500, forKey: streamBitrateKey)
 
         XCTAssertEqual(Config.streamBitrate, 1_000)
+    }
+
+    func testActivitySmoothFactorClampsPersistedValuesToControlRange() {
+        UserDefaults.standard.set(0.001, forKey: activitySmoothFactorKey)
+
+        XCTAssertEqual(Config.activitySmoothFactor, 0.01, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.9, forKey: activitySmoothFactorKey)
+
+        XCTAssertEqual(Config.activitySmoothFactor, 0.2, accuracy: 0.0001)
     }
 }

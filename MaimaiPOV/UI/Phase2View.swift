@@ -976,7 +976,10 @@ struct Phase2View: View {
 
     private var activitySmoothFactorRow: some View {
         labeledRow("Follow") {
-            Slider(value: Binding(get: { Double(pipeline.activitySmoothFactor) }, set: { pipeline.activitySmoothFactor = Float($0) }), in: 0.01...0.2)
+            Slider(
+                value: Binding(get: { Double(pipeline.activitySmoothFactor) }, set: { pipeline.activitySmoothFactor = Float($0) }),
+                in: Double(Config.activitySmoothFactorRange.lowerBound)...Double(Config.activitySmoothFactorRange.upperBound)
+            )
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.activitySmoothFactor)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
