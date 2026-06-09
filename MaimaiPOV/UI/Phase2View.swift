@@ -953,7 +953,11 @@ struct Phase2View: View {
 
     private var fovRow: some View {
         labeledRow("FOV") {
-            Slider(value: Binding(get: { Double(pipeline.fov) }, set: { pipeline.fov = Float($0) }), in: 30...160, step: 1)
+            Slider(
+                value: Binding(get: { Double(pipeline.fov) }, set: { pipeline.fov = Float($0) }),
+                in: Double(Config.fovRange.lowerBound)...Double(Config.fovRange.upperBound),
+                step: 1
+            )
         } valueLabel: {
             Text("\(Int(pipeline.fov))°").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }
@@ -961,7 +965,10 @@ struct Phase2View: View {
 
     private var distRatioRow: some View {
         labeledRow("Dist") {
-            Slider(value: Binding(get: { Double(pipeline.distRatio) }, set: { pipeline.distRatio = Float($0) }), in: 0...1)
+            Slider(
+                value: Binding(get: { Double(pipeline.distRatio) }, set: { pipeline.distRatio = Float($0) }),
+                in: Double(Config.distRatioRange.lowerBound)...Double(Config.distRatioRange.upperBound)
+            )
         } valueLabel: {
             Text(String(format: "%.2f", pipeline.distRatio)).font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .trailing)
         }

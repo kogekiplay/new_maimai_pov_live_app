@@ -227,24 +227,30 @@ enum Config {
 
     // Stabilizer defaults
     static let defaultFov: Float = 100.0
+    static let fovRange: ClosedRange<Float> = 30.0...160.0
     static var fov: Float {
         get {
             guard UserDefaults.standard.object(forKey: fovKey) != nil else {
                 return defaultFov
             }
-            return Float(UserDefaults.standard.double(forKey: fovKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: fovKey)), to: fovRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: fovKey) }
+        set {
+            UserDefaults.standard.set(Double(clampFloat(newValue, to: fovRange)), forKey: fovKey)
+        }
     }
     static let defaultDistRatio: Float = 0.0
+    static let distRatioRange: ClosedRange<Float> = 0.0...1.0
     static var distRatio: Float {
         get {
             guard UserDefaults.standard.object(forKey: distRatioKey) != nil else {
                 return defaultDistRatio
             }
-            return Float(UserDefaults.standard.double(forKey: distRatioKey))
+            return clampFloat(Float(UserDefaults.standard.double(forKey: distRatioKey)), to: distRatioRange)
         }
-        set { UserDefaults.standard.set(Double(newValue), forKey: distRatioKey) }
+        set {
+            UserDefaults.standard.set(Double(clampFloat(newValue, to: distRatioRange)), forKey: distRatioKey)
+        }
     }
     static let defaultYaw: Float   = 0.0
     static var yaw: Float {
@@ -603,6 +609,10 @@ enum Config {
 
     private static func clampYoloPadding(_ value: Int) -> Int {
         min(max(value, yoloPaddingRange.lowerBound), yoloPaddingRange.upperBound)
+    }
+
+    private static func clampFloat(_ value: Float, to range: ClosedRange<Float>) -> Float {
+        min(max(value, range.lowerBound), range.upperBound)
     }
 }
 
