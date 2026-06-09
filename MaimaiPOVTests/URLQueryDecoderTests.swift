@@ -155,6 +155,17 @@ final class WebControlInputTests: XCTestCase {
         XCTAssertNil(JSONNumberInput.double(Double.infinity))
     }
 
+    func testJSONNumberInputRejectsJSONBooleanValues() throws {
+        let body = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(#"{"enabled":true,"disabled":false}"#.utf8)) as? [String: Any]
+        )
+
+        XCTAssertNil(JSONNumberInput.integralInt(body["enabled"]))
+        XCTAssertNil(JSONNumberInput.integralInt(body["disabled"]))
+        XCTAssertNil(JSONNumberInput.double(body["enabled"]))
+        XCTAssertNil(JSONNumberInput.double(body["disabled"]))
+    }
+
     func testClampedDoubleReturnsNilForMissingOrNonNumericValues() {
         XCTAssertNil(WebControlInput.clampedDouble(in: [:], key: "focus", range: 0...1))
         XCTAssertNil(WebControlInput.clampedDouble(in: ["focus": "0.5"], key: "focus", range: 0...1))

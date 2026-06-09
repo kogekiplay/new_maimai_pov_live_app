@@ -19,6 +19,8 @@ enum URLQueryDecoder {
 
 enum JSONNumberInput {
     static func double(_ rawValue: Any?) -> Double? {
+        guard !(rawValue is Bool) else { return nil }
+
         let value: Double
         if let doubleValue = rawValue as? Double {
             value = doubleValue
@@ -31,6 +33,8 @@ enum JSONNumberInput {
     }
 
     static func integralInt(_ rawValue: Any?) -> Int? {
+        guard !(rawValue is Bool) else { return nil }
+
         if let intValue = rawValue as? Int {
             return intValue
         }
