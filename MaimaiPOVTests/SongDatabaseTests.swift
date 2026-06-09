@@ -38,6 +38,20 @@ final class SongDatabaseTests: XCTestCase {
         XCTAssertEqual(picked?.chartType, "utage")
     }
 
+    func testPickByChartTypeNormalizesStandardPreference() {
+        let database = SongDatabase()
+        let dx = Self.song(id: 100, chartType: "dx")
+        let standard = Self.song(id: 101, chartType: "standard")
+
+        let picked = database.pickByChartType(
+            candidates: [dx, standard],
+            chartTypePreference: " STD\n",
+            diffInput: nil
+        )
+
+        XCTAssertEqual(picked?.chartType, "standard")
+    }
+
     func testFindCandidatesTrimsNewlinesAroundQuery() {
         let database = SongDatabase()
         let song = Self.song(id: 100, title: "Test Song")

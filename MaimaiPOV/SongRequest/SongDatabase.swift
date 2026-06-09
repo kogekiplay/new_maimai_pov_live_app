@@ -405,6 +405,8 @@ class SongDatabase {
             if let u = candidates.first(where: { $0.chartType == "utage" }) { return u }
         }
 
+        let chartTypePreference = normalizedChartTypePreference(chartTypePreference)
+
         if chartTypePreference == "dx" {
             return candidates.first(where: { $0.chartType == "dx" })
                 ?? candidates.first(where: { $0.chartType == "standard" })
@@ -501,6 +503,23 @@ class SongDatabase {
             .lowercased()
             .replacingOccurrences(of: "：", with: ":")
         return key.isEmpty ? nil : key
+    }
+
+    private func normalizedChartTypePreference(_ input: String?) -> String? {
+        guard let input else { return nil }
+        let key = input
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        switch key {
+        case "dx":
+            return "dx"
+        case "std", "standard", "标", "标准":
+            return "standard"
+        case "utage", "宴":
+            return "utage"
+        default:
+            return nil
+        }
     }
 }
 
