@@ -66,9 +66,9 @@ final class SongCardManager: ObservableObject, @unchecked Sendable {
         queue.append(song)
         delegate?.onQueueUpdated(queue, change: .added(index: queue.count - 1))
 
-        if currentIndex < 0 {
-            currentIndex = 0
-            delegate?.onCurrentSongChanged(song)
+        if currentIndex < 0 || currentIndex >= queue.count {
+            currentIndex = min(max(currentIndex, 0), queue.count - 1)
+            delegate?.onCurrentSongChanged(currentSong)
         }
         scheduleSave()
     }
