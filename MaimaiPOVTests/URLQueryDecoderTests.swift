@@ -22,3 +22,24 @@ final class URLQueryDecoderTests: XCTestCase {
         XCTAssertEqual(URLQueryDecoder.decodeIntComponent("%31"), 1)
     }
 }
+
+final class DebugAPIHandlerTests: XCTestCase {
+    func testRequiredNonBlankStringRejectsBlankValue() {
+        XCTAssertNil(
+            DebugAPIHandler.requiredNonBlankString(
+                in: ["authorName": " \n "],
+                key: "authorName"
+            )
+        )
+    }
+
+    func testRequiredNonBlankStringKeepsNonBlankValue() {
+        XCTAssertEqual(
+            DebugAPIHandler.requiredNonBlankString(
+                in: ["authorName": " Alice "],
+                key: "authorName"
+            ),
+            " Alice "
+        )
+    }
+}

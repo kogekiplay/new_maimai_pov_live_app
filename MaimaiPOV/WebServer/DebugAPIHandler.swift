@@ -4,9 +4,17 @@ import Swifter
 final class DebugAPIHandler: @unchecked Sendable {
     weak var pipeline: LivePipelineManager?
 
+    static func requiredNonBlankString(in body: [String: Any], key: String) -> String? {
+        guard let value = body[key] as? String,
+              !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return value
+    }
+
     func simulateGift(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let authorName = body["authorName"] as? String else {
+              let authorName = Self.requiredNonBlankString(in: body, key: "authorName") else {
             return .badRequest(.text("Missing 'authorName'"))
         }
 
@@ -74,7 +82,7 @@ final class DebugAPIHandler: @unchecked Sendable {
 
     func simulateSC(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let authorName = body["authorName"] as? String else {
+              let authorName = Self.requiredNonBlankString(in: body, key: "authorName") else {
             return .badRequest(.text("Missing 'authorName'"))
         }
 
@@ -128,7 +136,7 @@ final class DebugAPIHandler: @unchecked Sendable {
 
     func simulateMember(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let authorName = body["authorName"] as? String else {
+              let authorName = Self.requiredNonBlankString(in: body, key: "authorName") else {
             return .badRequest(.text("Missing 'authorName'"))
         }
 
@@ -189,7 +197,7 @@ final class DebugAPIHandler: @unchecked Sendable {
 
     func simulateDanmaku(request: HttpRequest) -> HttpResponse {
         guard let body = try? JSONSerialization.jsonObject(with: Data(request.body)) as? [String: Any],
-              let authorName = body["authorName"] as? String,
+              let authorName = Self.requiredNonBlankString(in: body, key: "authorName"),
               let content = body["content"] as? String else {
             return .badRequest(.text("Missing 'authorName' or 'content'"))
         }
