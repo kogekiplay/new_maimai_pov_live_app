@@ -112,6 +112,22 @@
 - 任何 Liquid Glass UI 修改前，先用 codegraph 查看当前项目相关控件，再查看 Apple Landmarks 示例。不要凭截图或记忆改。
 - 修改后必须更新本文档，写清楚采用的是“系统控件路线”还是“自定义 glassEffect 路线”。
 
+## 全局系统边缘手势
+
+直播控制界面需要尽量避免误触通知中心、控制中心和 Home Indicator。当前策略是让顶部和底部系统边缘手势都延后一次：用户从屏幕顶部或底部第一次滑动时，优先交给 app；要触发系统手势需要第二次滑动。
+
+当前实现采用系统 API 路线：
+
+- `MaimaiPOV/App/MaimaiPOVApp.swift` 保持 SwiftUI `App` 生命周期。
+- `MaimaiPOVRootView` 是根 SwiftUI view，唯一负责把 `Phase2View()` 包上 `.defersSystemGestures(on: SystemGestureDeferral.deferredEdges)`。
+- `SystemGestureDeferral.deferredEdges` 必须包含 `.top` 和 `.bottom`。顶部对应通知中心/控制中心这类顶部边缘系统手势，底部对应 Home Indicator。
+- `SystemGestureDeferringHostingController` 只作为 UIKit hosting helper，覆盖 `preferredScreenEdgesDeferringSystemGestures` 并复用 `SystemGestureDeferral.uiKitEdges`。
+- 旧名字 `HomeIndicatorHostingController` 只是 typealias，保留是为了兼容未来可能存在的旧引用，不代表只处理 Home Indicator。
+
+不要把当前 SwiftUI `WindowGroup` 根强行改成自定义 `SceneDelegate` + `UIWindow` + UIKit root controller。2026-06-09 已用 iOS 17.5 / iPhone 15 Pro Simulator 对照验证：从 `60abd8b` 的 SwiftUI 生命周期切到 UIKit scene root 后，app 可以 build/run，但控制界面变成纯黑屏；回到 SwiftUI 生命周期后 Debug 条、控制面板和底部 tab 恢复正常。因此后续如果需要加强系统手势 deferral，应优先保持 SwiftUI 根修饰符，并用测试约束 `MaimaiPOVRootView` 和 UIKit helper 共享同一份 top/bottom 配置。
+
+系统手势 deferral 不属于 Liquid Glass 视觉本身，但它是全屏 glass 控制面板的交互边界。修改底栏、控制面板、Debug 面板或 root tab 时，不得移除 `MaimaiPOVRootView` 上的 `.defersSystemGestures(on:)`。
+
 ## 当前 Debug 四按钮实现
 
 `MaimaiPOV/UI/DebugOverlayView.swift` 里定义了 `DraggableGlassSegmentedControl`。这个名字保留自 iOS 17 fallback，但当前 iOS 26 分支不是自绘 glass thumb。
@@ -142,6 +158,7 @@
 - 禁止随手改 Debug 四按钮尺寸、间距或 tint。当前经用户确认的版本是 `.frame(width: 228, height: 34)` 附近的系统 segmented 外观。
 - 禁止把 iOS 17 fallback 的 material 写法复制到 iOS 26 分支后声称是真 Liquid Glass。
 - 禁止凭记忆改 Landmarks 参考。必须用 codegraph 或文件读取核对 `BadgesView.swift`。
+- 禁止把 SwiftUI App 生命周期改成 UIKit `SceneDelegate` root 作为系统手势 deferral 的“更强实现”，除非先证明 iOS 17 控制界面不会黑屏。
 - 禁止在没有截图或模拟器验证的情况下声称 UI 已经对齐。
 
 ## 验证要求
@@ -151,6 +168,8 @@
 - `git diff --check` 无输出。
 - iOS 26 build 成功。
 - iOS 17 build 成功。
+- `SystemGestureDeferralTests` 通过，确认 SwiftUI 根视图和 UIKit helper 都使用 top/bottom deferral。
+- iOS 26 / iOS 17 启动截图能看到 Debug 条、控制面板和底部 tab，避免 lifecycle/root controller 改动造成纯黑屏。
 - iOS 26 展开/收起调试面板。
 - iOS 26 调试分段四个选项 `推流`、`YOLO`、`跟踪`、`日志` 都能点击切换。
 - iOS 26 展开调试面板后，切换底部 app tab，再收起调试面板。
