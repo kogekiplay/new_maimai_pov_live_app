@@ -41,24 +41,26 @@ enum Config {
         set { UserDefaults.standard.set(newValue, forKey: yoloOverlayEnabledKey) }
     }
     static let defaultYoloOverlayScale: Double = 0.6
+    static let yoloOverlayScaleRange = 0.05...3.0
     static var yoloOverlayScale: Double {
         get {
             guard UserDefaults.standard.object(forKey: yoloOverlayScaleKey) != nil else {
                 return defaultYoloOverlayScale
             }
-            return UserDefaults.standard.double(forKey: yoloOverlayScaleKey)
+            return clampDouble(UserDefaults.standard.double(forKey: yoloOverlayScaleKey), to: yoloOverlayScaleRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: yoloOverlayScaleKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: yoloOverlayScaleRange), forKey: yoloOverlayScaleKey) }
     }
     static let defaultYoloTargetFPS: Double = 60.0
+    static let yoloTargetFPSRange = 1.0...60.0
     static var yoloTargetFPS: Double {
         get {
             guard UserDefaults.standard.object(forKey: yoloTargetFPSKey) != nil else {
                 return defaultYoloTargetFPS
             }
-            return UserDefaults.standard.double(forKey: yoloTargetFPSKey)
+            return clampDouble(UserDefaults.standard.double(forKey: yoloTargetFPSKey), to: yoloTargetFPSRange)
         }
-        set { UserDefaults.standard.set(newValue, forKey: yoloTargetFPSKey) }
+        set { UserDefaults.standard.set(clampDouble(newValue, to: yoloTargetFPSRange), forKey: yoloTargetFPSKey) }
     }
     static let outputWidth  = 1920
     static let outputHeight = 1080

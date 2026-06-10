@@ -12,6 +12,8 @@ final class ConfigTests: XCTestCase {
     private let pitchKey = "com.maimai.pitch"
     private let rollKey = "com.maimai.roll"
     private let yoloPaddingKey = "com.maimai.yoloPadding"
+    private let yoloOverlayScaleKey = "com.maimai.yoloOverlayScale"
+    private let yoloTargetFPSKey = "com.maimai.yoloTargetFPS"
     private let streamBitrateKey = "com.maimai.streamBitrate"
     private let activitySmoothFactorKey = "com.maimai.activitySmoothFactor"
     private let songRequestPauseThresholdKey = "com.maimai.songRequestPauseThreshold"
@@ -42,6 +44,8 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: pitchKey)
         UserDefaults.standard.removeObject(forKey: rollKey)
         UserDefaults.standard.removeObject(forKey: yoloPaddingKey)
+        UserDefaults.standard.removeObject(forKey: yoloOverlayScaleKey)
+        UserDefaults.standard.removeObject(forKey: yoloTargetFPSKey)
         UserDefaults.standard.removeObject(forKey: streamBitrateKey)
         UserDefaults.standard.removeObject(forKey: activitySmoothFactorKey)
         UserDefaults.standard.removeObject(forKey: songRequestPauseThresholdKey)
@@ -151,6 +155,24 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(250, forKey: yoloPaddingKey)
 
         XCTAssertEqual(Config.yoloPadding, 100)
+    }
+
+    func testYoloRuntimeControlsClampPersistedValuesToSupportedRanges() {
+        UserDefaults.standard.set(0.001, forKey: yoloOverlayScaleKey)
+
+        XCTAssertEqual(Config.yoloOverlayScale, 0.05, accuracy: 0.0001)
+
+        UserDefaults.standard.set(5.0, forKey: yoloOverlayScaleKey)
+
+        XCTAssertEqual(Config.yoloOverlayScale, 3.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(0.0, forKey: yoloTargetFPSKey)
+
+        XCTAssertEqual(Config.yoloTargetFPS, 1.0, accuracy: 0.0001)
+
+        UserDefaults.standard.set(120.0, forKey: yoloTargetFPSKey)
+
+        XCTAssertEqual(Config.yoloTargetFPS, 60.0, accuracy: 0.0001)
     }
 
     func testStreamBitrateClampsPersistedValuesToSupportedRange() {
