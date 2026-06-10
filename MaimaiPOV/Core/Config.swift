@@ -122,9 +122,9 @@ enum Config {
             guard UserDefaults.standard.object(forKey: isoValueKey) != nil else {
                 return defaultIsoValue
             }
-            return UserDefaults.standard.double(forKey: isoValueKey)
+            return validISOValue(UserDefaults.standard.double(forKey: isoValueKey))
         }
-        set { UserDefaults.standard.set(newValue, forKey: isoValueKey) }
+        set { UserDefaults.standard.set(validISOValue(newValue), forKey: isoValueKey) }
     }
     static let defaultSelectedLens: LensType = .main
     static var selectedLens: LensType {
@@ -664,6 +664,10 @@ enum Config {
 
     private static func clampDouble(_ value: Double, to range: ClosedRange<Double>) -> Double {
         min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    private static func validISOValue(_ value: Double) -> Double {
+        value.isFinite && value > 0 ? value : defaultIsoValue
     }
 }
 

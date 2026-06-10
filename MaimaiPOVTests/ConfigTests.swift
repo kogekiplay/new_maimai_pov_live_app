@@ -3,6 +3,7 @@ import XCTest
 
 final class ConfigTests: XCTestCase {
     private let focusValueKey = "com.maimai.focusValue"
+    private let isoValueKey = "com.maimai.isoValue"
     private let shutterTimescaleKey = "com.maimai.shutterTimescale"
     private let syncOffsetKey = "com.maimai.syncOffsetMs"
     private let readoutTimeKey = "com.maimai.readoutTimeMs"
@@ -35,6 +36,7 @@ final class ConfigTests: XCTestCase {
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: focusValueKey)
+        UserDefaults.standard.removeObject(forKey: isoValueKey)
         UserDefaults.standard.removeObject(forKey: shutterTimescaleKey)
         UserDefaults.standard.removeObject(forKey: syncOffsetKey)
         UserDefaults.standard.removeObject(forKey: readoutTimeKey)
@@ -83,6 +85,28 @@ final class ConfigTests: XCTestCase {
         UserDefaults.standard.set(2_000.0, forKey: shutterTimescaleKey)
 
         XCTAssertEqual(Config.shutterTimescale, 1_000.0, accuracy: 0.0001)
+    }
+
+    func testCameraISOUsesDefaultForInvalidPersistedValues() {
+        UserDefaults.standard.set(0.0, forKey: isoValueKey)
+
+        XCTAssertEqual(Config.isoValue, Config.defaultIsoValue, accuracy: 0.0001)
+
+        UserDefaults.standard.set(-100.0, forKey: isoValueKey)
+
+        XCTAssertEqual(Config.isoValue, Config.defaultIsoValue, accuracy: 0.0001)
+
+        UserDefaults.standard.set(Double.nan, forKey: isoValueKey)
+
+        XCTAssertEqual(Config.isoValue, Config.defaultIsoValue, accuracy: 0.0001)
+
+        UserDefaults.standard.set(Double.infinity, forKey: isoValueKey)
+
+        XCTAssertEqual(Config.isoValue, Config.defaultIsoValue, accuracy: 0.0001)
+
+        UserDefaults.standard.set(6_400.0, forKey: isoValueKey)
+
+        XCTAssertEqual(Config.isoValue, 6_400.0, accuracy: 0.0001)
     }
 
     func testImuTimingClampsPersistedValuesToControlRanges() {
